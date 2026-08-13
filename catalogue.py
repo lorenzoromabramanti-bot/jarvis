@@ -170,6 +170,14 @@ CAPACITES = {
         reglages=[], capacites=[], niveau=5, avance=False, defaut=False,
         actions=["generer_image", "generer_video", "generate_image_selected"],
     ),
+    "memoire_partagee": dict(
+        titre="Mémoire partagée entre agents",
+        description="Un vault que JARVIS et les agents de code (Claude Code, "
+                    "OpenCode) lisent et écrivent en commun.",
+        reglages=[], capacites=[], niveau=4, avance=False, defaut=False,
+        actions=["get_memoire_resume", "memoire_ecrire", "memoire_lire",
+                 "memoire_lister", "memoire_chercher", "memoire_supprimer"],
+    ),
     # ── Réservé au mode avancé ───────────────────────────────────────────
     "agents": dict(
         titre="Suivi des agents de développement",

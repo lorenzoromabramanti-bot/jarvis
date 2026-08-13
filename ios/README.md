@@ -1,29 +1,59 @@
-# JARVIS local — app iOS native
+# JARVIS — app iOS native
 
-App iOS minimale qui fait tourner **Gemma 4 E2B en natif** sur iPhone, via l'API
-Swift officielle de LiteRT-LM.
+Client natif du **vrai JARVIS** qui tourne sur le PC : mêmes capacités que le
+HUD web (`mobile/`), par WebSocket direct sur le port 8765 (`main2.py`).
+Ce n'est plus un modèle embarqué sur le téléphone — c'est un écran de plus
+pour parler au JARVIS qui tourne déjà.
 
-## Pourquoi une app native
+## Ce que fait cette app
 
-Dans un navigateur, les poids du modèle doivent tenir **entièrement** dans la
-mémoire WebAssembly — un bloc unique, que iOS plafonne bien en dessous de la RAM
-de l'appareil. D'où l'onglet tué sur iPhone 17 *et* iPhone 15 Pro Max, alors
-qu'un iPad Pro y arrive (iPadOS est plus généreux).
+- **Discussion** — chat texte avec JARVIS, comme le HUD web.
+- **Capacités** — les 16 capacités du catalogue (`catalogue.py`), avec la
+  possibilité d'en retirer une (protection) ou d'en activer une, toujours
+  après un avertissement affiché à l'écran.
+- **Réglages** — saisie manuelle des clés API (Gemini, Groq, Anthropic…),
+  envoyées chiffrées sur le fil et jamais réaffichées en clair — seule une
+  version masquée (`••••abcd`) revient du serveur.
 
-Une app native fait du **mmap** : les poids restent sur le disque, le système ne
-charge que les pages utiles. C'est exactement le mécanisme d'AI Edge Gallery et
-de PocketPal — d'où le fait qu'ils tournent là où Safari échoue.
+Trois fichiers dans `JarvisLocal/` :
 
-## Étape 1 : ce que fait cette app
+| Fichier | Rôle |
+|---|---|
+| `JarvisClient.swift` | Le contrat réseau — connexion, auth, catalogue, chat, réglages |
+| `ContentView.swift` | Les trois écrans (connexion, puis les 3 onglets) |
+| `JarvisLocalApp.swift` | Point d'entrée SwiftUI |
 
-Un seul écran : télécharger le modèle, le charger, poser des questions.
-Rien d'autre, volontairement. **Le but est de répondre à une question :
-Gemma 4 se charge-t-il nativement sur l'iPhone ?**
+## Le protocole (vérifié, pas deviné)
 
-L'intégration JARVIS complète (WebSocket, domotique, orbe, thèmes) ne vaut la
-peine que si la réponse est oui.
+Chaque message ci-dessous a été testé par un round-trip réel contre le
+serveur qui tourne — pas lu dans le code puis supposé correct.
 
-## Compilation — sur le MacBook Air
+1. À la connexion : `{"token": "…"}` → `{"type": "auth_ok"}` ou `"auth_failed"`.
+2. `{"type": "get_catalogue"}` → la liste réelle des capacités, avec pour
+   chacune `disponible` (la config nécessaire est là) et `activee` (choix
+   actuel de l'utilisateur) — deux choses différentes.
+3. `{"type": "set_capacites", "cles": [...], "mode": "avance"}` pour changer
+   ce qui est actif.
+4. `{"type": "mobile_command", "text": "…"}` pour parler. La réponse
+   n'arrive **pas** en retour direct : elle arrive plus tard, en diffusion,
+   sous la forme `{"action": "jarvis_text", "text": "…"}`.
+5. `{"type": "update_settings", "settings": {"api_keys": {"NOM": "valeur"}}}`
+   pour écrire une clé API dans `.env` côté serveur, à chaud.
+
+Ce que le Swift, lui, n'a **pas** été vérifié : il n'a jamais compilé, faute
+de Mac disponible sur cette machine. À tester en premier avant tout le reste.
+
+## Se connecter à JARVIS
+
+Il faut que le téléphone puisse atteindre le PC sur le port 8765 :
+
+- **Même Wi-Fi** : l'IP locale du PC (`ipconfig` → IPv4).
+- **À distance** : passer par le même mécanisme Tailscale déjà utilisé pour
+  Home Assistant (voir la doc HA) — évite d'ouvrir le port sur Internet.
+
+Le jeton d'accès est `JARVIS_ACCESS_TOKEN` dans le `.env` du PC.
+
+## Compilation — sur un Mac (Xcode)
 
 ### 1. Créer le projet
 
@@ -34,34 +64,21 @@ Xcode → **File > New > Project** → **iOS > App**
 | Product Name | `JarvisLocal` |
 | Interface | SwiftUI |
 | Language | Swift |
-| Minimum Deployment | **iOS 17.0** |
+| Minimum Deployment | iOS 17.0 |
 
-### 2. Ajouter LiteRT-LM
+### 2. Ajouter les sources
 
-**File > Add Package Dependencies…** → coller :
-
-```
-https://github.com/google-ai-edge/LiteRT-LM.git
-```
-
-→ **Add Package** → cocher la cible `JarvisLocal` → **Finish**.
-
-> Si Xcode affiche `no such module LiteRTLM` : sélectionner le projet → cible
-> `JarvisLocal` → onglet **General** → **Frameworks, Libraries, and Embedded
-> Content** → **+** → **LiteRTLM Package > LiteRTLM** → **Add**.
-
-### 3. Ajouter les sources
-
-Glisser les 4 fichiers du dossier `JarvisLocal/` dans le navigateur de projet
+Glisser les 3 fichiers du dossier `JarvisLocal/` dans le navigateur de projet
 Xcode, en cochant la cible. Remplacer `ContentView.swift` et
-`JarvisLocalApp.swift` générés par le modèle.
+`JarvisLocalApp.swift` générés par le modèle. Aucune dépendance externe —
+`URLSessionWebSocketTask` est dans le SDK iOS de base.
 
-### 4. Signer
+### 3. Signer
 
-Onglet **Signing & Capabilities** → cocher **Automatically manage signing** →
-choisir ton équipe (ton Apple ID suffit).
+Onglet **Signing & Capabilities** → **Automatically manage signing** →
+choisir son équipe (un Apple ID gratuit suffit).
 
-### 5. Installer
+### 4. Installer
 
 iPhone branché en USB → le sélectionner comme destination → **⌘R**.
 
@@ -70,29 +87,10 @@ faire confiance au certificat développeur.
 
 ## Garder l'app installée sans corvée
 
-Un Apple ID gratuit signe pour **7 jours**. TrollStore, qui installait de façon
-permanente, ne fonctionne que jusqu'à iOS 17.0 — inutilisable ici.
+Un Apple ID gratuit signe pour **7 jours**. La méthode qui tient dans la
+durée : **AltStore + AltServer sur le PC**, qui re-signe automatiquement en
+tâche de fond tant que l'iPhone est sur le même Wi-Fi — transparent, puisque
+le PC tourne déjà en permanence pour JARVIS.
 
-La bonne méthode : **AltStore + AltServer sur le PC**, qui re-signe
-automatiquement en tâche de fond tant que l'iPhone est sur le même Wi-Fi. Comme
-le PC tourne déjà en permanence pour JARVIS, c'est transparent.
-
-Contrairement à Ksign et aux certificats d'entreprise partagés, le certificat
-est le tien : Apple ne peut pas le révoquer.
-
-**Le modèle est stocké hors du bundle de l'app**, dans Application Support. Il
-survit donc aux re-signatures — seule une désinstallation complète l'efface.
-C'est aussi pour ça que l'`.ipa` reste minuscule au lieu de peser 2,6 Go.
-
-## Si le chargement échoue
-
-Dans `LocalEngine.swift`, remplacer `backend: .gpu` par `backend: .cpu()`.
-Plus lent, mais nettement moins exigeant en mémoire.
-
-## Le modèle
-
-`gemma-4-E2B-it.litertlm` — **2,6 Go**, téléchargé au premier lancement.
-
-Attention : c'est le build **appareil**, à ne pas confondre avec
-`gemma-4-E2B-it-web.litertlm` (2,0 Go) utilisé par la version navigateur de
-JARVIS. Les deux ne sont pas interchangeables.
+Le certificat est le tien, contrairement aux certificats d'entreprise
+partagés : Apple ne peut pas le révoquer.

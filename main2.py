@@ -3480,6 +3480,102 @@ async def ws_handler(websocket):
                             "type": "proposition_resultat", "ok": False,
                             "erreur": repr(_e_env)}))
 
+                elif data.get("type") == "get_catalogue":
+                    # Expose catalogue.py sur le fil brut : n'importe quel client
+                    # (app iOS, script, futur front) lit la LISTE REELLE plutot
+                    # qu'une copie recopiee a la main qui divergerait a la
+                    # premiere capacite ajoutee — exactement ce que
+                    # catalogue.py existe pour eviter.
+                    try:
+                        import catalogue
+                        _mode = data.get("mode") or catalogue.mode_installe()
+                        _actives = catalogue.activees()
+                        _liste = catalogue.catalogue(_mode)
+                        for _c in _liste:
+                            _c["activee"] = _c["cle"] in _actives
+                        await websocket.send(json.dumps({
+                            "type": "catalogue",
+                            "mode": _mode,
+                            "capacites": _liste,
+                        }))
+                    except Exception as _e_cat:
+                        await websocket.send(json.dumps({
+                            "type": "catalogue", "capacites": [], "erreur": repr(_e_cat)}))
+
+                elif data.get("type") == "set_capacites":
+                    # Retire/rend une protection : le meme mecanisme que le
+                    # premier lancement (definir_activees), appelable a tout
+                    # moment depuis un client distant (app iOS).
+                    try:
+                        import catalogue
+                        _cles = data.get("cles", [])
+                        _mode = data.get("mode") or catalogue.mode_installe()
+                        retenues, refusees = catalogue.definir_activees(_cles, _mode)
+                        _actives = set(retenues)
+                        _liste = catalogue.catalogue(_mode)
+                        for _c in _liste:
+                            _c["activee"] = _c["cle"] in _actives
+                        await websocket.send(json.dumps({
+                            "type": "capacites_definies",
+                            "mode": _mode,
+                            "retenues": retenues,
+                            "refusees": refusees,
+                            "capacites": _liste,
+                        }))
+                    except Exception as _e_setcap:
+                        await websocket.send(json.dumps({
+                            "type": "capacites_definies", "retenues": [], "refusees": [],
+                            "erreur": repr(_e_setcap)}))
+
+                elif data.get("type") == "get_memoire_resume":
+                    import memoire_partagee
+                    try:
+                        await websocket.send(json.dumps({
+                            "type": "memoire_resume", "data": memoire_partagee.resume()}))
+                    except Exception as _e_mp:
+                        await websocket.send(json.dumps({"type": "memoire_resume", "erreur": repr(_e_mp)}))
+
+                elif data.get("type") == "memoire_ecrire":
+                    import memoire_partagee
+                    try:
+                        chemin = memoire_partagee.ecrire(
+                            data.get("dossier"), data.get("id"), data.get("corps", ""),
+                            source=data.get("source", "jarvis"),
+                            sujet=data.get("sujet"), titre=data.get("titre"))
+                        await websocket.send(json.dumps({"type": "memoire_ecrite", "chemin": str(chemin)}))
+                    except Exception as _e_mp:
+                        await websocket.send(json.dumps({"type": "memoire_ecrite", "erreur": str(_e_mp)}))
+
+                elif data.get("type") == "memoire_lire":
+                    import memoire_partagee
+                    try:
+                        note = memoire_partagee.lire(data.get("dossier"), data.get("id"), data.get("source"))
+                        await websocket.send(json.dumps({"type": "memoire_note", "note": note}))
+                    except Exception as _e_mp:
+                        await websocket.send(json.dumps({"type": "memoire_note", "erreur": str(_e_mp)}))
+
+                elif data.get("type") == "memoire_lister":
+                    import memoire_partagee
+                    try:
+                        notes = memoire_partagee.lister(data.get("dossier"), data.get("source"))
+                        await websocket.send(json.dumps({"type": "memoire_liste", "notes": notes}))
+                    except Exception as _e_mp:
+                        await websocket.send(json.dumps({"type": "memoire_liste", "erreur": str(_e_mp)}))
+
+                elif data.get("type") == "memoire_chercher":
+                    import memoire_partagee
+                    resultat = memoire_partagee.chercher(data.get("motif", ""))
+                    resultat["type"] = "memoire_resultats"
+                    await websocket.send(json.dumps(resultat))
+
+                elif data.get("type") == "memoire_supprimer":
+                    import memoire_partagee
+                    try:
+                        ok = memoire_partagee.supprimer(data.get("dossier"), data.get("id"), data.get("source"))
+                        await websocket.send(json.dumps({"type": "memoire_supprimee", "ok": ok}))
+                    except Exception as _e_mp:
+                        await websocket.send(json.dumps({"type": "memoire_supprimee", "erreur": str(_e_mp)}))
+
                 elif data.get("type") == "get_settings":
                     import json as _j
                     try:

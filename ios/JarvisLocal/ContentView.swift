@@ -2,118 +2,251 @@
 //  ContentView.swift
 //  JarvisLocal
 //
-//  Écran unique : télécharger le modèle, le charger, poser des questions.
-//  Volontairement minimal — l'objectif de cette première étape est de savoir
-//  si Gemma 4 se charge nativement sur l'iPhone. L'intégration JARVIS
-//  (WebSocket, domotique, orbe) viendra seulement si cette réponse est oui.
+//  Pivot complet : ce n'est plus le POC Gemma local (un seul ecran, un
+//  modele embarque). C'est un client du VRAI JARVIS qui tourne sur le PC,
+//  par WebSocket (port 8765) — memes capacites que le HUD web : chat,
+//  catalogue des 16 capacites avec retrait de protection apres
+//  avertissement, cles API saisies a la main.
+//
+//  Le contrat reseau (JarvisClient.swift) a ete verifie contre le serveur
+//  reel. Cette vue, elle, n'a jamais compile : pas de Mac/Xcode sur cette
+//  machine. A verifier avant premiere utilisation.
 //
 
 import SwiftUI
 
 struct ContentView: View {
-  @StateObject private var store = ModelStore()
-  @StateObject private var moteur = LocalEngine()
-  @State private var question = "Quelle est la capitale de la France ?"
+  @StateObject private var client = JarvisClient()
+  @AppStorage("jarvis_hote") private var hote = ""
+  @AppStorage("jarvis_port") private var port = 8765
+  @AppStorage("jarvis_jeton") private var jeton = ""
+
+  var body: some View {
+    Group {
+      if client.etat == .connecte {
+        TabView {
+          DiscussionView(client: client)
+            .tabItem { Label("Discussion", systemImage: "message") }
+          CapacitesView(client: client)
+            .tabItem { Label("Capacités", systemImage: "switch.2") }
+          ReglagesView(client: client)
+            .tabItem { Label("Réglages", systemImage: "key") }
+        }
+      } else {
+        ConnexionView(client: client, hote: $hote, port: $port, jeton: $jeton)
+      }
+    }
+  }
+}
+
+// MARK: - Connexion
+
+private struct ConnexionView: View {
+  @ObservedObject var client: JarvisClient
+  @Binding var hote: String
+  @Binding var port: Int
+  @Binding var jeton: String
 
   var body: some View {
     NavigationStack {
-      VStack(spacing: 16) {
-        carteModele
-
-        if case .pret = moteur.etat {
-          zoneDiscussion
-        } else if case .chargement(let etape) = moteur.etat {
-          ProgressView(etape).padding()
-        } else if case .echec(let msg) = moteur.etat {
-          Text("Échec du chargement : \(msg)")
-            .font(.footnote).foregroundStyle(.red)
-            .frame(maxWidth: .infinity, alignment: .leading)
+      Form {
+        Section("Serveur JARVIS") {
+          TextField("Adresse (IP ou hôte Tailscale)", text: $hote)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+          TextField("Port", value: $port, format: .number)
+            .keyboardType(.numberPad)
+          SecureField("Jeton d'accès", text: $jeton)
         }
 
-        Spacer()
-      }
-      .padding()
-      .navigationTitle("JARVIS local")
-    }
-  }
-
-  // MARK: - Modèle
-
-  @ViewBuilder private var carteModele: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      switch store.etat {
-
-      case .absent:
-        Text("Gemma 4 E2B — 2,6 Go à télécharger une seule fois.")
-          .font(.subheadline).foregroundStyle(.secondary)
-        Text("En Wi-Fi. Le modèle reste installé même quand l'app est re-signée.")
-          .font(.caption).foregroundStyle(.secondary)
-        Button("Télécharger le modèle") { store.telecharger() }
-          .buttonStyle(.borderedProminent)
-
-      case .telechargement(let recu, let total):
-        let fraction = total > 0 ? Double(recu) / Double(total) : 0
-        ProgressView(value: fraction) {
-          Text("Téléchargement…").font(.subheadline)
-        } currentValueLabel: {
-          Text(total > 0
-               ? "\(go(recu)) / \(go(total))  —  \(Int(fraction * 100)) %"
-               : go(recu))
-            .font(.caption).monospacedDigit()
-        }
-        Button("Annuler", role: .cancel) { store.annuler() }
-
-      case .pret:
-        Label("Modèle installé (\(go(store.tailleSurDisque)))", systemImage: "checkmark.circle.fill")
-          .foregroundStyle(.green).font(.subheadline)
-        HStack {
-          if case .inactif = moteur.etat {
-            Button("Charger en mémoire") {
-              Task { await moteur.charger(modele: store.emplacement) }
-            }
-            .buttonStyle(.borderedProminent)
+        if case .echec(let msg) = client.etat {
+          Section {
+            Text(msg).foregroundStyle(.red).font(.footnote)
           }
-          Button("Supprimer", role: .destructive) { store.supprimer() }
         }
 
-      case .echec(let msg):
-        Text("Échec : \(msg)").font(.footnote).foregroundStyle(.red)
-        Button("Réessayer") { store.telecharger() }
-      }
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .padding()
-    .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
-  }
-
-  // MARK: - Discussion
-
-  @ViewBuilder private var zoneDiscussion: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        TextField("Pose ta question", text: $question, axis: .vertical)
-          .textFieldStyle(.roundedBorder)
-        Button {
-          Task { await moteur.demander(question) }
-        } label: {
-          Image(systemName: "paperplane.fill")
+        Section {
+          Button {
+            client.connecter(hote: hote, port: port, jeton: jeton)
+          } label: {
+            if client.etat == .connexion {
+              ProgressView()
+            } else {
+              Text("Se connecter")
+            }
+          }
+          .disabled(hote.isEmpty || jeton.isEmpty || client.etat == .connexion)
         }
-        .disabled(moteur.genere || question.isEmpty)
       }
+      .navigationTitle("JARVIS")
+    }
+  }
+}
 
-      ScrollView {
-        Text(moteur.reponse.isEmpty && moteur.genere ? "…" : moteur.reponse)
-          .textSelection(.enabled)
-          .frame(maxWidth: .infinity, alignment: .leading)
+// MARK: - Discussion
+
+private struct DiscussionView: View {
+  @ObservedObject var client: JarvisClient
+  @State private var texte = ""
+
+  var body: some View {
+    NavigationStack {
+      VStack(spacing: 0) {
+        ScrollViewReader { proxy in
+          ScrollView {
+            LazyVStack(alignment: .leading, spacing: 10) {
+              ForEach(client.messages) { m in
+                bulle(m).id(m.id)
+              }
+              if client.enAttenteReponse {
+                ProgressView().padding(.leading, 8)
+              }
+            }
+            .padding()
+          }
+          .onChange(of: client.messages.count) {
+            if let dernier = client.messages.last {
+              withAnimation { proxy.scrollTo(dernier.id, anchor: .bottom) }
+            }
+          }
+        }
+
+        if let refus = client.dernierRefus {
+          Text(refus)
+            .font(.footnote).foregroundStyle(.orange)
+            .padding(.horizontal)
+        }
+
+        HStack {
+          TextField("Parler à JARVIS", text: $texte, axis: .vertical)
+            .textFieldStyle(.roundedBorder)
+          Button {
+            client.demander(texte)
+            texte = ""
+          } label: {
+            Image(systemName: "paperplane.fill")
+          }
+          .disabled(texte.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+        .padding()
       }
-      .frame(maxHeight: 320)
-
-      Button("Nouvelle conversation") { moteur.reinitialiser() }
-        .font(.caption)
+      .navigationTitle("JARVIS")
     }
   }
 
-  private func go(_ octets: Int64) -> String {
-    String(format: "%.2f Go", Double(octets) / 1e9)
+  @ViewBuilder private func bulle(_ m: MessageChat) -> some View {
+    HStack {
+      if m.deJarvis { Spacer(minLength: 40) }
+      Text(m.texte)
+        .padding(10)
+        .background(m.deJarvis ? Color(.systemGray5) : Color.accentColor.opacity(0.2),
+                    in: RoundedRectangle(cornerRadius: 12))
+      if !m.deJarvis { Spacer(minLength: 40) }
+    }
+  }
+}
+
+// MARK: - Capacités
+
+private struct CapacitesView: View {
+  @ObservedObject var client: JarvisClient
+  @State private var enAttenteAvertissement: Capacite?
+
+  var body: some View {
+    NavigationStack {
+      List(client.capacites) { c in
+        VStack(alignment: .leading, spacing: 4) {
+          HStack {
+            VStack(alignment: .leading, spacing: 2) {
+              Text(c.titre).font(.headline)
+              Text(c.description).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Toggle("", isOn: Binding(
+              get: { c.activee },
+              set: { _ in enAttenteAvertissement = c }
+            ))
+            .labelsHidden()
+            .disabled(c.obligatoire)
+          }
+          if !c.disponible {
+            Text("Indisponible : \(c.manques.joined(separator: ", "))")
+              .font(.caption2).foregroundStyle(.red)
+          }
+        }
+        .padding(.vertical, 4)
+      }
+      .navigationTitle("Capacités")
+      .alert(
+        enAttenteAvertissement?.activee == true ? "Retirer cette protection ?" : "Activer cette capacité ?",
+        isPresented: Binding(
+          get: { enAttenteAvertissement != nil },
+          set: { if !$0 { enAttenteAvertissement = nil } }
+        ),
+        presenting: enAttenteAvertissement
+      ) { c in
+        Button("Annuler", role: .cancel) {}
+        Button(c.activee ? "Retirer" : "Activer", role: c.activee ? .destructive : nil) {
+          basculer(c)
+        }
+      } message: { c in
+        Text(c.activee
+             ? "\(c.titre) ne répondra plus une fois retirée. \(c.description)"
+             : c.description)
+      }
+    }
+  }
+
+  private func basculer(_ cible: Capacite) {
+    var cles = Set(client.capacites.filter(\.activee).map(\.cle))
+    if cible.activee { cles.remove(cible.cle) } else { cles.insert(cible.cle) }
+    client.definirCapacites(Array(cles))
+  }
+}
+
+// MARK: - Réglages
+
+private struct ReglagesView: View {
+  @ObservedObject var client: JarvisClient
+  @State private var nouvelleValeur: [String: String] = [:]
+
+  private let clesConnues = [
+    "GEMINI_API_KEY", "GROQ_API_KEY", "XAI_API_KEY", "YOUTUBE_API_KEY",
+    "SERPAPI_API_KEY", "ANTHROPIC_API_KEY", "MISTRAL_API_KEY", "OPENAI_API_KEY",
+  ]
+
+  var body: some View {
+    NavigationStack {
+      Form {
+        Section("Clés API") {
+          ForEach(clesConnues, id: \.self) { nom in
+            VStack(alignment: .leading, spacing: 4) {
+              Text(nom).font(.caption).foregroundStyle(.secondary)
+              HStack {
+                SecureField(
+                  client.cleApiMasquees[nom] ?? "non renseignée",
+                  text: Binding(
+                    get: { nouvelleValeur[nom] ?? "" },
+                    set: { nouvelleValeur[nom] = $0 }
+                  )
+                )
+                Button("Enregistrer") {
+                  guard let v = nouvelleValeur[nom], !v.isEmpty else { return }
+                  client.enregistrerCleApi(nom, v)
+                  nouvelleValeur[nom] = ""
+                }
+                .disabled((nouvelleValeur[nom] ?? "").isEmpty)
+              }
+            }
+          }
+        }
+
+        Section {
+          Button("Se déconnecter", role: .destructive) { client.deconnecter() }
+        }
+      }
+      .navigationTitle("Réglages")
+      .onAppear { client.demanderParametres() }
+    }
   }
 }
