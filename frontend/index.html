@@ -1,0 +1,2212 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>J.A.R.V.I.S</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- ══ TIMER OVERLAY — Iron Man Style ═══════════════════════════════ -->
+  <div id="timer-hud"
+    style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);z-index:200;text-align:center;pointer-events:none;">
+    <div
+      style="font-family:'Courier New',monospace;color:#00e5ff;font-size:120px;font-weight:900;text-shadow:0 0 30px rgba(0,229,255,0.8);letter-spacing:10px;"
+      id="timer-display">00:00</div>
+    <div
+      style="font-family:'Courier New',monospace;color:rgba(0,229,255,0.5);font-size:14px;letter-spacing:5px;text-transform:uppercase;margin-top:-20px;">
+      Protocol Minuteur Actif</div>
+    <div
+      style="width:300px;height:2px;background:rgba(0,229,255,0.2);margin:20px auto;position:relative;overflow:hidden;">
+      <div id="timer-progress"
+        style="position:absolute;top:0;left:0;height:100%;width:0%;background:#00e5ff;box-shadow:0 0 10px #00e5ff;">
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ HELP OVERLAY — Iron Man Style ═══════════════════════════════ -->
+  <div id="help-overlay" style="display:none;position:fixed;inset:0;z-index:90;pointer-events:none;">
+    <!-- Widgets will be injected here by JS -->
+  </div>
+
+  <!-- ══ RECIPE MODAL — Iron Man Style ═══════════════════════════════ -->
+  <div id="recipe-modal" class="recipe-modal hidden">
+    <div class="recipe-header" id="recipe-header">
+      <div class="recipe-drag-handle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      </div>
+      <span class="recipe-title" id="recipe-title">RECETTE J.A.R.V.I.S</span>
+      <button id="close-recipe" class="close-recipe">X</button>
+    </div>
+    <div class="recipe-content">
+      <div class="recipe-ingredients">
+        <h3>INGRÉDIENTS</h3>
+        <ul id="recipe-ingredients-list"></ul>
+      </div>
+      <div class="recipe-instructions">
+        <h3>INSTRUCTIONS</h3>
+        <ol id="recipe-instructions-list"></ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ IMAGE PANELS CONTAINER — Iron Man Style ════════════════════════ -->
+  <!-- Les fenêtres d'images sont injectées dynamiquement par JS -->
+  <div id="image-panels-container"></div>
+
+  <!-- ══ ANTIVIRUS SCAN PANEL — Iron Man HUD ════════════════════════════ -->
+  <div id="av-panel" class="av-panel hidden">
+    <div class="av-panel-scanlines"></div>
+    <div class="av-panel-corner-tr"></div>
+    <div class="av-panel-corner-bl"></div>
+    <div class="av-panel-header" id="av-panel-header">
+      <div class="av-panel-drag-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      </div>
+      <div class="av-panel-title">SECURITY_CORE // ANTIVIRUS_SCAN</div>
+      <button class="av-panel-close" id="av-panel-close-btn">&times;</button>
+    </div>
+    
+    <div class="av-panel-status-bar">
+      <span id="av-status-label">SYS_STATUS: STANDBY</span>
+      <span id="av-threats-count">MENACES DÉTECTÉES: 0</span>
+    </div>
+
+    <div class="av-panel-body">
+      <!-- Radar visualization -->
+      <div class="av-radar-container">
+        <div class="av-radar-circle">
+          <div class="av-radar-sweep"></div>
+          <div class="av-radar-blips"></div>
+        </div>
+        <div class="av-radar-value" id="av-progress-percent">0%</div>
+      </div>
+
+      <!-- Linear progress bar -->
+      <div class="av-progress-bar-container">
+        <div class="av-progress-bar-fill" id="av-progress-bar-fill" style="width: 0%;"></div>
+      </div>
+
+      <!-- Realtime scanning directory/file label -->
+      <div class="av-current-file" id="av-current-file">SYS_CORE_SCANNER_AWAITING_TRIGGER...</div>
+
+      <!-- Terminal console logs -->
+      <div class="av-console" id="av-console">
+        <div class="av-console-line">[INFO] Sous-système antivirus JARVIS actif. En attente d'instruction.</div>
+      </div>
+
+      <!-- Threats List -->
+      <div class="av-threats-list hidden" id="av-threats-list"></div>
+    </div>
+
+    <div class="av-panel-footer">
+      <button class="av-control-btn" id="av-cancel-btn">ANNULER</button>
+      <span>JARVIS_HUD_SEC_V2.6</span>
+    </div>
+  </div>
+
+  <!-- ══ VPN PANEL — Iron Man HUD ════════════════════════════ -->
+  <div id="vpn-panel" class="vpn-panel hidden">
+    <div class="av-panel-scanlines"></div>
+    <div class="av-panel-corner-tr"></div>
+    <div class="av-panel-corner-bl"></div>
+    <div class="vpn-panel-header" id="vpn-panel-header">
+      <div class="vpn-panel-drag-icon">
+        <span style="font-size: 18px;">🌐</span>
+      </div>
+      <div class="vpn-panel-title">JARVIS // SECURE_VPN</div>
+      <button class="vpn-panel-close" id="vpn-panel-close-btn">&times;</button>
+    </div>
+    <div class="vpn-panel-body">
+      <div class="vpn-status-container">
+        <div class="vpn-status-indicator">
+          <div id="vpn-status-dot" class="vpn-dot-disconnected"></div>
+          <span id="vpn-status-text">DÉCONNECTÉ</span>
+        </div>
+        <div id="vpn-ip-info" class="vpn-ip-info">
+          IP : Chargement...
+        </div>
+      </div>
+      
+      <div class="vpn-country-selector">
+        <label for="vpn-country-select">CHOISIR UN PAYS :</label>
+        <select id="vpn-country-select" class="vpn-select">
+          <option value="">Chargement des pays...</option>
+        </select>
+      </div>
+      
+      <div class="vpn-controls">
+        <button id="vpn-connect-btn" class="vpn-action-btn connect-btn">SE CONNECTER</button>
+        <button id="vpn-disconnect-btn" class="vpn-action-btn disconnect-btn" disabled>SE DÉCONNECTER</button>
+      </div>
+    </div>
+    <div class="vpn-panel-footer">
+      <span id="vpn-footer-server">SERVEUR : AUCUN</span>
+      <span>JARVIS_HUD_VPN_V1.0</span>
+    </div>
+  </div>
+
+  <!-- ══ SHOPPING PANEL — Iron Man HUD ════════════════════════════ -->
+  <div id="shopping-panel" class="shopping-panel hidden">
+    <div class="av-panel-scanlines"></div>
+    <div class="av-panel-corner-tr"></div>
+    <div class="av-panel-corner-bl"></div>
+    <div class="shopping-panel-header" id="shopping-panel-header">
+      <div class="shopping-panel-drag-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="9" cy="21" r="1"/>
+          <circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+        </svg>
+      </div>
+      <div class="shopping-panel-title">JARVIS // SHOPPING_LIST</div>
+      <button class="shopping-panel-close" id="shopping-panel-close-btn">&times;</button>
+    </div>
+    <div class="shopping-panel-body">
+      <div class="shopping-list-container" id="shopping-list-container">
+        <!-- Dynamique -->
+      </div>
+      <div class="shopping-add-form">
+        <input type="text" id="shopping-add-input" placeholder="Ajouter un article...">
+        <button id="shopping-add-btn">+</button>
+      </div>
+    </div>
+    <div class="shopping-panel-footer">
+      <button class="shopping-clear-btn" id="shopping-clear-btn">VIDER LA LISTE</button>
+      <span>JARVIS_HUD_SHOP_V1.0</span>
+    </div>
+  </div>
+
+  <!-- ══ RESTAURANT RADAR PANEL — Iron Man HUD ════════════════════════════ -->
+  <div id="restaurant-panel" class="restaurant-panel hidden">
+    <div class="av-panel-scanlines"></div>
+    <div class="av-panel-corner-tr"></div>
+    <div class="av-panel-corner-bl"></div>
+    <div class="restaurant-panel-header" id="restaurant-panel-header">
+      <div class="restaurant-panel-drag-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          <path d="M2 12h20"/>
+        </svg>
+      </div>
+      <div class="restaurant-panel-title">JARVIS // RESTAURANT_RADAR</div>
+      <button class="restaurant-panel-close" id="restaurant-panel-close-btn">&times;</button>
+    </div>
+    <div class="restaurant-panel-body">
+      <div class="restaurant-radar-area">
+        <div class="restaurant-radar-circle">
+          <div class="restaurant-radar-sweep"></div>
+          <div class="radar-grid-circle circle-1"></div>
+          <div class="radar-grid-circle circle-2"></div>
+          <div class="radar-grid-circle circle-3"></div>
+          <div class="radar-grid-line line-h"></div>
+          <div class="radar-grid-line line-v"></div>
+          <div class="restaurant-radar-blips" id="restaurant-radar-blips"></div>
+        </div>
+      </div>
+      <div class="restaurant-list-area">
+        <div class="restaurant-location-title" id="restaurant-location-title">RESTAURANTS PROCHES</div>
+        <div class="restaurant-items-list" id="restaurant-items-list">
+          <!-- Dynamique -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- Restaurant Details Overlay -->
+    <div id="restaurant-details-overlay" class="restaurant-details-overlay hidden">
+      <div class="restaurant-details-container">
+        <button id="restaurant-details-close-btn">&times;</button>
+        <div class="restaurant-details-header">
+          <span id="rest-detail-name">Nom du restaurant</span>
+          <span id="rest-detail-rating">★ 4.5</span>
+        </div>
+        <div class="restaurant-details-body">
+          <div class="restaurant-detail-row">
+            <span class="detail-label">Cuisine</span>
+            <span id="rest-detail-cuisine" class="detail-value">Italien</span>
+          </div>
+          <div class="restaurant-detail-row">
+            <span class="detail-label">Adresse</span>
+            <span id="rest-detail-adresse" class="detail-value">12 rue ...</span>
+          </div>
+          <div class="restaurant-detail-row">
+            <span class="detail-label">Coordonnées GPS</span>
+            <span id="rest-detail-coords" class="detail-value">Inconnu</span>
+          </div>
+          <div class="restaurant-detail-row">
+            <span class="detail-label">Téléphone</span>
+            <span id="rest-detail-tel" class="detail-value">01 02 ...</span>
+          </div>
+          <div class="restaurant-detail-row">
+            <span class="detail-label">Horaires</span>
+            <span id="rest-detail-horaires" class="detail-value">12h-14h ...</span>
+          </div>
+          <div class="restaurant-detail-row">
+            <span class="detail-label">Site Web</span>
+            <a id="rest-detail-web" class="detail-value link" href="#" target="_blank">Lien direct</a>
+          </div>
+          <div class="restaurant-detail-row">
+            <span class="detail-label">Spécialité / Avis</span>
+            <span id="rest-detail-desc" class="detail-value text-glow">Excellent repas ...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="restaurant-panel-footer">
+      <span>JARVIS_HUD_RADAR_V1.1</span>
+    </div>
+  </div>
+
+  <!-- ══ OBSIDIAN PANEL — Iron Man HUD ════════════════════════════ -->
+  <div id="obsidian-panel" class="obsidian-panel hidden">
+    <div class="av-panel-scanlines"></div>
+    <div class="av-panel-corner-tr"></div>
+    <div class="av-panel-corner-bl"></div>
+    <div class="obsidian-panel-header" id="obsidian-panel-header">
+      <div class="obsidian-panel-drag-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="obsidian-panel-title">JARVIS // OBSIDIAN_MEMORY_VAULT</div>
+      <button class="obsidian-panel-close" id="obsidian-panel-close-btn">&times;</button>
+    </div>
+    
+    <div class="obsidian-panel-body">
+      <!-- Left side: notes list -->
+      <div class="obsidian-list-col">
+        <div class="obsidian-search-box">
+          <input type="text" id="obsidian-search" placeholder="Rechercher une note...">
+          <button id="obsidian-add-btn" title="Nouvelle note">+</button>
+        </div>
+        <div class="obsidian-notes-list" id="obsidian-notes-list">
+          <!-- Dynamique -->
+        </div>
+      </div>
+      
+      <!-- Right side: editor -->
+      <div class="obsidian-editor-col" id="obsidian-editor-container">
+        <input type="text" id="obsidian-note-title" placeholder="Titre de la note...">
+        <textarea id="obsidian-note-content" placeholder="Écrivez votre note en Markdown..."></textarea>
+        <div class="obsidian-editor-actions">
+          <button class="obsidian-btn primary" id="obsidian-note-save-btn">SAUVEGARDER</button>
+          <button class="obsidian-btn danger" id="obsidian-note-delete-btn">SUPPRIMER</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="obsidian-panel-footer">
+      <span>JARVIS_HUD_OBSIDIAN_V1.0</span>
+    </div>
+  </div>
+
+  <!-- ══ UNINSTALLER PANEL - Iron Man HUD ════════════════════════════ -->
+  <div id="uninstaller-panel" class="uninstaller-panel hidden">
+    <div class="uninstaller-panel-scanlines"></div>
+    <div class="uninstaller-panel-corner-tr"></div>
+    <div class="uninstaller-panel-corner-bl"></div>
+    <div class="uninstaller-panel-header" id="uninstaller-panel-header">
+      <div class="uninstaller-panel-drag-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          <path d="M2 12h20"/>
+        </svg>
+      </div>
+      <div class="uninstaller-panel-title">JARVIS // SOFTWARE_UNINSTALLER</div>
+      <button class="uninstaller-panel-close" id="uninstaller-panel-close-btn">&times;</button>
+    </div>
+    
+    <div class="uninstaller-panel-body">
+      <!-- VUE 1 : Liste des applications -->
+      <div id="uninstaller-list-view" class="uninstaller-view">
+        <div class="uninstaller-search-box">
+          <input type="text" id="uninstaller-search-input" placeholder="RECHERCHER UN PROGRAMME...">
+        </div>
+        <div class="uninstaller-apps-list" id="uninstaller-apps-list">
+          <div class="uninstaller-loading">CHARGEMENT DE LA LISTE DES LOGICIELS...</div>
+        </div>
+      </div>
+      
+      <!-- VUE 2 : Scan / Désinstallation / Traces -->
+      <div id="uninstaller-action-view" class="uninstaller-view hidden">
+        <!-- Animation radar pendant le scan -->
+        <div id="uninstaller-radar-container" class="uninstaller-radar-container">
+          <div class="uninstaller-radar-circle">
+            <div class="uninstaller-radar-sweep"></div>
+            <div class="uninstaller-radar-grid circle-1"></div>
+            <div class="uninstaller-radar-grid circle-2"></div>
+            <div class="uninstaller-radar-grid circle-3"></div>
+          </div>
+          <div class="uninstaller-status-msg" id="uninstaller-status-msg">En attente de la désinstallation...</div>
+        </div>
+        
+        <!-- Liste des traces détectées -->
+        <div id="uninstaller-leftovers-container" class="uninstaller-leftovers-container hidden">
+          <div class="uninstaller-leftovers-header">
+            <span>TRACES RÉSIDUELLES DÉTECTÉES</span>
+            <label class="uninstaller-select-all-label">
+              <input type="checkbox" id="uninstaller-select-all" checked> TOUT SÉLECTIONNER
+            </label>
+          </div>
+          <div class="uninstaller-leftovers-list" id="uninstaller-leftovers-list">
+            <!-- Dynamique -->
+          </div>
+          <div class="uninstaller-action-buttons">
+            <button class="uninstaller-btn danger" id="uninstaller-clean-btn">NETTOYER LES TRACES</button>
+            <button class="uninstaller-btn secondary" id="uninstaller-skip-btn">PASSER / FERMER</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="uninstaller-panel-footer">
+      <span>JARVIS_HUD_UNINSTALLER_V1.0</span>
+    </div>
+  </div>
+
+  <!-- ══ JARVIS OS SETUP WIZARD PANEL ════════════════════════════ -->
+  <div id="jarvis-os-wizard" class="uninstaller-panel hidden" style="z-index: 700; width: 600px;">
+    <div class="uninstaller-panel-scanlines"></div>
+    <div class="uninstaller-panel-corner-tr"></div>
+    <div class="uninstaller-panel-corner-bl"></div>
+    <div class="uninstaller-panel-header">
+      <div class="uninstaller-panel-drag-icon">🐧</div>
+      <div class="uninstaller-panel-title">JARVIS OS // INSTALLATION</div>
+      <button class="uninstaller-panel-close" id="jarvis-os-wizard-close-btn">&times;</button>
+    </div>
+    <div class="uninstaller-panel-body" style="padding: 20px; font-family: 'Courier New', monospace; color: #00e5ff;">
+      
+      <!-- Étape 1 : Présentation -->
+      <div id="os-step-1">
+        <h3 style="margin-top:0; text-shadow: 0 0 10px #00e5ff;">BIENVENUE DANS JARVIS OS</h3>
+        <p style="color: rgba(0,229,255,0.8); line-height: 1.5; margin-bottom: 20px;">
+          JARVIS OS est un environnement Linux (Ubuntu) complet, sécurisé et totalement isolé du reste de votre système.
+          Idéal pour la navigation sécurisée ou l'exécution de tâches isolées.<br><br>
+          Le système sera téléchargé en temps réel et accessible instantanément via cette interface.
+        </p>
+        <div style="text-align: right;">
+          <button class="uninstaller-btn" id="os-btn-next-1" style="border-color:#00ff88; color:#00ff88; background:rgba(0,255,136,0.05); padding: 10px 20px;">SUIVANT &raquo;</button>
+        </div>
+      </div>
+
+      <!-- Étape 2 : Choix du dossier -->
+      <div id="os-step-2" class="hidden" style="display: none;">
+        <h3 style="margin-top:0; text-shadow: 0 0 10px #00e5ff;">CONFIGURATION DU STOCKAGE</h3>
+        <p style="color: rgba(0,229,255,0.8); line-height: 1.5; margin-bottom: 15px;">
+          Sélectionnez le dossier de destination où seront stockées les données de JARVIS OS (configuration système et dossier de partage avec votre PC).
+        </p>
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+          <input type="text" id="os-folder-input" readonly placeholder="Aucun dossier sélectionné..." style="flex: 1; background: rgba(0,229,255,0.05); border: 1px solid rgba(0,229,255,0.3); color: #00e5ff; padding: 10px; font-family: 'Courier New', monospace;">
+          <button class="uninstaller-btn secondary" id="os-btn-browse" style="padding: 10px 20px;">PARCOURIR...</button>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <button class="uninstaller-btn secondary" id="os-btn-prev-2">PRECEDENT</button>
+          <button class="uninstaller-btn" id="os-btn-next-2" style="border-color:#00ff88; color:#00ff88; background:rgba(0,255,136,0.05);" disabled>SUIVANT &raquo;</button>
+        </div>
+      </div>
+
+      <!-- Étape 3 : Installation -->
+      <div id="os-step-3" class="hidden" style="display: none;">
+        <h3 style="margin-top:0; text-shadow: 0 0 10px #00e5ff;">TÉLÉCHARGEMENT & LANCEMENT</h3>
+        <p style="color: rgba(0,229,255,0.8); line-height: 1.5; margin-bottom: 15px;">
+          Prêt à initialiser le sous-système. Le téléchargement peut prendre quelques minutes selon votre connexion.
+        </p>
+        
+        <div id="os-progress-container" class="hidden" style="margin-bottom: 15px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px;">
+            <span id="os-progress-status">Téléchargement en cours...</span>
+            <span id="os-progress-pct">0%</span>
+          </div>
+          <div style="height: 10px; background: rgba(0,229,255,0.1); border: 1px solid rgba(0,229,255,0.3); border-radius: 5px; overflow: hidden;">
+            <div id="os-progress-bar" style="height: 100%; width: 0%; background: #00e5ff; box-shadow: 0 0 10px #00e5ff; transition: width 0.3s;"></div>
+          </div>
+          <pre id="os-install-logs" style="margin-top: 10px; height: 100px; overflow-y: auto; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,229,255,0.1); padding: 10px; font-size: 11px; white-space: pre-wrap; word-break: break-all;"></pre>
+        </div>
+
+        <div style="display: flex; justify-content: space-between;">
+          <button class="uninstaller-btn secondary" id="os-btn-prev-3">PRECEDENT</button>
+          <button class="uninstaller-btn" id="os-btn-install" style="border-color:#ff3366; color:#ff3366; background:rgba(255,51,102,0.05); box-shadow: 0 0 10px rgba(255,51,102,0.2);">LANCER L'INSTALLATION</button>
+        </div>
+      </div>
+      
+    </div>
+    <div class="uninstaller-panel-footer">
+      <span>JARVIS_OS_SETUP_V1.0</span>
+    </div>
+  </div>
+
+  <!-- ══ JARVIS OS MAIN PANEL ════════════════════════════ -->
+  <div id="jarvis-os-panel" class="uninstaller-panel hidden" style="z-index: 610; width: 90vw; height: 85vh; max-width: 1600px;">
+    <div class="uninstaller-panel-scanlines"></div>
+    <div class="uninstaller-panel-corner-tr"></div>
+    <div class="uninstaller-panel-corner-bl"></div>
+    <div class="uninstaller-panel-header" id="jarvis-os-header">
+      <div class="uninstaller-panel-drag-icon">🐧</div>
+      <div class="uninstaller-panel-title">JARVIS OS // SUBSYSTEM</div>
+      
+      <!-- Toolbar controls -->
+      <div style="flex: 1; display: flex; justify-content: flex-end; gap: 10px; margin-right: 20px;">
+        <button class="uninstaller-btn secondary" id="os-toolbar-appstore" style="padding: 2px 10px; font-size: 11px; color: #00e5ff; border-color: rgba(0,229,255,0.4); background: rgba(0,229,255,0.08);">🛒 APP STORE</button>
+        <button class="uninstaller-btn secondary" id="os-toolbar-shared" style="padding: 2px 10px; font-size: 11px;">📁 DOSSIER PARTAGÉ</button>
+        <button class="uninstaller-btn secondary" id="os-toolbar-restart" style="padding: 2px 10px; font-size: 11px; color: #ffaa00; border-color: rgba(255,170,0,0.3);">🔄 REDÉMARRER</button>
+        <button class="uninstaller-btn secondary" id="os-toolbar-stop" style="padding: 2px 10px; font-size: 11px; color: #ff3366; border-color: rgba(255,51,102,0.3);">🛑 ÉTEINDRE</button>
+        <button class="uninstaller-btn secondary" id="os-toolbar-uninstall" style="padding: 2px 10px; font-size: 11px; color: #ff3366; border-color: rgba(255,51,102,0.3); margin-left: 20px;" title="Désinstaller et supprimer les fichiers">🗑️ DÉSINSTALLER</button>
+      </div>
+      
+      <button class="uninstaller-panel-close" id="jarvis-os-fullscreen-btn" style="margin-right: 10px;" title="Plein Écran">[ ]</button>
+      <button class="uninstaller-panel-close" id="jarvis-os-close-btn">&times;</button>
+    </div>
+    
+    <div class="uninstaller-panel-body" style="padding: 0; background: #000; overflow: hidden; position: relative;">
+      <div id="os-loading-overlay" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,5,15,0.9); z-index: 2; font-family: 'Courier New', monospace; color: #00e5ff;">
+        <div class="pulse" style="width: 20px; height: 20px; background: #00e5ff; border-radius: 50%; margin-bottom: 20px;"></div>
+        <div style="letter-spacing: 2px;">DÉMARRAGE DU SOUS-SYSTÈME...</div>
+      </div>
+      <iframe id="jarvis-os-iframe" style="width: 100%; height: 100%; border: none;" allow="clipboard-read; clipboard-write; microphone; camera; display-capture; autoplay; fullscreen; speaker"></iframe>
+    </div>
+    
+    <div class="uninstaller-panel-footer">
+      <span id="os-status-text">ÉTAT: HORS LIGNE</span>
+      <span>JARVIS_OS_CORE_V1.0</span>
+    </div>
+  </div>
+
+  <!-- ══ JARVIS OS APP STORE PANEL ════════════════════════════════════ -->
+  <div id="os-appstore-panel" class="uninstaller-panel hidden" style="--un-color: #00e5ff; --un-glow: rgba(0,229,255,0.35); z-index: 650; width: 860px; height: 680px;">
+    <div class="uninstaller-panel-scanlines"></div>
+    <div class="uninstaller-panel-corner-tr"></div>
+    <div class="uninstaller-panel-corner-bl"></div>
+    <div class="uninstaller-panel-header" id="os-appstore-header">
+      <div class="uninstaller-panel-drag-icon">🛒</div>
+      <div class="uninstaller-panel-title">JARVIS OS // APP STORE</div>
+      <button class="uninstaller-panel-close" id="os-appstore-close-btn">&times;</button>
+    </div>
+    <div class="uninstaller-panel-body" style="padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;">
+      <!-- Search bar -->
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <input id="os-appstore-search" type="text" placeholder="🔍 Rechercher une application..." 
+          style="flex: 1; background: rgba(0,229,255,0.06); border: 1px solid rgba(0,229,255,0.25); border-radius: 6px; padding: 8px 14px; color: #e0f7ff; font-family: 'Orbitron', monospace; font-size: 13px; outline: none;">
+        <button class="uninstaller-btn" id="os-appstore-custom-install" style="font-size: 12px; padding: 8px 16px; white-space: nowrap;">📦 INSTALL. PERSO.</button>
+      </div>
+
+      <!-- Categories tabs -->
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="os-appstore-cats">
+        <button class="os-appstore-cat active" data-cat="all">Tous</button>
+        <button class="os-appstore-cat" data-cat="bureautique">Bureautique</button>
+        <button class="os-appstore-cat" data-cat="media">Médias</button>
+        <button class="os-appstore-cat" data-cat="internet">Internet</button>
+        <button class="os-appstore-cat" data-cat="developpement">Développement</button>
+        <button class="os-appstore-cat" data-cat="outils">Outils</button>
+        <button class="os-appstore-cat" data-cat="jeux">Jeux</button>
+      </div>
+
+      <!-- Apps grid -->
+      <div id="os-appstore-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; padding-bottom: 8px;">
+        <!-- Cards inserted by JS -->
+      </div>
+
+      <!-- Install log -->
+      <div id="os-appstore-log" style="display: none; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,229,255,0.2); border-radius: 6px; padding: 12px; font-family: 'Courier New', monospace; font-size: 12px; color: #00e5ff; max-height: 120px; overflow-y: auto; white-space: pre-wrap;"></div>
+    </div>
+  </div>
+
+  <!-- ══ WINGET UPGRADER PANEL - Blue HUD ════════════════════════════ -->
+  <div id="winget-panel" class="uninstaller-panel hidden" style="--un-color: #00e5ff; --un-glow: rgba(0, 229, 255, 0.35); z-index: 609; width: 720px; height: 620px;">
+    <div class="uninstaller-panel-scanlines"></div>
+    <div class="uninstaller-panel-corner-tr"></div>
+    <div class="uninstaller-panel-corner-bl"></div>
+    <div class="uninstaller-panel-header" id="winget-panel-header">
+      <div class="uninstaller-panel-drag-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="uninstaller-panel-title">JARVIS // SYSTEM_UPGRADER</div>
+      <button class="uninstaller-panel-close" id="winget-panel-close-btn">&times;</button>
+    </div>
+    
+    <div class="uninstaller-panel-body">
+      <!-- Main view: list of upgrades -->
+      <div class="uninstaller-view">
+        <div class="uninstaller-search-box">
+          <input type="text" id="winget-search-input" placeholder="RECHERCHER UN LOGICIEL À METTRE À JOUR...">
+        </div>
+        <div class="uninstaller-leftovers-header" style="border-bottom: 1px solid rgba(0, 229, 255, 0.15); margin-bottom: 10px; padding-bottom: 5px;">
+          <span>MISES À JOUR LOGICIELS DISPONIBLES</span>
+          <label class="uninstaller-select-all-label">
+            <input type="checkbox" id="winget-select-all" checked> TOUT SÉLECTIONNER
+          </label>
+        </div>
+        <div class="uninstaller-apps-list" id="winget-upgrades-list">
+          <div class="uninstaller-loading" style="color: #00e5ff;">RECHERCHE DES MISES À JOUR...</div>
+        </div>
+        <div class="uninstaller-action-buttons" style="margin-top: 10px; gap: 10px;">
+          <button class="uninstaller-btn" id="winget-upgrade-selected-btn" style="border-color:#00e5ff; color:#00e5ff; background:rgba(0,229,255,0.05); flex:1;">METTRE À JOUR LA SÉLECTION</button>
+          <button class="uninstaller-btn" id="winget-upgrade-all-btn" style="border-color:#00ff88; color:#00ff88; background:rgba(0,255,136,0.05); flex:1;">TOUT METTRE À JOUR</button>
+          <button class="uninstaller-btn secondary" id="winget-refresh-btn" style="flex:0.5;">ACTUALISER</button>
+        </div>
+      </div>
+      
+      <!-- Overlay view: Logs console when upgrading -->
+      <div id="winget-logs-container" class="uninstaller-leftovers-container hidden" style="position: absolute; top: 50px; left: 0; right: 0; bottom: 45px; background: rgba(0, 5, 12, 0.98); z-index: 10; padding: 15px; display: flex; flex-direction: column; border-top: 1px solid rgba(0, 229, 255, 0.3);">
+        <div style="font-family:'Courier New', monospace; font-size: 11px; margin-bottom: 10px; color: #00e5ff; border-bottom: 1px dashed rgba(0, 229, 255, 0.3); padding-bottom: 5px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+          <span>CONSOLE DE MISE À JOUR SYSTEME</span>
+          <span class="pulse" style="display:inline-block; width:8px; height:8px; background:#00e5ff; border-radius:50%;"></span>
+        </div>
+        <pre id="winget-console" style="flex: 1; background: #000308; border: 1px solid rgba(0, 229, 255, 0.15); padding: 10px; color: #00ff88; font-family: 'Courier New', monospace; font-size: 11px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; margin: 0;"></pre>
+        <button class="uninstaller-btn secondary" id="winget-close-logs-btn" style="margin-top: 10px; align-self: flex-end;">FERMER LA CONSOLE</button>
+      </div>
+    </div>
+    
+    <div class="uninstaller-panel-footer">
+      <span>JARVIS_HUD_UPGRADER_V1.0</span>
+    </div>
+  </div>
+
+  <!-- ══ REMINDER ALERT OVERLAY ════════════════════════════ -->
+  <div id="reminder-alert-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9000;backdrop-filter:blur(10px);align-items:center;justify-content:center;">
+    <div style="width:400px;background:#000;border:2px solid #ff3366;box-shadow:0 0 30px rgba(255,51,102,0.4);border-radius:6px;font-family:'Courier New',monospace;color:#ff3366;padding:25px;text-align:center;position:relative;">
+      <div style="font-size:10px;letter-spacing:4px;opacity:0.8;margin-bottom:15px;text-transform:uppercase;">📅 ALERTE_DE_RENDEZ_VOUS</div>
+      <div style="font-size:36px;font-weight:bold;margin-bottom:10px;text-shadow:0 0 10px #ff3366;" id="reminder-alert-time">14:00</div>
+      <div style="font-size:18px;color:#fff;margin-bottom:25px;line-height:1.4;" id="reminder-alert-text">Rappel de test</div>
+      <button id="reminder-alert-ack-btn" style="background:rgba(255,51,102,0.1);border:1px solid #ff3366;color:#ff3366;font-family:'Courier New',monospace;padding:10px 25px;cursor:pointer;font-size:11px;letter-spacing:2px;border-radius:4px;transition:all 0.2s ease;">CONFIRMER & FERMER</button>
+    </div>
+  </div>
+
+
+  <style>
+    .help-widget {
+      position: absolute;
+      background: rgba(0, 229, 255, 0.05);
+      border-left: 2px solid #00e5ff;
+      padding: 15px 20px;
+      color: #00e5ff;
+      font-family: 'Courier New', monospace;
+      backdrop-filter: blur(5px);
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.1);
+      border-radius: 0 4px 4px 0;
+      opacity: 0;
+      transform: translateX(-20px);
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      max-width: 350px;
+      padding: 22px 30px;
+      color: #00e5ff;
+      font-family: 'Courier New', monospace;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 30px rgba(0, 229, 255, 0.2), inset 0 0 10px rgba(0, 229, 255, 0.1);
+      border-radius: 4px;
+      opacity: 0;
+      transform: scale(0.8) translateY(20px);
+      transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: auto;
+    }
+
+    .help-widget.right {
+      border-left: none;
+      border-right: 4px solid #00e5ff;
+    }
+
+    .help-widget.visible {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+
+    .help-widget-title {
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 3px;
+      opacity: 0.8;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+      padding-bottom: 5px;
+    }
+
+    .help-widget-cmd {
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0px);
+      }
+
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+  </style>
+
+  <script type="module" src="/src/main.ts"></script>
+  <!-- MediaPipe — chargé globalement pour le mode hologramme -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+  <!-- ══════════════════════════════════════════════════════════════════════
+       BOOT OVERLAY — Iron Man Initialization Sequence
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div id="boot-overlay">
+    <!-- Corner brackets -->
+    <div class="boot-corner boot-tl"></div>
+    <div class="boot-corner boot-tr"></div>
+    <div class="boot-corner boot-bl"></div>
+    <div class="boot-corner boot-br"></div>
+
+    <!-- Logo -->
+    <div id="boot-logo-section">
+      <div id="boot-logo-ring">
+        <div id="boot-ring-inner"></div>
+      </div>
+      <div id="boot-logo-text">J.A.R.V.I.S</div>
+      <div id="boot-logo-sub">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+      <div id="boot-logo-version">CORE v9.0 &nbsp;·&nbsp; BUILD TECHENCLAIR &nbsp;·&nbsp; <span id="boot-build-year"></span></div>
+    </div>
+
+    <!-- Separator -->
+    <div id="boot-separator">
+      <div class="boot-sep-line"></div>
+      <span class="boot-sep-label">◈ INITIALISATION DES PROTOCOLES ◈</span>
+      <div class="boot-sep-line"></div>
+    </div>
+
+    <!-- Module checklist -->
+    <div id="boot-modules"></div>
+
+    <!-- Progress bar -->
+    <div id="boot-progress-wrap">
+      <div id="boot-progress-track">
+        <div id="boot-progress-bar">
+          <div id="boot-progress-glow"></div>
+        </div>
+      </div>
+      <div id="boot-progress-label">CHARGEMENT... 0%</div>
+    </div>
+
+    <!-- Final ready message -->
+    <div id="boot-final-text">◈ &nbsp; TOUS SYSTÈMES OPÉRATIONNELS &nbsp; ◈</div>
+
+    <!-- Bottom status bar -->
+    <div id="boot-statusbar">
+      <span id="boot-status-text">DÉMARRAGE EN COURS...</span>
+      <span id="boot-statusbar-right">www.techenclair.fr</span>
+    </div>
+  </div>
+
+  <canvas id="orb-canvas"></canvas>
+
+  <!-- ══ ORB CLOCK HUD — Iron Man Style ══════════════════════════════════ -->
+  <div id="orb-clock-hud">
+    <div class="hud-corner hud-tl"></div>
+    <div class="hud-corner hud-tr"></div>
+    <div class="hud-corner hud-bl"></div>
+    <div class="hud-corner hud-br"></div>
+    <div class="hud-prefix">◈ LOCAL_TIME</div>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 25px;">
+      <div id="cpu-hud" class="stat-hud">
+        <span class="stat-label">CPU</span>
+        <span id="cpu-value" class="stat-value">--%</span>
+      </div>
+      <div id="orb-time-display">--:--:--</div>
+      <div id="ram-hud" class="stat-hud">
+        <span class="stat-label">RAM</span>
+        <span id="ram-value" class="stat-value">--%</span>
+      </div>
+    </div>
+    <div class="hud-labels">
+      <span class="hud-lbl">SYS_CLOCK</span>
+      <span id="orb-date-display">--/--/----</span>
+      <span class="hud-lbl">ONLINE</span>
+    </div>
+  </div>
+
+  <!-- ══ BOUTON MIC ═══════════════════════════════════════════ -->
+  <button id="mic-btn" aria-label="Activer le microphone" title="Cliquez pour parler à JARVIS">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="9" y="2" width="6" height="12" rx="3" fill="currentColor"/>
+      <path d="M5 11a7 7 0 0 0 14 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+      <line x1="12" y1="18" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <line x1="9" y1="22" x2="15" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </button>
+
+  <div id="status-text"></div>
+  <div id="user-tip"
+    style="position:fixed;top:60px;left:20px;z-index:80;color:rgba(0,229,255,0.8);font-family:'Courier New',monospace;font-size:14px;font-weight:bold;letter-spacing:1px;pointer-events:none;background:rgba(0,229,255,0.1);padding:10px 20px;border-left:3px solid #00e5ff;border-radius:0 4px 4px 0;box-shadow:0 0 15px rgba(0,229,255,0.2);text-transform:uppercase;transition:opacity 1s ease-in-out;">
+    Demandez : "Jarvis, que peux-tu faire ?"
+  </div>
+  <div id="error-text"></div>
+  <div id="connection-badge" class="disconnected">
+    <div id="connection-dot"></div>
+    <span id="connection-label">reconnexion</span>
+  </div>
+  <button id="fullscreen-btn" title="Plein écran">&#x26F6;</button>
+  <button id="mute-button" aria-label="Stopper JARVIS" title="Cliquez pour stopper JARVIS" aria-pressed="false"></button>
+  <!-- ══ UNIFIED MENU HUD ════════════════════════════════════════ -->
+  <button id="jarvis-menu-btn" title="Menu principal J.A.R.V.I.S">◈ MENU</button>
+  <div id="jarvis-menu-dropdown" class="hidden">
+    <div class="dropdown-scanlines"></div>
+    <div class="dropdown-corner tl"></div>
+    <div class="dropdown-corner tr"></div>
+    <div class="dropdown-corner bl"></div>
+    <div class="dropdown-corner br"></div>
+    
+    <div class="dropdown-header">◈ CONTROLES_SYSTEME // MENU</div>
+
+    <div class="dropdown-search" style="padding:10px 14px 4px;">
+      <input id="menu-search" type="text" autocomplete="off" spellcheck="false"
+        placeholder="🔍 RECHERCHER UNE FONCTION..."
+        style="width:100%;box-sizing:border-box;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.35);border-radius:3px;color:#00e5ff;font-family:'Courier New',monospace;font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:8px 10px;outline:none;box-shadow:inset 0 0 8px rgba(0,229,255,0.08);" />
+    </div>
+
+    <div class="dropdown-sections">
+      <!-- Section 1: IA & Reconnaissance -->
+      <div class="dropdown-section">
+        <div class="section-title">INTELLIGENCE ARTIFICIELLE</div>
+        <div class="section-buttons">
+          <button id="nemotron-asr-toggle" aria-pressed="false" class="menu-action-btn" title="NVIDIA Nemotron 3.5 ASR — Transcription vocale 100% locale (modèle Canary-1B)">
+            <span class="btn-icon">🎙️</span> NEMOTRON ASR
+          </button>
+          <button id="vision-button" class="menu-action-btn">
+            <span class="btn-icon">👁️</span> ACTIVER LA VISION
+          </button>
+        </div>
+      </div>
+      
+      <!-- Section 2: Performances & Accès -->
+      <div class="dropdown-section">
+        <div class="section-title">PERFORMANCES & ACCÈS</div>
+        <div class="section-buttons">
+          <button id="gpu-button" aria-pressed="true" class="menu-action-btn">
+            <span class="btn-icon">⚡</span> GPU BOOST
+          </button>
+          <button id="keyboard-toggle" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">⌨️</span> CLAVIER VISUEL
+          </button>
+          <button id="jarvis-os-toggle-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">🐧</span> JARVIS OS
+          </button>
+        </div>
+      </div>
+
+      <!-- ══ OUTILS RAPIDES : exécution directe des outils hors-ligne (NOUVEAU) ══ -->
+      <div class="dropdown-section">
+        <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>OUTILS RAPIDES</span>
+          <button type="button" id="tools-collapse-btn" title="Afficher / masquer les outils" style="background:none;border:none;color:#00e5ff;cursor:pointer;font-size:12px;line-height:1;padding:2px 6px;">▼</button>
+        </div>
+        <div class="section-buttons" id="tools-quick-buttons">
+          <button type="button" class="menu-action-btn" data-cmd="Calcule mon IMC pour 72 kg et 1m78">
+            <span class="btn-icon">🧮</span> CALCUL IMC
+          </button>
+          <button type="button" class="menu-action-btn" data-cmd="Ajoute la TVA à 100 euros">
+            <span class="btn-icon">💶</span> CALCUL TVA
+          </button>
+          <button type="button" class="menu-action-btn" data-cmd="Combien font 20% de 250 ?">
+            <span class="btn-icon">➗</span> POURCENTAGE
+          </button>
+          <button type="button" class="menu-action-btn" data-cmd="Convertis 2026 en chiffres romains">
+            <span class="btn-icon">🏛️</span> CHIFFRES ROMAINS
+          </button>
+          <button type="button" class="menu-action-btn" data-cmd="Code morse de SOS">
+            <span class="btn-icon">📡</span> CODE MORSE
+          </button>
+          <button type="button" class="menu-action-btn" data-cmd="Encode en base64 bonjour">
+            <span class="btn-icon">🔢</span> BASE64
+          </button>
+          <button type="button" class="menu-action-btn" data-cmd="Génère une couleur aléatoire">
+            <span class="btn-icon">🎨</span> COULEUR ALÉATOIRE
+          </button>
+          <button type="button" class="menu-action-btn" data-cmd="Lance 3 dés">
+            <span class="btn-icon">🎲</span> LANCER DÉS
+          </button>
+          <button type="button" class="menu-action-btn" data-cmd="Dis-moi un fait au hasard">
+            <span class="btn-icon">💬</span> ANECDOTE
+          </button>
+          <button type="button" class="menu-action-btn" data-cmd="Tire les numéros du loto">
+            <span class="btn-icon">🎰</span> NUMÉROS DU LOTO
+          </button>
+          <button type="button" class="menu-action-btn" data-cmd="Convertis 70 kg en livres">
+            <span class="btn-icon">⚖️</span> CONVERTIR KG / LIVRES
+          </button>
+          <button type="button" class="menu-action-btn" data-cmd="Écris 2026 en lettres">
+            <span class="btn-icon">🔤</span> NOMBRE EN LETTRES
+          </button>
+          <button type="button" class="menu-action-btn" data-cmd="Signe chinois de 1990">
+            <span class="btn-icon">🐉</span> SIGNE CHINOIS
+          </button>
+          <button type="button" id="menu-all-tools-btn" class="menu-action-btn" title="Ouvre le répertoire complet des outils de calcul hors-ligne">
+            <span class="btn-icon">⚙️</span> TOUS LES OUTILS &amp; CALCULS
+          </button>
+        </div>
+      </div>
+
+      <!-- Section 3: Outils & Paramètres -->
+      <div class="dropdown-section">
+        <div class="section-title">OUTILS SYSTEME</div>
+        <div class="section-buttons">
+          <button type="button" id="messagerie-btn" class="menu-action-btn" title="Ouvrir l'application Messagerie (Gmail, iCloud, Outlook)">
+            <span class="btn-icon">📬</span> MESSAGERIE
+          </button>
+          <button type="button" id="theme-toggle-btn" class="menu-action-btn" title="Basculer le style visuel de JARVIS (Néon ⇄ Classique)">
+            <span class="btn-icon">🖥️</span> THÈME : NÉON
+          </button>
+          <button id="subtitle-toggle" aria-pressed="true" class="menu-action-btn">
+            <span class="btn-icon">💬</span> HUD TEXT (TTS)
+          </button>
+          <button id="holo-button" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">⬡</span> HOLOGRAMME
+          </button>
+          <button id="shopping-toggle-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">🛒</span> LISTE COURSES
+          </button>
+          <button id="iptv-toggle-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">📺</span> LECTEUR VIDÉO / IPTV
+          </button>
+          <button id="uninstaller-toggle-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">🗑️</span> DÉSINSTALLATEUR
+          </button>
+          <button id="winget-toggle-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">🚀</span> MAJ LOGICIELS (WINGET)
+            <span id="winget-count-badge" class="badge hidden" style="margin-left:auto; background:#ff3366; color:white; font-size:9px; font-weight:bold; padding:2px 6px; border-radius:10px;">0</span>
+          </button>
+
+          <button id="menu-av-scan-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">🛡️</span> ANTIVIRUS
+          </button>
+          <button id="menu-av-live-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">🛡️</span> PROT. TEMPS RÉEL : OFF
+          </button>
+          <button id="menu-vpn-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">🌐</span> CLIENT VPN
+          </button>
+          <button id="webcam-toggle-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">📹</span> WEBCAM PHYSIQUE
+          </button>
+          <button id="ha-toggle-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">🏠</span> DOMOTIQUE
+          </button>
+          <button id="shadowbroker-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">🛰️</span> SHADOWBROKER (OSINT)
+          </button>
+          <button id="clear-cache-btn" aria-pressed="false" class="menu-action-btn" title="Vide le cache WebView2 et recharge l'interface — utile après une mise à jour">
+            <span class="btn-icon">🔄</span> VIDER CACHE / RECHARGER
+          </button>
+          <button id="commands-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">📋</span> LISTE COMMANDES
+          </button>
+          <button id="browser-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">🌐</span> NAVIGATEUR SÉCURISÉ
+          </button>
+          <button id="api-keys-button" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">🔑</span> CONFIGURATION API
+          </button>
+          <button id="agent-modele-btn" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">🤖</span> AGENT MODELE
+          </button>
+          <button id="settings-button" aria-pressed="false" class="menu-action-btn">
+            <span class="btn-icon">⚙️</span> PARAMÈTRES
+          </button>
+          <div style="font-family:'Courier New',monospace; color:rgba(0,229,255,0.5); font-size:10px; text-align:center; margin-top:12px; letter-spacing:3px; text-transform:uppercase;">
+            VERSION 9.0
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="nemotron-toast"></div>
+  <div id="update-banner">SYSTEM_UPDATE_AVAILABLE</div>
+
+  <div id="assistant-label">J.A.R.V.I.S <span style="font-size:10px;opacity:0.5;margin-left:10px;font-weight:normal;">by
+      www.techenclair.fr</span></div>
+
+  <div id="keyboard-hud"
+    style="display:none;position:fixed;bottom:275px;left:50%;transform:translateX(-50%);z-index:200;width:85%;max-width:600px;pointer-events:auto;">
+    <div
+      style="background:rgba(5,5,8,0.85);border:1px solid #00e5ff;padding:15px;backdrop-filter:blur(15px);border-radius:4px;box-shadow:0 0 30px rgba(0,229,255,0.2);">
+      <div
+        style="display:flex;justify-content:space-between;margin-bottom:10px;font-family:'Courier New',monospace;color:#00e5ff;font-size:10px;letter-spacing:2px;text-transform:uppercase;">
+        <span>DIRECT_INPUT_OVERRIDE</span>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span>AWAITING_COMMAND...</span>
+          <span id="keyboard-close" style="cursor:pointer;color:rgba(0,229,255,0.6);font-size:12px;font-weight:bold;transition:color 0.2s;" onmouseover="this.style.color='#ffaa00'" onmouseout="this.style.color='rgba(0,229,255,0.6)'" title="Fermer (Esc)">✕</span>
+        </div>
+      </div>
+      <input type="text" id="keyboard-input" placeholder="ENTREZ VOTRE COMMANDE ICI..."
+        style="width:100%;background:rgba(0,229,255,0.05);border:none;border-bottom:2px solid rgba(0,229,255,0.3);padding:10px;color:#00e5ff;font-family:'Courier New',monospace;font-size:16px;outline:none;letter-spacing:1px;text-transform:uppercase;">
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- PANNEAU LISTE DES COMMANDES JARVIS                      -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div id="commands-panel" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:500;overflow:hidden;pointer-events:auto;">
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);" id="commands-overlay"></div>
+    <div style="position:relative;z-index:1;width:90%;max-width:1100px;max-height:90vh;margin:5vh auto;background:rgba(5,8,15,0.95);border:1px solid rgba(0,229,255,0.3);border-radius:6px;box-shadow:0 0 60px rgba(0,229,255,0.15),0 0 120px rgba(0,229,255,0.05);overflow:hidden;display:flex;flex-direction:column;">
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid rgba(0,229,255,0.2);flex-shrink:0;">
+        <div style="font-family:'Courier New',monospace;color:#00e5ff;font-size:13px;letter-spacing:4px;text-transform:uppercase;">◈ JARVIS // RÉPERTOIRE DES COMMANDES VOCALES</div>
+        <span id="commands-close" style="color:rgba(0,229,255,0.6);font-size:22px;cursor:pointer;line-height:1;font-family:'Courier New',monospace;transition:color 0.2s;" onmouseover="this.style.color='#00e5ff'" onmouseout="this.style.color='rgba(0,229,255,0.6)'">✕</span>
+      </div>
+      <!-- Search bar -->
+      <div style="padding:12px 24px;border-bottom:1px solid rgba(0,229,255,0.1);flex-shrink:0;">
+        <input id="commands-search" type="text" placeholder="🔍  RECHERCHER UNE COMMANDE..."
+          style="width:100%;background:rgba(0,229,255,0.05);border:none;border-bottom:2px solid rgba(0,229,255,0.25);padding:10px 14px;color:#00e5ff;font-family:'Courier New',monospace;font-size:13px;outline:none;letter-spacing:1px;box-sizing:border-box;">
+      </div>
+      <!-- Body -->
+      <div id="commands-body" style="overflow-y:auto;padding:20px 24px;flex:1;">
+
+        <!-- CATÉGORIE 1 : COMMANDES GÉNÉRALES -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">💬 COMMANDES GÉNÉRALES &amp; IDENTITÉ</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Jarvis, que peux-tu faire ?"</span><span class="cmd-desc">Affiche le menu d'aide</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Qui t'a créé ?"</span><span class="cmd-desc">Présente ton créateur TechEnClair</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Quelle heure est-il ?"</span><span class="cmd-desc">Heure locale actuelle</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Quelle est la date d'aujourd'hui ?"</span><span class="cmd-desc">Date du jour</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Raconte-moi une blague"</span><span class="cmd-desc">Blague aléatoire</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Inspire-moi / donne-moi une citation"</span><span class="cmd-desc">Citation motivante</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Tais-toi / Silence / Stop"</span><span class="cmd-desc">Coupe Jarvis immédiatement</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Calcule [expression]"</span><span class="cmd-desc">Calcul mathématique</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Combien de jours avant Noël ?"</span><span class="cmd-desc">Compte à rebours Noël</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Né en [année], quel âge j'ai ?"</span><span class="cmd-desc">Calcul d'âge</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Pile ou face"</span><span class="cmd-desc">Lance une pièce virtuelle</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Lance un dé à [N] faces"</span><span class="cmd-desc">Dé virtuel</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Génère un nombre entre [X] et [Y]"</span><span class="cmd-desc">Nombre aléatoire</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Génère un mot de passe de [N] caractères"</span><span class="cmd-desc">Mot de passe sécurisé</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Quelle heure est-il à Tokyo / New York..."</span><span class="cmd-desc">Fuseaux horaires mondiaux</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Traduis [mot] en anglais / espagnol / allemand"</span><span class="cmd-desc">Traduction de base</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Comment dit-on [mot] en anglais ?"</span><span class="cmd-desc">Traduction vocale</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Quelle est la capitale de [pays] ?"</span><span class="cmd-desc">Capitales du monde</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Quelle est la monnaie de [pays] ?"</span><span class="cmd-desc">Monnaies du monde</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Épelle [mot] en alphabet phonétique"</span><span class="cmd-desc">Alphabet OTAN (Alpha, Bravo...)</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Comment s'écrit le mot [mot] ?"</span><span class="cmd-desc">Épelle le mot et l'affiche sur la sphère</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 2 : MINUTERIES & RAPPELS -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">⏱️ MINUTERIES &amp; RAPPELS</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Mets un minuteur de [X] minutes"</span><span class="cmd-desc">Lance un minuteur visuel + vocal</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Lance une alarme dans [X] minutes"</span><span class="cmd-desc">Alarme différée</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Rappelle-moi dans [X] heures"</span><span class="cmd-desc">Rappel vocal programmé</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ajoute [X] minutes au minuteur"</span><span class="cmd-desc">Prolonge le minuteur en cours</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Retire [X] minutes au minuteur"</span><span class="cmd-desc">Raccourcit le minuteur</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Stop le minuteur / Annule le timer"</span><span class="cmd-desc">Stoppe le minuteur actif</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Combien de minuteurs actifs ?"</span><span class="cmd-desc">État des minuteries</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 3 : NOTES & LISTES -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">📝 NOTES, COURSES &amp; TÂCHES</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Note que [texte]"</span><span class="cmd-desc">Enregistre une note rapide</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Retiens ça / Mémorise ça"</span><span class="cmd-desc">Prise de note vocale</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Montre mes notes"</span><span class="cmd-desc">Affiche les 5 dernières notes</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Efface mes notes"</span><span class="cmd-desc">Vide toutes les notes</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ajoute [article] à ma liste de courses"</span><span class="cmd-desc">Liste de courses</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Qu'est-ce que j'ai sur ma liste de courses ?"</span><span class="cmd-desc">Affiche la liste de courses</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Vide la liste de courses"</span><span class="cmd-desc">Efface toute la liste</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ajoute une tâche : [texte]"</span><span class="cmd-desc">To-do list</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Mes tâches / Ma to-do"</span><span class="cmd-desc">Affiche les tâches en cours</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Efface mes tâches"</span><span class="cmd-desc">Vide la to-do list</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 4 : CRÉATION IA (SITES, IMAGES, PROMPTS, MUSIQUE) -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">✨ CRÉATION IA (SITES, IMAGES, PROMPTS, MUSIQUE)</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Crée un site internet..."</span><span class="cmd-desc">Génère un site web fonctionnel</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Crée un prompt..."</span><span class="cmd-desc">Génère un prompt IA ultra-détaillé</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Crée une image..."</span><span class="cmd-desc">Génère une image via l'IA</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Génère une musique / Chante"</span><span class="cmd-desc">Compose et chante une musique</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Fais-moi un rap / pop / rock..."</span><span class="cmd-desc">Crée une musique par genre</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Génère une vidéo..."</span><span class="cmd-desc">Crée une courte vidéo via IA</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 5 : MUSIQUE SPOTIFY -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">🎵 MUSIQUE — SPOTIFY</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Mets de la musique"</span><span class="cmd-desc">Lance ta playlist Spotify configurée</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Joue [artiste/titre] sur Spotify"</span><span class="cmd-desc">Recherche et lance sur Spotify</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Mets du [genre] / Joue de la [musique]"</span><span class="cmd-desc">Recherche Spotify par genre</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Lance ma playlist"</span><span class="cmd-desc">Ta playlist personnalisée</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Mets en pause / Stop la musique"</span><span class="cmd-desc">Pause Spotify</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Remets la musique / Lecture"</span><span class="cmd-desc">Reprend la lecture</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Chanson suivante / Piste suivante"</span><span class="cmd-desc">Titre suivant</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Chanson précédente"</span><span class="cmd-desc">Titre précédent</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Monte le volume / Baisse le son"</span><span class="cmd-desc">Volume Spotify</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre Spotify"</span><span class="cmd-desc">Lance l'app Spotify</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 5 : MUSIQUE YOUTUBE -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">▶️ MUSIQUE &amp; VIDÉOS — YOUTUBE</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Mets de la musique sur YouTube"</span><span class="cmd-desc">Lance ton URL YouTube configurée</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Mets [artiste/titre] sur YouTube"</span><span class="cmd-desc">Recherche et lance en plein écran 🔑</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Lance [titre] sur YouTube"</span><span class="cmd-desc">Recherche YouTube + plein écran 🔑</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Cherche des vidéos de [sujet]"</span><span class="cmd-desc">5 résultats YouTube listés 🔑</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Montre-moi des vidéos de [artiste]"</span><span class="cmd-desc">Recherche multi-résultats 🔑</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Les tendances YouTube"</span><span class="cmd-desc">Top 5 vidéos en France 🔑</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Tendances YouTube musique / gaming..."</span><span class="cmd-desc">Tendances par catégorie 🔑</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Combien d'abonnés a [chaîne] ?"</span><span class="cmd-desc">Stats chaîne YouTube 🔑</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Infos sur la chaîne [chaîne]"</span><span class="cmd-desc">Abonnés, vidéos, vues 🔑</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Dernières vidéos de [chaîne]"</span><span class="cmd-desc">3 dernières publications 🔑</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Résume-moi cette vidéo [URL]"</span><span class="cmd-desc">Résumé IA via sous-titres 🔑</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Infos sur la vidéo [URL]"</span><span class="cmd-desc">Vues, likes, durée, chaîne 🔑</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 6 : MÉTÉO & DOMOTIQUE -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">🌤️ MÉTÉO &amp; DOMOTIQUE (Home Assistant)</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Quel temps fait-il ?"</span><span class="cmd-desc">Météo locale (HA + OpenMeteo)</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Météo à [ville]"</span><span class="cmd-desc">Météo d'une ville précise</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Va-t-il pleuvoir ?"</span><span class="cmd-desc">Prévisions pluie</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Alertes météo"</span><span class="cmd-desc">Alertes vigilance</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Température dans le salon / bureau"</span><span class="cmd-desc">Capteurs HA intérieurs</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Allume la lumière du salon"</span><span class="cmd-desc">Contrôle des lumières HA</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Éteins la lumière de la chambre"</span><span class="cmd-desc">Extinction lumières HA</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Mets la lumière du salon à 50%"</span><span class="cmd-desc">Luminosité HA (0-100%)</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Allume la prise du bureau"</span><span class="cmd-desc">Contrôle des prises HA</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Règle le chauffage à [N] degrés"</span><span class="cmd-desc">Thermostat HA</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Quel est l'état du salon ?"</span><span class="cmd-desc">Statut entité HA</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 7 : APPLICATIONS & PC -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">💻 APPLICATIONS &amp; CONTRÔLE PC</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Ouvre la calculatrice"</span><span class="cmd-desc">Calculatrice Windows</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre le bloc-notes / Notepad"</span><span class="cmd-desc">Éditeur de texte</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre Paint"</span><span class="cmd-desc">Dessin Windows</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre le gestionnaire de tâches"</span><span class="cmd-desc">Task Manager</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre les paramètres"</span><span class="cmd-desc">Paramètres Windows</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre l'explorateur de fichiers"</span><span class="cmd-desc">Explorateur Windows</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre la capture d'écran / Snipping Tool"</span><span class="cmd-desc">Outil de capture</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre l'invite de commande / CMD"</span><span class="cmd-desc">Terminal Windows</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre Chrome"</span><span class="cmd-desc">Navigateur Google Chrome</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre Steam / Discord / VSCode..."</span><span class="cmd-desc">Applications du catalogue</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ferme [application]"</span><span class="cmd-desc">Ferme une application ouverte</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Mode boulot / Au boulot"</span><span class="cmd-desc">Lance toutes les apps de travail</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Volume à [N]% / Monte le volume"</span><span class="cmd-desc">Volume système Windows</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Coupe le son / Mute"</span><span class="cmd-desc">Sourdine système</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Luminosité à [N]%"</span><span class="cmd-desc">Luminosité de l'écran</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Prends une capture d'écran"</span><span class="cmd-desc">Screenshot sur le bureau</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Éteins l'ordinateur"</span><span class="cmd-desc">Extinction dans 5 secondes</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 8 : DOSSIERS -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">📁 GESTION DES DOSSIERS</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Ouvre mon bureau"</span><span class="cmd-desc">Dossier Bureau</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre mes documents"</span><span class="cmd-desc">Dossier Documents</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre mes téléchargements"</span><span class="cmd-desc">Dossier Téléchargements</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre mes images / photos"</span><span class="cmd-desc">Dossier Images</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre mes vidéos"</span><span class="cmd-desc">Dossier Vidéos</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre ma musique"</span><span class="cmd-desc">Dossier Musique</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre tous mes dossiers"</span><span class="cmd-desc">Mosaïque de tous les dossiers</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ouvre le dossier [chemin]"</span><span class="cmd-desc">Dossier personnalisé</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 9 : GLOBE 3D -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">🌍 GLOBE 3D &amp; NAVIGATION SATELLITE</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Affiche la Terre / Globe terrestre"</span><span class="cmd-desc">Vue spatiale CesiumJS</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Survole [ville] / Affiche [ville]"</span><span class="cmd-desc">Fly-to vers une ville</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Où est [ville] ?"</span><span class="cmd-desc">Localise et survole</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ma position"</span><span class="cmd-desc">Géolocalise l'utilisateur en direct</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Trace un itinéraire de [A] à [B]"</span><span class="cmd-desc">Route entre 2 villes sur le globe</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Ferme le globe / Ferme la carte"</span><span class="cmd-desc">Retour à l'interface Jarvis</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 10 : VISION IA -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">👁️ VISION &amp; ANALYSE D'ÉCRAN</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Qu'est-ce que tu vois ?"</span><span class="cmd-desc">Analyse l'écran avec l'IA</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Regarde mon écran"</span><span class="cmd-desc">Capture et description visuelle</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Analyse cette image"</span><span class="cmd-desc">OCR et description IA</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Clique sur [élément]"</span><span class="cmd-desc">Vision + clic automatique via IA</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Tape [texte] dans le champ"</span><span class="cmd-desc">Saisie automatique guidée par vision</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Fais une capture d'écran"</span><span class="cmd-desc">📸 Capture + analyse IA automatique de l'écran</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Prends un screenshot"</span><span class="cmd-desc">Capture et description détaillée de ce que Jarvis voit</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 11 : SPORTS -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">⚽ SPORTS &amp; RÉSULTATS</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Résultat du match de [équipe]"</span><span class="cmd-desc">Dernier résultat de foot</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Prochain match de [équipe]"</span><span class="cmd-desc">Prochain match planifié</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Classement de Ligue 1"</span><span class="cmd-desc">Tableau de classement</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Score en direct"</span><span class="cmd-desc">Scores live</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 12 : RESTAURANTS -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">🍽️ RESTAURANTS &amp; LIEUX</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Trouve-moi un restaurant"</span><span class="cmd-desc">Restaurants proches via GPS</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Restaurant [cuisine] près de moi"</span><span class="cmd-desc">Filtre par type de cuisine</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Pizzeria / sushi à côté"</span><span class="cmd-desc">Recherche de proximité</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 13 : GOOGLE WORKSPACE -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">📧 GOOGLE WORKSPACE (Gmail, Docs, Calendar, Drive)</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Lis mes emails"</span><span class="cmd-desc">Lecture des 3 derniers emails Gmail</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Crée un Google Doc [titre]"</span><span class="cmd-desc">Nouveau document Google</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Crée une Google Sheet [titre]"</span><span class="cmd-desc">Nouvelle feuille de calcul</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Quels sont mes événements ?"</span><span class="cmd-desc">Prochains événements Google Calendar</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 14 : OBSIDIAN -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">🗒️ OBSIDIAN (Notes Markdown)</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">Via le panel Obsidian dans l'interface</span><span class="cmd-desc">Créer, lire, modifier, supprimer des notes Markdown</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 15 : WHATSAPP -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">📱 WHATSAPP</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Appelle [contact] sur WhatsApp"</span><span class="cmd-desc">Lance un appel vocal WhatsApp</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 16 : IPTV / VIDÉO -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">📺 LECTEUR IPTV &amp; VIDÉO</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">Via le bouton "LECTEUR VIDÉO / IPTV" dans le menu</span><span class="cmd-desc">Lire des flux M3U, vidéos locales ou URL</span></div>
+          </div>
+        </div>
+
+        <!-- CATÉGORIE 17 : ANTIVIRUS -->
+        <div class="cmd-category">
+          <div class="cmd-cat-title">🛡️ ANTIVIRUS &amp; SÉCURITÉ</div>
+          <div class="cmd-grid">
+            <div class="cmd-item"><span class="cmd-text">"Lance un scan antivirus"</span><span class="cmd-desc">Analyse via le panel Antivirus</span></div>
+            <div class="cmd-item"><span class="cmd-text">Via le bouton "ANTIVIRUS" dans le menu</span><span class="cmd-desc">Interface complète de scan</span></div>
+          </div>
+        </div>
+
+        <!-- LÉGENDE -->
+        <div style="margin-top:24px;padding:14px;border:1px solid rgba(0,229,255,0.15);border-radius:4px;font-family:'Courier New',monospace;font-size:10px;color:rgba(0,229,255,0.5);letter-spacing:1px;">
+          🔑 = Nécessite la clé API YouTube &nbsp;|&nbsp; Commandes vocales ou via le clavier visuel (⌨️)
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <!-- FIN PANNEAU COMMANDES -->
+
+  <!-- HUD TRANSCRIPTION PAROLE UTILISATEUR -->
+  <div id="user-speech-hud"
+    style="display:none;position:fixed;bottom:330px;left:50%;transform:translateX(-50%);z-index:150;text-align:center;pointer-events:auto;cursor:pointer;width:80%;max-width:800px;"
+    title="Cliquez pour effacer">
+    <div id="user-speech-box"
+      style="background:rgba(255,170,0,0.03);border-top:1px solid rgba(255,170,0,0.25);border-bottom:1px solid rgba(255,170,0,0.25);padding:15px 20px;backdrop-filter:blur(8px);position:relative;overflow:hidden;border-radius:4px;box-shadow:0 0 20px rgba(0,0,0,0.4);">
+      <div
+        style="position:absolute;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,170,0,0.02) 2px,rgba(255,170,0,0.02) 4px);pointer-events:none;">
+      </div>
+      <div style="position:absolute;top:0;left:0;width:20px;height:2px;background:#ffaa00;"></div>
+      <div style="position:absolute;top:0;right:0;width:20px;height:2px;background:#ffaa00;"></div>
+      <div style="position:absolute;bottom:0;left:0;width:20px;height:2px;background:#ffaa00;"></div>
+      <div style="position:absolute;bottom:0;right:0;width:20px;height:2px;background:#ffaa00;"></div>
+      <span style="font-family:'Courier New',monospace;color:rgba(255,170,0,0.6);font-size:12px;font-weight:bold;margin-right:10px;letter-spacing:1px;text-transform:uppercase;">VOUS ›</span>
+      <div id="user-speech-text"
+        style="font-family:'Courier New',monospace;color:#ffaa00;font-size:16px;font-weight:bold;text-shadow:0 0 8px rgba(255,170,0,0.4);letter-spacing:1px;line-height:1.4;text-transform:uppercase;display:inline;">
+      </div>
+      <div id="user-speech-cursor"
+        style="display:inline-block;width:8px;height:16px;background:#ffaa00;vertical-align:middle;margin-left:5px;animation:blink 0.8s infinite;">
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LYRICS HUD — Iron Man Style ═══════════════════════════════ -->
+  <div id="pc-lyrics-hud"
+    style="display:none;position:fixed;bottom:250px;left:50%;transform:translateX(-50%);z-index:140;text-align:center;pointer-events:none;width:80%;max-width:800px;">
+    <div id="pc-lyrics-box"
+      style="background:rgba(0,0,0,0.7);border:1px solid #00e5ff;padding:20px;backdrop-filter:blur(5px);border-radius:10px;box-shadow:0 0 20px rgba(0,229,255,0.3);max-height:300px;overflow-y:auto;pointer-events:auto;">
+      <h3 id="pc-lyrics-title" style="color:#00e5ff;margin-top:0;font-family:'Courier New',monospace;text-transform:uppercase;letter-spacing:2px;margin-bottom:15px;font-size:18px;">Titre</h3>
+      <div id="pc-lyrics-text" style="color:#ffffff;font-family:sans-serif;font-size:16px;white-space:pre-wrap;line-height:1.6;opacity:0.9;">Recherche...</div>
+    </div>
+  </div>
+
+  <div id="subtitle-hud"
+    style="display:none;position:fixed;bottom:165px;left:50%;transform:translateX(-50%);z-index:150;text-align:center;pointer-events:auto;cursor:pointer;width:85%;max-width:900px;"
+    title="Cliquez pour effacer">
+    <div id="subtitle-box"
+      style="background:rgba(0,229,255,0.03);border-top:1px solid rgba(0,229,255,0.15);border-bottom:1px solid rgba(0,229,255,0.15);padding:20px;backdrop-filter:blur(10px);position:relative;overflow:hidden;border-radius:4px;box-shadow:0 0 30px rgba(0,0,0,0.5);">
+      <div
+        style="position:absolute;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,255,0.02) 2px,rgba(0,229,255,0.02) 4px);pointer-events:none;">
+      </div>
+      <div style="position:absolute;top:0;left:0;width:30px;height:2px;background:#00e5ff;"></div>
+      <div style="position:absolute;top:0;right:0;width:30px;height:2px;background:#00e5ff;"></div>
+      <div style="position:absolute;bottom:0;left:0;width:30px;height:2px;background:#00e5ff;"></div>
+      <div style="position:absolute;bottom:0;right:0;width:30px;height:2px;background:#00e5ff;"></div>
+      <div id="subtitle-text"
+        style="font-family:'Courier New',monospace;color:#00e5ff;font-size:18px;font-weight:bold;text-shadow:0 0 10px rgba(0,229,255,0.5);letter-spacing:1px;line-height:1.4;text-transform:uppercase;display:inline;">
+      </div>
+      <div id="subtitle-cursor"
+        style="display:inline-block;width:10px;height:20px;background:#00e5ff;vertical-align:middle;margin-left:5px;animation:blink 0.8s infinite;">
+      </div>
+    </div>
+    <div
+      style="display:flex;justify-content:space-between;margin-top:8px;font-family:'Courier New',monospace;color:rgba(0,229,255,0.4);font-size:9px;letter-spacing:2px;text-transform:uppercase;padding:0 10px;">
+      <span>SYNC_TERMINAL_V2.5</span>
+      <span id="subtitle-meta">DECRYPTING_RESPONSE...</span>
+    </div>
+  </div>
+
+  <!-- ══ TEMP PANEL — Iron Man HUD (left side) ═══════════════════════ -->
+  <div id="temp-panel">
+    <div class="tp-scanlines"></div>
+    <div class="tp-corner tp-tl"></div>
+    <div class="tp-corner tp-tr"></div>
+    <div class="tp-corner tp-bl"></div>
+    <div class="tp-corner tp-br"></div>
+
+    <div class="tp-header">
+      <span class="tp-label">THERMAL_SCAN // HOME</span>
+      <span class="tp-close" id="tp-close-btn">✕</span>
+    </div>
+
+    <div class="tp-piece" id="tp-piece">---</div>
+
+    <div class="tp-temp-block">
+      <span class="tp-temp-main" id="tp-temp">--</span>
+      <span class="tp-temp-unit">°C</span>
+    </div>
+
+    <div class="tp-hum-row" id="tp-hum-row" style="display:none;">
+      <span class="tp-hum-label">HUMIDITÉ</span>
+      <span class="tp-hum-value" id="tp-hum">--</span>
+      <span class="tp-hum-label">%</span>
+    </div>
+
+    <div class="tp-bar-group">
+      <div class="tp-bar-label">CONFORT THERMIQUE</div>
+      <div class="tp-comfort-bar">
+        <div class="tp-comfort-fill" id="tp-comfort"></div>
+        <div class="tp-comfort-marker" id="tp-marker"></div>
+      </div>
+      <div class="tp-comfort-scale">
+        <span>10°</span><span>16°</span><span>20°</span><span>24°</span><span>30°</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ WEATHER PANEL — Iron Man HUD ════════════════════════════════ -->
+  <div id="weather-panel">
+    <div class="wp-scanlines"></div>
+    <div class="wp-corner wp-tl"></div>
+    <div class="wp-corner wp-tr"></div>
+    <div class="wp-corner wp-bl"></div>
+    <div class="wp-corner wp-br"></div>
+
+    <div class="wp-header">
+      <span class="wp-label">ATMOSPHERIC_SCAN</span>
+      <span class="wp-close" id="wp-close-btn">✕</span>
+    </div>
+
+    <div class="wp-city" id="wp-city">---</div>
+
+    <div class="wp-temp-block">
+      <span class="wp-temp-main" id="wp-temp">--</span>
+      <span class="wp-temp-unit">°C</span>
+    </div>
+    <div class="wp-desc" id="wp-desc">ACQUIRING...</div>
+
+    <div class="wp-grid">
+      <div class="wp-stat">
+        <div class="wp-stat-label">RESSENTI</div>
+        <div class="wp-stat-value"><span id="wp-feels">--</span>°C</div>
+      </div>
+      <div class="wp-stat">
+        <div class="wp-stat-label">HUMIDITÉ</div>
+        <div class="wp-stat-value"><span id="wp-humidity">--</span>%</div>
+      </div>
+      <div class="wp-stat">
+        <div class="wp-stat-label">VENT</div>
+        <div class="wp-stat-value"><span id="wp-wind">--</span> km/h</div>
+      </div>
+      <div class="wp-stat">
+        <div class="wp-stat-label">ÉTAT</div>
+        <div class="wp-stat-value wp-icon" id="wp-icon">--</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ JARVIS GLOBE — Canvas 2D pur (aucune dépendance) ════════════ -->
+  <div id="globe-overlay"
+    style="display:none;position:fixed;inset:0;z-index:100;background:#000;opacity:0;flex-direction:column;transition:opacity 0.8s ease-in-out;">
+    <canvas id="globe-canvas"
+      style="position:absolute;inset:0;width:100%;height:100%;cursor:grab;display:block;"></canvas>
+
+    <!-- Detailed Map Layer -->
+    <div id="map-overlay"
+      style="display:none;position:absolute;inset:0;z-index:150;background:#000;opacity:0;transition:opacity 1s ease-in-out;">
+      <div id="map" style="width:100%;height:100%;"></div>
+      <button id="map-back"
+        style="position:absolute;bottom:30px;left:50%;transform:translateX(-50%);z-index:160;background:rgba(0,229,255,.2);border:1px solid #00e5ff;color:#00e5ff;font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;padding:10px 25px;border-radius:4px;cursor:pointer;backdrop-filter:blur(5px);box-shadow:0 0 15px rgba(0,229,255,.3);">✕
+        RETOUR À L'ESPACE</button>
+    </div>
+
+    <div
+      style="position:absolute;top:14px;left:20px;z-index:20;color:rgba(0,229,255,.7);font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;pointer-events:none;line-height:1.8;">
+      <div style="font-size:20px;font-weight:bold;letter-spacing:5px;margin-bottom:5px;">J.A.R.V.I.S</div>
+      <div style="font-size:10px;letter-spacing:3px;opacity:0.7;margin-bottom:10px;">SYSTÈME DE NAVIGATION</div>
+      <div style="font-size:9px;letter-spacing:1px;opacity:0.5;">by www.techenclair.fr</div>
+      <div style="font-size:9px;letter-spacing:1px;opacity:0.5;">TIKTOK : TECHENCLAIR</div>
+    </div>
+    <div
+      style="position:absolute;top:14px;right:20px;text-align:right;z-index:20;color:rgba(0,229,255,.7);font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;pointer-events:none;line-height:1.8;">
+      <div id="globe-clock">--:--:--</div>
+      <div style="font-size:9px;opacity:.5">UTC</div>
+    </div>
+    <div
+      style="position:absolute;bottom:24px;left:50%;transform:translateX(-50%);text-align:center;z-index:20;pointer-events:none;">
+      <div id="globe-target-label"
+        style="color:rgba(0,229,255,.9);font-family:'Courier New',monospace;font-size:13px;letter-spacing:3px;text-transform:uppercase;text-shadow:0 0 10px rgba(0,229,255,.6);margin-bottom:4px;">
+        GLOBE TERRESTRE</div>
+      <div id="globe-coords"
+        style="color:rgba(0,229,255,.5);font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;"></div>
+    </div>
+    <div
+      style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,229,255,.012) 3px,rgba(0,229,255,.012) 4px);pointer-events:none;z-index:5;">
+    </div>
+    <div
+      style="position:absolute;top:8px;left:8px;width:20px;height:20px;border-top:2px solid #00e5ff;border-left:2px solid #00e5ff;opacity:.5;pointer-events:none;z-index:20;">
+    </div>
+    <div
+      style="position:absolute;top:8px;right:8px;width:20px;height:20px;border-top:2px solid #00e5ff;border-right:2px solid #00e5ff;opacity:.5;pointer-events:none;z-index:20;">
+    </div>
+    <div
+      style="position:absolute;bottom:8px;left:8px;width:20px;height:20px;border-bottom:2px solid #00e5ff;border-left:2px solid #00e5ff;opacity:.5;pointer-events:none;z-index:20;">
+    </div>
+    <div
+      style="position:absolute;bottom:8px;right:8px;width:20px;height:20px;border-bottom:2px solid #00e5ff;border-right:2px solid #00e5ff;opacity:.5;pointer-events:none;z-index:20;">
+    </div>
+    <button id="globe-close"
+      style="position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:30;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.35);color:rgba(0,229,255,.75);font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;padding:5px 18px;border-radius:2px;cursor:pointer;">✕
+      FERMER</button>
+  </div>
+
+  <script>
+    // The globe logic is now handled in src/globe.ts via Vite
+    document.getElementById('globe-close').addEventListener('click', () => {
+      if (window.jarvisGlobe) window.jarvisGlobe({ globe_action: 'hide' });
+    });
+
+    // Transition to detailed map
+    let leafletMap = null;
+
+    window.showDetailedMap = (lat, lon) => {
+      const mapOverlay = document.getElementById('map-overlay');
+
+      mapOverlay.style.display = 'block';
+      setTimeout(() => {
+        mapOverlay.style.opacity = '1';
+
+        if (!leafletMap) {
+          leafletMap = L.map('map', {
+            center: [lat, lon],
+            zoom: 5, // Continental view (like image 3)
+            zoomControl: false
+          });
+
+          // Google Satellite Tiles (More reliable)
+          L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            attribution: '&copy; Google'
+          }).addTo(leafletMap);
+        } else {
+          if (!isNaN(lat) && !isNaN(lon)) {
+            leafletMap.setView([lat, lon], 5);
+          }
+        }
+
+        // Force resize after transition
+        setTimeout(() => leafletMap.invalidateSize(), 400);
+      }, 50);
+    };
+
+    document.getElementById('map-back').addEventListener('click', () => {
+      const mapOverlay = document.getElementById('map-overlay');
+      mapOverlay.style.opacity = '0';
+      setTimeout(() => {
+        mapOverlay.style.display = 'none';
+        if (window.resetGlobeTransition) window.resetGlobeTransition();
+      }, 1000);
+    });
+  </script>
+
+  <!-- ══ HOLOGRAMME OVERLAY ════════════════════════════════════════════════ -->
+  <div id="holo-overlay" style="display:none;">
+    <!-- Corner brackets -->
+    <div class="holo-corner holo-corner-tl"></div>
+    <div class="holo-corner holo-corner-tr"></div>
+    <div class="holo-corner holo-corner-bl"></div>
+    <div class="holo-corner holo-corner-br"></div>
+
+    <!-- Webcam (caché, utilisé par MediaPipe) -->
+    <video id="holo-webcam" autoplay muted playsinline></video>
+
+    <!-- Canvases empilés -->
+    <canvas id="holo-starfield"></canvas>
+    <canvas id="holo-three-canvas"></canvas>
+    <canvas id="holo-game-canvas"></canvas>
+    <canvas id="holo-hand-canvas"></canvas>
+
+    <!-- Bouton retour accueil -->
+    <button id="holo-close-btn">⌂ RETOUR JARVIS</button>
+
+    <!-- Toast geste -->
+    <div id="holo-gesture-toast"></div>
+
+    <!-- HUD Haut-Gauche -->
+    <div class="holo-hud-corner holo-hud-tl">
+      <div class="holo-hud-block">
+        <div class="holo-hud-line"><span class="holo-key">FPS</span><span id="holo-hud-fps">--</span></div>
+        <div class="holo-hud-line"><span class="holo-key">HANDS</span><span id="holo-hud-hands">0</span></div>
+        <div class="holo-hud-line"><span class="holo-key">SHAPES</span><span id="holo-hud-shapes">0</span></div>
+        <div class="holo-hud-line holo-muted"><span class="holo-key">GESTURE</span><span id="holo-hud-gesture">--</span></div>
+      </div>
+    </div>
+
+    <!-- HUD Haut-Droite -->
+    <div class="holo-hud-corner holo-hud-tr">
+      <div class="holo-hud-block" style="text-align:right">
+        <div class="holo-hud-title">J.A.R.V.I.S · HOLO MODE</div>
+        <div class="holo-hud-line holo-muted" style="justify-content:flex-end;" id="holo-hud-date">--</div>
+      </div>
+    </div>
+
+    <!-- HUD Bas-Gauche — barres d'énergie -->
+    <div class="holo-hud-corner holo-hud-bl">
+      <div class="holo-hud-bars">
+        <div class="holo-bar-row"><span class="holo-key">ENERGY</span><div class="holo-bar"><div class="holo-bar-fill holo-cyan" id="holo-bar-energy" style="width:70%"></div></div></div>
+        <div class="holo-bar-row"><span class="holo-key">FLUX</span><div class="holo-bar"><div class="holo-bar-fill holo-orange" id="holo-bar-flux" style="width:50%"></div></div></div>
+        <div class="holo-bar-row"><span class="holo-key">LINK</span><div class="holo-bar"><div class="holo-bar-fill holo-red" id="holo-bar-link" style="width:30%"></div></div></div>
+      </div>
+    </div>
+
+    <!-- Dock — boutons de formes (touches 1-9) -->
+    <div id="holo-dock">
+      <button class="holo-dock-btn" data-shape="sphere" title="Sphère [1]">⬤</button>
+      <button class="holo-dock-btn" data-shape="cube" title="Cube [2]">■</button>
+      <button class="holo-dock-btn" data-shape="pyramid" title="Pyramide [3]">▲</button>
+      <button class="holo-dock-btn" data-shape="torus" title="Tore [7]">◎</button>
+      <button class="holo-dock-btn" data-shape="dna" title="DNA Knot [8]">⬡</button>
+      <button class="holo-dock-btn" data-shape="octa" title="Octaèdre [6]">✦</button>
+      <button class="holo-dock-btn holo-dock-sep" id="holo-btn-game" title="Jeu balle — utilise ta main pour faire rebondir la balle">● JEU</button>
+      <button class="holo-dock-btn holo-dock-sep active" id="holo-btn-mirror" title="Inverser les mains">⇄ MIROIR</button>
+      <button class="holo-dock-btn holo-dock-sep" id="holo-btn-clear" title="Effacer tout [Suppr]">CLR</button>
+      <button class="holo-dock-btn holo-dock-sep" id="holo-btn-fullscreen" title="Plein écran">⛶</button>
+    </div>
+  </div>
+
+  <!-- ══ SETTINGS MODAL ══════════════════════════════════ -->
+  <div id="settings-modal">
+    <div class="settings-container">
+      <div class="settings-header">
+        <span>CONFIGURATION PROFIL</span>
+        <span class="settings-close" id="settings-close-btn">[ X ]</span>
+      </div>
+
+      <div class="settings-group">
+        <label for="settings-mic">MICROPHONE</label>
+        <select id="settings-mic">
+          <option value="">-- Détection automatique --</option>
+        </select>
+        <div id="mic-pyaudio-warning" style="display:none;margin-top:6px;padding:8px 10px;background:rgba(255,80,80,0.12);border:1px solid rgba(255,80,80,0.4);border-radius:6px;color:#ff6b6b;font-size:11px;line-height:1.5;">
+          ⚠ <strong>PyAudio non installé</strong> — la reconnaissance vocale par microphone est désactivée.<br>
+          Pour le corriger : relancez <code>install.bat</code> en administrateur.
+        </div>
+        <div id="mic-not-detected-warning" style="display:none;margin-top:6px;padding:8px 10px;background:rgba(255,150,0,0.12);border:1px solid rgba(255,150,0,0.4);border-radius:6px;color:#ffaa00;font-size:11px;line-height:1.5;">
+          ⚠ <strong>Aucun microphone détecté</strong> par le système.<br>
+          Pour résoudre ce problème :<br>
+          1. Ouvrez les <strong>Paramètres Windows -> Confidentialité -> Microphone</strong>.<br>
+          2. Activez <strong>"Autoriser les applications à accéder à votre microphone"</strong>.<br>
+          3. Activez également <strong>"Autoriser les applications de bureau à accéder à votre microphone"</strong>.<br>
+          4. Vérifiez que votre microphone est bien connecté et configuré par défaut.
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <label for="settings-camera">CAMÉRA (WEB-CAM / VISION &amp; HOLOGRAMME)</label>
+        <select id="settings-camera">
+          <option value="">-- Détection automatique --</option>
+        </select>
+      </div>
+
+      <div class="settings-group">
+        <label for="settings-mic-dynamic" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+          <input type="checkbox" id="settings-mic-dynamic" checked style="width:auto;margin:0;">
+          SENSIBILITÉ MICRO AUTOMATIQUE (RECOMMANDÉ)
+        </label>
+      </div>
+
+      <div class="settings-group" id="settings-mic-sens-container" style="transition:opacity 0.2s;">
+        <label for="settings-mic-sens">SEUIL DE SENSIBILITÉ : <span id="settings-mic-sens-val">300</span></label>
+        <div style="display:flex;align-items:center;gap:15px;margin-top:5px;">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4)">Sensible (50)</span>
+          <input type="range" id="settings-mic-sens" min="50" max="3000" step="50" value="300" style="flex:1;cursor:pointer;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;outline:none;">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4)">Sourd (3000)</span>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <label for="settings-name">PRÉNOM</label>
+        <input type="text" id="settings-name" placeholder="Ex: votre prenom">
+      </div>
+
+      <div class="settings-group">
+        <label for="settings-age">ÂGE</label>
+        <input type="number" id="settings-age" placeholder="Ex: 37">
+      </div>
+
+      <div class="settings-group">
+        <label for="settings-city">VILLE PAR DÉFAUT (Météo & Restaurants)</label>
+        <input type="text" id="settings-city" placeholder="Ex: Amilly">
+      </div>
+
+      <div class="settings-group">
+        <label for="settings-img-engine">MOTEUR RECHERCHE IMAGES</label>
+        <select id="settings-img-engine">
+          <option value="serpapi">SerpAPI (Google Images)</option>
+          <option value="gemini">Gemini (Google Search)</option>
+          <option value="duckduckgo">DuckDuckGo</option>
+        </select>
+      </div>
+
+      <div class="settings-group">
+        <label>POSITION PRÉCISE (optionnel — pour « avion proche », prioritaire sur la ville)</label>
+        <div style="display:flex;gap:8px;">
+          <input type="number" step="any" id="settings-user-lat" placeholder="Latitude (ex: 49.0)" style="flex:1;">
+          <input type="number" step="any" id="settings-user-lon" placeholder="Longitude (ex: 1.88)" style="flex:1;">
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <label>SURVEILLANCE PROACTIVE (SHADOWBROKER)</label>
+        <label style="display:flex;align-items:center;gap:8px;font-weight:normal;cursor:pointer;">
+          <input type="checkbox" id="settings-sky-watch" style="width:auto;margin:0;">
+          ✈️ Avions militaires &amp; jets privés près de chez moi
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-weight:normal;cursor:pointer;margin-top:6px;">
+          <input type="checkbox" id="settings-rocket-watch" style="width:auto;margin:0;">
+          🚀 Décollages de fusées imminents
+        </label>
+      </div>
+
+      <div class="settings-group">
+        <label for="settings-wakeword">NOM D'ÉCOUTE (WAKE WORD)</label>
+        <input type="text" id="settings-wakeword" placeholder="Ex: jarvis">
+      </div>
+
+      <div class="settings-group">
+        <label for="settings-orb-style">STYLE DE L'ORBE (ORB)</label>
+        <select id="settings-orb-style">
+          <option value="default">Par défaut (Bleu JARVIS)</option>
+          <option value="pastel_blue">Modèle 1 (Bleu Pastel)</option>
+          <option value="sand">Modèle 2 (Sable / Beige)</option>
+          <option value="grey">Modèle 3 (Gris / Anthracite)</option>
+          <option value="iron_man">Modèle 4 (Rouge HUD / Iron Man)</option>
+          <option value="nvidia">Modèle 5 (Vert NVIDIA)</option>
+          <option value="anneaux">Modèle 6 (Anneaux animés)</option>
+        </select>
+      </div>
+
+      <div class="settings-group">
+        <label for="settings-show-clock-hud" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+          <input type="checkbox" id="settings-show-clock-hud" style="width:auto;margin:0;" checked>
+          AFFICHER L'HORLOGE ET INFOS HUD (SYS_CLOCK)
+        </label>
+      </div>
+
+      <div class="settings-group">
+        <label for="settings-launch-startup" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+          <input type="checkbox" id="settings-launch-startup" style="width:auto;margin:0;">
+          LANCER JARVIS AU DÉMARRAGE DU PC
+        </label>
+      </div>
+
+      <div class="settings-group">
+        <label for="settings-voice">VOIX DE L'IA</label>
+        <select id="settings-voice">
+          <!-- ── VOIX GEMINI AI (ORIGINALES ET UNIQUES) ────────────────────── -->
+          <optgroup label="✨ Voix Gemini AI (Ultra-Humaines)">
+            <option value="gemini_fenrir">Fenrir ✨ (M) — Grave &amp; Posé (Plus Rapide — Quota 90/jour)</option>
+            <option value="gemini_aoede">Aoede (F) — Doux &amp; Apaisant</option>
+            <option value="gemini_zephyr">Zephyr (F) — Lumineux &amp; Expressif</option>
+            <option value="gemini_charon">Charon (M) — Neutre &amp; Informatif</option>
+            <option value="gemini_kore">Kore (F) — Ferme &amp; Assuré</option>
+            <option value="gemini_leda">Leda (F) — Chaleureux &amp; Conversationnel</option>
+            <option value="gemini_orus">Orus (M) — Robuste &amp; Posé</option>
+            <option value="gemini_puck">Puck (M) — Énergique &amp; Enthousiaste</option>
+          </optgroup>
+          <!-- ── MASCULINES ─────────────────────────────── -->
+          <optgroup label="🔵 Voix Masculines (FR)">
+            <option value="male">Henri — France 🇫🇷</option>
+            <option value="male2">Rémy ✨ — France 🇫🇷 (Premium)</option>
+            <option value="male3">Antoine — Canada 🇨🇦</option>
+            <option value="male4">Fabrice — Suisse 🇨🇭</option>
+            <option value="male5">Gérard — Belgique 🇧🇪</option>
+          </optgroup>
+          <!-- ── FÉMININES ──────────────────────────────── -->
+          <optgroup label="🔴 Voix Féminines (FR)">
+            <option value="female">Denise — France 🇫🇷</option>
+            <option value="female2">Éloïse — France 🇫🇷</option>
+            <option value="female3">Vivienne ✨ — France 🇫🇷 (Premium)</option>
+            <option value="female4">Sylvie — Canada 🇨🇦</option>
+            <option value="female5">Ariane — Suisse 🇨🇭</option>
+          </optgroup>
+          <!-- ── INTERNATIONALES ────────────────────────── -->
+          <optgroup label="🇬🇧 Voix Anglaises (EN)">
+            <option value="en_male">Brian ✨ (M) — USA 🇺🇸 (Premium)</option>
+            <option value="en_female">Emma ✨ (F) — USA 🇺🇸 (Premium)</option>
+          </optgroup>
+          <optgroup label="🇪🇸 Voix Espagnoles (ES)">
+            <option value="es_male">Alvaro (M) — Espagne 🇪🇸</option>
+            <option value="es_female">Elvira (F) — Espagne 🇪🇸</option>
+          </optgroup>
+          <optgroup label="🇮🇹 Voix Italiennes (IT)">
+            <option value="it_male">Giuseppe ✨ (M) — Italie 🇮🇹 (Premium)</option>
+            <option value="it_female">Elsa (F) — Italie 🇮🇹</option>
+          </optgroup>
+          <optgroup label="🇩🇪 Voix Allemandes (DE)">
+            <option value="de_male">Florian ✨ (M) — Allemagne 🇩🇪 (Premium)</option>
+            <option value="de_female">Seraphina ✨ (F) — Allemagne 🇩🇪 (Premium)</option>
+          </optgroup>
+          <optgroup label="🇵🇹 Voix Portugaises (PT)">
+            <option value="pt_male">Antonio (M) — Brésil 🇧🇷</option>
+            <option value="pt_female">Thalita ✨ (F) — Brésil 🇧🇷 (Premium)</option>
+          </optgroup>
+        </select>
+        <p style="font-size: 11px; color: rgba(0, 229, 255, 0.6); margin-top: 8px; line-height: 1.4; font-family: monospace;">
+          ℹ️ Les voix Gemini AI nécessitent une clé API Gemini active. Si le quota gratuit (10 req/min) est dépassé, JARVIS bascule automatiquement sur une voix Premium équivalente (Rémy ou Vivienne) sans coupure.
+        </p>
+      </div>
+
+
+      <div class="settings-group" style="margin-top: 30px;">
+        <label>APPLICATIONS PERSONNALISÉES (Voice Launch)</label>
+        <div class="settings-apps-list" id="settings-apps-list">
+          <!-- Apps dynamiques -->
+        </div>
+
+        <div class="settings-app-detect-container" style="display: flex; gap: 10px; margin-bottom: 15px; margin-top: 10px;">
+          <select id="app-detect-select" style="flex: 1; padding: 10px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(0, 229, 255, 0.2); color: #00e5ff; font-family: inherit; font-size: 13px; border-radius: 4px; outline: none; cursor: pointer; height: 42px;">
+            <option value="">-- Détecter vos applications installées --</option>
+          </select>
+          <button class="settings-btn" id="app-detect-btn" style="width: auto; padding: 10px 15px; white-space: nowrap; margin-top: 0; height: 42px;">🔍 DÉTECTER</button>
+        </div>
+
+        <div class="settings-app-form">
+          <input type="text" id="app-add-name" placeholder="Nom (Ex: Bloc Note)">
+          <input type="text" id="app-add-path" placeholder="Chemin (Ex: C:\Windows\notepad.exe)">
+          <button class="settings-btn" id="app-add-btn">AJOUTER</button>
+        </div>
+      </div>
+
+      <!-- ══ HOME ASSISTANT ENTITIES ═══════════════════════════ -->
+      <div class="settings-group" style="margin-top: 30px;">
+        <label>APPAREILS HOME ASSISTANT</label>
+        <div class="ha-tabs">
+          <button class="ha-tab-btn active" data-tab="lumieres">&#9728; Lumières</button>
+          <button class="ha-tab-btn" data-tab="prises">&#9889; Prises</button>
+          <button class="ha-tab-btn" data-tab="capteurs">&#127777; Capteurs</button>
+        </div>
+        <div class="settings-apps-list" id="ha-entities-list">
+          <!-- Entités dynamiques -->
+        </div>
+        <div class="settings-app-form">
+          <input type="text" id="ha-add-nom" placeholder="Nom vocal (ex: escalier)">
+          <input type="text" id="ha-add-entity" placeholder="entity_id (ex: light.escalier)">
+          <button class="settings-btn" id="ha-add-btn">AJOUTER</button>
+        </div>
+        <div class="ha-hint">Dites : "Jarvis, allume la lumière de l'<em>escalier</em>"</div>
+      </div>
+
+      <!-- ══ LIEN MUSIQUE ═════════════════════════════════════ -->
+      <div class="settings-group" style="margin-top: 30px;">
+        <label for="settings-musique-lien">&#127925; LIEN MUSIQUE PERSONNALISÉ</label>
+        <input type="url" id="settings-musique-lien" placeholder="Ex: https://open.spotify.com/playlist/... ou https://www.youtube.com/...">
+        <div class="ha-hint">Dites "<em>Jarvis, mets de la musique</em>" — Spotify, YouTube, Deezer, Apple Music, ou tout autre lien.</div>
+      </div>
+
+      <!-- ══ RENDEZ-VOUS & RAPPELS ══════════════════════════ -->
+      <div class="settings-group" style="margin-top: 30px;">
+        <label>📅 RENDEZ-VOUS & RAPPELS</label>
+        <div class="settings-apps-list" id="settings-reminders-list">
+          <!-- Rappels dynamiques -->
+        </div>
+        <div class="settings-app-form">
+          <input type="text" id="reminder-add-text" placeholder="Sujet (ex: Dentiste)">
+          <input type="time" id="reminder-add-time" style="width: 120px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.3); color: #fff; padding: 6px 10px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 11px;">
+          <button class="settings-btn" id="reminder-add-btn">AJOUTER</button>
+        </div>
+      </div>
+
+      <!-- ══ OBSIDIAN ════════════════════════════════════════ -->
+      <div class="settings-group" style="margin-top: 30px;">
+        <label for="settings-obsidian-path">📁 CHEMIN DU COFFRE OBSIDIAN</label>
+        <input type="text" id="settings-obsidian-path" placeholder="Ex: C:\Users\VotreNom\ObsidianVault">
+        <div class="ha-hint">Laissez vide pour utiliser le dossier par défaut de JARVIS (<code>ObsidianVault</code>).</div>
+      </div>
+
+      <!-- ══ SÉCURITÉ SYSTÈME ════════════════════════════════ -->
+      <div class="settings-group" style="margin-top: 30px;">
+        <label>🛡️ SÉCURITÉ DU SYSTÈME</label>
+        <div class="ha-hint" style="margin-bottom: 10px;">Analyse les processus actifs, le registre de démarrage et les dossiers critiques.</div>
+        <div style="margin-bottom: 15px;">
+          <label for="settings-av-live" style="display:flex;align-items:center;gap:10px;cursor:pointer;color:#ff8a1a;font-weight:bold;">
+            <input type="checkbox" id="settings-av-live" style="width:auto;margin:0;cursor:pointer;">
+            PROTECTION ANTIVIRUS EN TEMPS RÉEL (LIVE)
+          </label>
+          <div class="ha-hint" style="margin-left: 24px; margin-top: 4px;">Intercepte, bloque et met en quarantaine automatiquement les menaces actives.</div>
+        </div>
+        <button class="settings-btn" id="settings-av-scan-btn" style="width: 100%; font-weight: bold; border-color: #ff8a1a; color: #ff8a1a; background: rgba(255, 138, 26, 0.05);">LANCER UN SCAN ANTIVIRUS</button>
+        <div class="ha-hint" style="margin-top: 8px; text-align: right;">
+          <a href="#" id="settings-av-info-btn" style="color: #ff8a1a; text-decoration: underline; font-size: 10px; cursor: pointer;">Plus d'informations sur l'antivirus</a>
+        </div>
+      </div>
+
+      <!-- ══ NVIDIA NEMOTRON ASR ═════════════════════════════ -->
+      <div class="settings-group" style="margin-top: 30px;">
+        <label>🎙️ NVIDIA NEMOTRON ASR (LOCAL)</label>
+        <div class="ha-hint" style="margin-bottom: 10px;">Transcription 100% locale via le modèle Canary-1B (~4 Go).</div>
+        <button class="settings-btn" id="settings-nemotron-btn" style="width: 100%; font-weight: bold; cursor: pointer; padding: 10px;">CHARGEMENT...</button>
+      </div>
+
+      <button class="settings-btn primary" id="settings-save-btn">SAUVEGARDER & APPLIQUER</button>
+
+      <!-- ══ LIENS ══════════════════════════════════════════════ -->
+      <div class="settings-links">
+        <a class="settings-link-btn" href="https://www.techenclair.fr/" target="_blank">&#127760; Site Web</a>
+        <a class="settings-link-btn paypal" href="https://www.paypal.com/paypalme/TechEnClair?country.x=FR&locale.x=fr_FR" target="_blank">&#10084; Soutenir</a>
+        <a class="settings-link-btn discord" href="https://discord.gg/TGpxArpNcE" target="_blank">&#128172; Discord</a>
+        <a class="settings-link-btn tiktok" href="https://www.tiktok.com/@techenclair" target="_blank">&#9654; TikTok</a>
+      </div>
+    </div>
+  </div>
+  <!-- ══ AGENT MODELE MODAL ══════════════════════════════════ -->
+  <div id="agent-model-modal" style="display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(5, 5, 8, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); align-items: center; justify-content: center;">
+    <div class="settings-container" style="width: 90%; max-width: 400px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.3); box-shadow: 0 0 30px rgba(0, 229, 255, 0.2); border-radius: 4px; padding: 30px; font-family: 'Courier New', monospace; color: #00e5ff;">
+      <div class="settings-header" style="font-size: 20px; font-weight: bold; letter-spacing: 3px; margin-bottom: 20px; text-transform: uppercase; border-bottom: 1px solid rgba(0, 229, 255, 0.2); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <span>🤖 AGENT MODELE</span>
+        <span class="settings-close" id="agent-model-close-btn" style="cursor: pointer; font-size: 14px; color: rgba(0, 229, 255, 0.5); transition: color 0.3s ease;">[ X ]</span>
+      </div>
+
+      <div class="settings-group" style="margin-bottom: 25px;">
+        <label for="settings-preferred-brain" style="display:block; margin-bottom: 10px; font-size:12px; letter-spacing:2px; color:rgba(0, 229, 255, 0.7);">CERVEAU IA PRIORITAIRE (BRAIN LLM)</label>
+        <select id="settings-preferred-brain" style="width:100%; padding: 10px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.3); color: #00e5ff; font-family: 'Courier New', monospace; font-size: 14px; outline: none;">
+          <option value="auto">Routage automatique (Dynamique)</option>
+          <option value="gemini">Google Gemini (Par défaut)</option>
+          <option value="groq">Groq (LLaMA 3)</option>
+          <option value="grok">xAI Grok (Grok AI)</option>
+          <option value="openai">OpenAI (ChatGPT)</option>
+          <option value="claude">Anthropic Claude</option>
+          <option value="mistral">Mistral AI (Mistral Large)</option>
+        </select>
+        <p style="font-size: 11px; color: rgba(0, 229, 255, 0.6); margin-top: 8px; line-height: 1.4; font-family: monospace;">
+          ℹ️ Choisissez l'intelligence artificielle à solliciter en priorité lors de vos requêtes. Les autres API resteront actives en secours (failover) s'il y a une panne ou un quota dépassé.
+        </p>
+      </div>
+
+      <div id="agent-models-container" class="settings-group" style="margin-bottom: 25px; max-height: 400px; overflow-y: auto;">
+        <!-- Dynamic dropdowns will be populated by main.ts -->
+      </div>
+
+      <button id="agent-model-save-btn" style="width: 100%; padding: 12px; background: rgba(0, 229, 255, 0.1); border: 1px solid rgba(0, 229, 255, 0.5); color: #00e5ff; font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold; letter-spacing: 2px; cursor: pointer; transition: all 0.3s ease;">
+        VALIDER LE CHOIX
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ══ API KEYS MODAL ══════════════════════════════════ -->
+  <div id="api-keys-modal" style="display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(5, 5, 8, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); align-items: center; justify-content: center;">
+    <div class="settings-container" style="max-height: 90vh; overflow-y: auto; width: 90%; max-width: 600px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.3); box-shadow: 0 0 30px rgba(0, 229, 255, 0.2); border-radius: 4px; padding: 30px; font-family: 'Courier New', monospace; color: #00e5ff;">
+      <div class="settings-header" style="font-size: 20px; font-weight: bold; letter-spacing: 3px; margin-bottom: 20px; text-transform: uppercase; border-bottom: 1px solid rgba(0, 229, 255, 0.2); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <span>🔑 CONFIGURATION API</span>
+        <span class="settings-close" id="api-keys-close-btn" style="cursor: pointer; font-size: 14px; color: rgba(0, 229, 255, 0.5); transition: color 0.3s ease;">[ X ]</span>
+      </div>
+
+      <div class="ha-hint" style="margin-bottom: 20px; font-size: 11px; line-height: 1.5; color: rgba(0, 229, 255, 0.7);">
+        Activez, désactivez et configurez vos clés API pour les services connectés de JARVIS. Vos clés sont enregistrées en direct dans votre fichier local <code>.env</code>.
+      </div>
+
+      <!-- API Gemini -->
+      <div class="settings-group" style="margin-bottom: 25px; border-bottom: 1px solid rgba(0, 229, 255, 0.1); padding-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-weight: bold; font-size: 11px; color: #00e5ff; letter-spacing: 1px;">GOOGLE GEMINI API (Cerveau & Voix)</span>
+          <label class="switch-container" style="display: flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; color: rgba(255,255,255,0.7); font-weight: bold; user-select: none;">
+            <input type="checkbox" id="settings-api-gemini-enabled" checked style="cursor: pointer;"> ACTIVÉ
+          </label>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="position: relative; flex: 1;">
+            <input type="password" id="settings-api-gemini-key" placeholder="Entrez votre clé API Gemini" style="width: 100%; font-family: monospace; font-size: 11px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); color: #fff; padding: 8px 36px 8px 10px; border-radius: 4px; outline: none; transition: border-color 0.3s ease;">
+            <span class="toggle-password-eye" data-target="settings-api-gemini-key" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 14px; user-select: none;" title="Afficher/Masquer la clé">👁️</span>
+          </div>
+          <a href="https://aistudio.google.com/" target="_blank" class="settings-btn" style="text-align: center; text-decoration: none; font-size: 10px; line-height: 20px; padding: 6px 12px; border: 1px solid rgba(0, 229, 255, 0.3); border-radius: 4px; color: #00e5ff; font-weight: bold; background: rgba(0, 229, 255, 0.02); display: inline-block; cursor: pointer;" title="Obtenir une clé API Gemini (AI Studio)">🔑 OBTENIR</a>
+        </div>
+        <div class="ha-hint" style="font-size: 9px; margin-top: 5px; color: rgba(0, 229, 255, 0.5);">Requis pour l'intelligence générale de JARVIS et les voix ultra-réalistes (Fenrir, Aoede, etc.).</div>
+      </div>
+
+      <!-- API Groq -->
+      <div class="settings-group" style="margin-bottom: 25px; border-bottom: 1px solid rgba(0, 229, 255, 0.1); padding-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-weight: bold; font-size: 11px; color: #00e5ff; letter-spacing: 1px;">GROQ API (Cerveaux alternatifs rapides)</span>
+          <label class="switch-container" style="display: flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; color: rgba(255,255,255,0.7); font-weight: bold; user-select: none;">
+            <input type="checkbox" id="settings-api-groq-enabled" checked style="cursor: pointer;"> ACTIVÉ
+          </label>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="position: relative; flex: 1;">
+            <input type="password" id="settings-api-groq-key" placeholder="Entrez votre clé API Groq" style="width: 100%; font-family: monospace; font-size: 11px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); color: #fff; padding: 8px 36px 8px 10px; border-radius: 4px; outline: none; transition: border-color 0.3s ease;">
+            <span class="toggle-password-eye" data-target="settings-api-groq-key" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 14px; user-select: none;" title="Afficher/Masquer la clé">👁️</span>
+          </div>
+          <a href="https://console.groq.com/keys" target="_blank" class="settings-btn" style="text-align: center; text-decoration: none; font-size: 10px; line-height: 20px; padding: 6px 12px; border: 1px solid rgba(0, 229, 255, 0.3); border-radius: 4px; color: #00e5ff; font-weight: bold; background: rgba(0, 229, 255, 0.02); display: inline-block; cursor: pointer;" title="Obtenir une clé API Groq">🔑 OBTENIR</a>
+        </div>
+        <div class="ha-hint" style="font-size: 9px; margin-top: 5px; color: rgba(0, 229, 255, 0.5);">Offre un accès ultra-rapide à des modèles comme LLaMA 3.</div>
+      </div>
+
+      <!-- API YouTube -->
+      <div class="settings-group" style="margin-bottom: 25px; border-bottom: 1px solid rgba(0, 229, 255, 0.1); padding-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-weight: bold; font-size: 11px; color: #00e5ff; letter-spacing: 1px;">YOUTUBE API v3 (Recherche de musique)</span>
+          <label class="switch-container" style="display: flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; color: rgba(255,255,255,0.7); font-weight: bold; user-select: none;">
+            <input type="checkbox" id="settings-api-youtube-enabled" checked style="cursor: pointer;"> ACTIVÉ
+          </label>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="position: relative; flex: 1;">
+            <input type="password" id="settings-api-youtube-key" placeholder="Entrez votre clé API YouTube" style="width: 100%; font-family: monospace; font-size: 11px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); color: #fff; padding: 8px 36px 8px 10px; border-radius: 4px; outline: none; transition: border-color 0.3s ease;">
+            <span class="toggle-password-eye" data-target="settings-api-youtube-key" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 14px; user-select: none;" title="Afficher/Masquer la clé">👁️</span>
+          </div>
+          <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" class="settings-btn" style="text-align: center; text-decoration: none; font-size: 10px; line-height: 20px; padding: 6px 12px; border: 1px solid rgba(0, 229, 255, 0.3); border-radius: 4px; color: #00e5ff; font-weight: bold; background: rgba(0, 229, 255, 0.02); display: inline-block; cursor: pointer;" title="Obtenir une clé API YouTube (Google Cloud)">🔑 OBTENIR</a>
+        </div>
+        <div class="ha-hint" style="font-size: 9px; margin-top: 5px; color: rgba(0, 229, 255, 0.5);">Requis pour rechercher et jouer des chansons spécifiques par leur titre via YouTube.</div>
+      </div>
+
+      <!-- API xAI (Grok) -->
+      <div class="settings-group" style="margin-bottom: 25px; border-bottom: 1px solid rgba(0, 229, 255, 0.1); padding-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-weight: bold; font-size: 11px; color: #00e5ff; letter-spacing: 1px;">XAI API (Grok AI)</span>
+          <label class="switch-container" style="display: flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; color: rgba(255,255,255,0.7); font-weight: bold; user-select: none;">
+            <input type="checkbox" id="settings-api-grok-enabled" checked style="cursor: pointer;"> ACTIVÉ
+          </label>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="position: relative; flex: 1;">
+            <input type="password" id="settings-api-grok-key" placeholder="Entrez votre clé API xAI" style="width: 100%; font-family: monospace; font-size: 11px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); color: #fff; padding: 8px 36px 8px 10px; border-radius: 4px; outline: none; transition: border-color 0.3s ease;">
+            <span class="toggle-password-eye" data-target="settings-api-grok-key" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 14px; user-select: none;" title="Afficher/Masquer la clé">👁️</span>
+          </div>
+          <a href="https://console.x.ai/" target="_blank" class="settings-btn" style="text-align: center; text-decoration: none; font-size: 10px; line-height: 20px; padding: 6px 12px; border: 1px solid rgba(0, 229, 255, 0.3); border-radius: 4px; color: #00e5ff; font-weight: bold; background: rgba(0, 229, 255, 0.02); display: inline-block; cursor: pointer;" title="Obtenir une clé API xAI (Grok)">🔑 OBTENIR</a>
+        </div>
+        <div class="ha-hint" style="font-size: 9px; margin-top: 5px; color: rgba(0, 229, 255, 0.5);">Permet d'utiliser l'IA Grok de xAI pour des réponses alternatives.</div>
+      </div>
+
+      <!-- API OpenAI -->
+      <div class="settings-group" style="margin-bottom: 25px; border-bottom: 1px solid rgba(0, 229, 255, 0.1); padding-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-weight: bold; font-size: 11px; color: #00e5ff; letter-spacing: 1px;">OPENAI API (ChatGPT)</span>
+          <label class="switch-container" style="display: flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; color: rgba(255,255,255,0.7); font-weight: bold; user-select: none;">
+            <input type="checkbox" id="settings-api-openai-enabled" checked style="cursor: pointer;"> ACTIVÉ
+          </label>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="position: relative; flex: 1;">
+            <input type="password" id="settings-api-openai-key" placeholder="Entrez votre clé API OpenAI" style="width: 100%; font-family: monospace; font-size: 11px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); color: #fff; padding: 8px 36px 8px 10px; border-radius: 4px; outline: none; transition: border-color 0.3s ease;">
+            <span class="toggle-password-eye" data-target="settings-api-openai-key" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 14px; user-select: none;" title="Afficher/Masquer la clé">👁️</span>
+          </div>
+          <a href="https://platform.openai.com/api-keys" target="_blank" class="settings-btn" style="text-align: center; text-decoration: none; font-size: 10px; line-height: 20px; padding: 6px 12px; border: 1px solid rgba(0, 229, 255, 0.3); border-radius: 4px; color: #00e5ff; font-weight: bold; background: rgba(0, 229, 255, 0.02); display: inline-block; cursor: pointer;" title="Obtenir une clé API OpenAI">🔑 OBTENIR</a>
+        </div>
+        <div class="ha-hint" style="font-size: 9px; margin-top: 5px; color: rgba(0, 229, 255, 0.5);">Permet d'utiliser l'IA GPT-4o de ChatGPT pour des réponses alternatives.</div>
+      </div>
+
+      <!-- API SerpAPI -->
+      <div class="settings-group" style="margin-bottom: 25px; border-bottom: 1px solid rgba(0, 229, 255, 0.1); padding-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-weight: bold; font-size: 11px; color: #00e5ff; letter-spacing: 1px;">SERPAPI (Google Images)</span>
+          <label class="switch-container" style="display: flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; color: rgba(255,255,255,0.7); font-weight: bold; user-select: none;">
+            <input type="checkbox" id="settings-api-serpapi-enabled" checked style="cursor: pointer;"> ACTIVÉ
+          </label>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="position: relative; flex: 1;">
+            <input type="password" id="settings-api-serpapi-key" placeholder="Entrez votre clé API SerpAPI" style="width: 100%; font-family: monospace; font-size: 11px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); color: #fff; padding: 8px 36px 8px 10px; border-radius: 4px; outline: none; transition: border-color 0.3s ease;">
+            <span class="toggle-password-eye" data-target="settings-api-serpapi-key" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 14px; user-select: none;" title="Afficher/Masquer la clé">👁️</span>
+          </div>
+          <a href="https://serpapi.com/manage-api-key" target="_blank" class="settings-btn" style="text-align: center; text-decoration: none; font-size: 10px; line-height: 20px; padding: 6px 12px; border: 1px solid rgba(0, 229, 255, 0.3); border-radius: 4px; color: #00e5ff; font-weight: bold; background: rgba(0, 229, 255, 0.02); display: inline-block; cursor: pointer;" title="Obtenir une clé API SerpAPI">🔑 OBTENIR</a>
+        </div>
+        <div class="ha-hint" style="font-size: 9px; margin-top: 5px; color: rgba(0, 229, 255, 0.5);">Utilisé pour afficher des illustrations d'images sur l'écran holographique.</div>
+      </div>
+
+      <!-- API Anthropic -->
+      <div class="settings-group" style="margin-bottom: 25px; padding-bottom: 5px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-weight: bold; font-size: 11px; color: #00e5ff; letter-spacing: 1px;">ANTHROPIC API (Claude AI)</span>
+          <label class="switch-container" style="display: flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; color: rgba(255,255,255,0.7); font-weight: bold; user-select: none;">
+            <input type="checkbox" id="settings-api-anthropic-enabled" checked style="cursor: pointer;"> ACTIVÉ
+          </label>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="position: relative; flex: 1;">
+            <input type="password" id="settings-api-anthropic-key" placeholder="Entrez votre clé API Anthropic" style="width: 100%; font-family: monospace; font-size: 11px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); color: #fff; padding: 8px 36px 8px 10px; border-radius: 4px; outline: none; transition: border-color 0.3s ease;">
+            <span class="toggle-password-eye" data-target="settings-api-anthropic-key" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 14px; user-select: none;" title="Afficher/Masquer la clé">👁️</span>
+          </div>
+          <a href="https://console.anthropic.com/" target="_blank" class="settings-btn" style="text-align: center; text-decoration: none; font-size: 10px; line-height: 20px; padding: 6px 12px; border: 1px solid rgba(0, 229, 255, 0.3); border-radius: 4px; color: #00e5ff; font-weight: bold; background: rgba(0, 229, 255, 0.02); display: inline-block; cursor: pointer;" title="Obtenir une clé API Anthropic">🔑 OBTENIR</a>
+        </div>
+        <div class="ha-hint" style="font-size: 9px; margin-top: 5px; color: rgba(0, 229, 255, 0.5);">Permet d'utiliser Claude 3.5 Sonnet / Opus comme cerveau alternatif.</div>
+      </div>
+
+      <!-- API Mistral -->
+      <div class="settings-group" style="margin-bottom: 25px; border-bottom: 1px solid rgba(0, 229, 255, 0.1); padding-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-weight: bold; font-size: 11px; color: #00e5ff; letter-spacing: 1px;">MISTRAL API (Mistral AI)</span>
+          <label class="switch-container" style="display: flex; align-items: center; gap: 6px; font-size: 10px; cursor: pointer; color: rgba(255,255,255,0.7); font-weight: bold; user-select: none;">
+            <input type="checkbox" id="settings-api-mistral-enabled" checked style="cursor: pointer;"> ACTIVÉ
+          </label>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="position: relative; flex: 1;">
+            <input type="password" id="settings-api-mistral-key" placeholder="Entrez votre clé API Mistral" style="width: 100%; font-family: monospace; font-size: 11px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); color: #fff; padding: 8px 36px 8px 10px; border-radius: 4px; outline: none; transition: border-color 0.3s ease;">
+            <span class="toggle-password-eye" data-target="settings-api-mistral-key" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 14px; user-select: none;" title="Afficher/Masquer la clé">👁️</span>
+          </div>
+          <a href="https://console.mistral.ai/" target="_blank" class="settings-btn" style="text-align: center; text-decoration: none; font-size: 10px; line-height: 20px; padding: 6px 12px; border: 1px solid rgba(0, 229, 255, 0.3); border-radius: 4px; color: #00e5ff; font-weight: bold; background: rgba(0, 229, 255, 0.02); display: inline-block; cursor: pointer;" title="Obtenir une clé API Mistral AI">🔑 OBTENIR</a>
+        </div>
+        <div class="ha-hint" style="font-size: 9px; margin-top: 5px; color: rgba(0, 229, 255, 0.5);">Permet d'utiliser le modèle souverain français Mistral Large.</div>
+      </div>
+
+      <button class="settings-btn primary" id="api-keys-save-btn" style="width: 100%; padding: 12px; font-weight: bold; font-size: 11px; letter-spacing: 2px; border: 1px solid #00e5ff; background: rgba(0, 229, 255, 0.1); color: #00e5ff; cursor: pointer; border-radius: 4px; transition: all 0.3s ease;">SAUVEGARDER & ENREGISTRER</button>
+    </div>
+  </div>
+
+  <!-- ══ NEMOTRON MODAL ══════════════════════════════════ -->
+  <div id="nemotron-modal" style="display: none; position: fixed; inset: 0; z-index: 1001; background: rgba(5, 5, 8, 0.9); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); align-items: center; justify-content: center;">
+    <div class="settings-container" style="border-color: rgba(118, 185, 0, 0.4); box-shadow: 0 0 30px rgba(118, 185, 0, 0.2); color: #76b900; max-width: 500px;">
+      <div class="settings-header" style="border-bottom: 1px solid rgba(118, 185, 0, 0.3); padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <span>🎙️ NVIDIA NEMOTRON ASR</span>
+        <span class="settings-close" id="nemotron-modal-close" style="cursor: pointer; color: rgba(118, 185, 0, 0.6); font-family: monospace;">[ X ]</span>
+      </div>
+
+      <div style="font-size: 13px; line-height: 1.6; color: #e0e0e0; margin-bottom: 25px;">
+        <p style="margin-bottom: 15px;">Pour transcrire votre voix à 100% localement et avec une précision extrême, JARVIS a besoin d'installer le modèle <strong>NVIDIA Canary-1B</strong>.</p>
+        <p style="margin-bottom: 15px; color: #ff8a1a;" id="nemotron-modal-gpu-notice">Détection du matériel en cours...</p>
+        <p style="margin-bottom: 15px;"><strong>Volume requis :</strong> environ 3 Go de téléchargement. L'installation peut durer de 2 à 10 minutes selon votre connexion.</p>
+      </div>
+
+      <div style="display: flex; gap: 15px; flex-direction: column;" id="nemotron-modal-actions">
+        <button class="settings-btn" id="nemotron-install-btn" style="border-color: #76b900; color: #76b900; background: rgba(118, 185, 0, 0.05); width: 100%; font-weight: bold; padding: 12px; cursor: pointer;">LANCER L'INSTALLATION AUTOMATIQUE</button>
+        <button class="settings-btn" id="nemotron-uninstall-btn" style="border-color: #ff3b30; color: #ff3b30; background: rgba(255, 59, 48, 0.05); width: 100%; font-weight: bold; padding: 12px; cursor: pointer; display: none;">DÉSINSTALLER NEMOTRON ASR</button>
+        <button class="settings-btn" id="nemotron-cancel-btn" style="border-color: rgba(255,255,255,0.2); color: #aaa; width: 100%; padding: 10px; cursor: pointer;">ANNULER</button>
+      </div>
+
+      <div id="nemotron-install-progress-section" style="display: none; margin-top: 10px;">
+        <div style="font-size: 11px; color: #76b900; margin-bottom: 10px; font-family: monospace;" id="nemotron-progress-stage">Préparation de l'installation...</div>
+        <div style="width: 100%; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; margin-bottom: 15px; position: relative;">
+          <div id="nemotron-progress-bar" style="width: 0%; height: 100%; background: #76b900; transition: width 0.3s ease;"></div>
+        </div>
+        <div style="max-height: 120px; overflow-y: auto; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 4px; font-family: monospace; font-size: 10px; color: #888; line-height: 1.4; border: 1px solid rgba(118, 185, 0, 0.1);" id="nemotron-install-logs">
+          <!-- Logs pip -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ANTIVIRUS INFO MODAL ══════════════════════════════════ -->
+  <div id="av-info-modal" style="display: none; position: fixed; inset: 0; z-index: 1002; background: rgba(5, 5, 8, 0.9); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); align-items: center; justify-content: center;">
+    <div class="settings-container" style="border-color: rgba(255, 138, 26, 0.4); box-shadow: 0 0 30px rgba(255, 138, 26, 0.2); color: #ff8a1a; max-width: 550px;">
+      <div class="settings-header" style="border-bottom: 1px solid rgba(255, 138, 26, 0.3); padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <span>🛡️ FONCTIONNEMENT DE L'ANTIVIRUS</span>
+        <span class="settings-close" id="av-info-modal-close" style="cursor: pointer; color: rgba(255, 138, 26, 0.6); font-family: monospace;">[ X ]</span>
+      </div>
+
+      <div style="font-size: 13px; line-height: 1.6; color: #e0e0e0; max-height: 400px; overflow-y: auto; padding-right: 10px;">
+        <p style="margin-bottom: 15px;">L'antivirus intégré à J.A.R.V.I.S est un outil d'audit de sécurité local développé sur mesure pour ce projet (sans dépendance externe lourde).</p>
+        
+        <h4 style="color: #ff8a1a; margin-top: 15px; margin-bottom: 5px; text-transform: uppercase; font-size: 13px;">🔍 Trois niveaux d'analyse :</h4>
+        <ul style="margin-bottom: 15px; padding-left: 20px; list-style-type: square;">
+          <li style="margin-bottom: 8px;"><strong>Registre Windows :</strong> Inspecte les clés de démarrage pour détecter des programmes malveillants s'exécutant automatiquement.</li>
+          <li style="margin-bottom: 8px;"><strong>Processus Actifs :</strong> Surveille les applications en cours d'exécution et identifie les activités ou emplacements suspects (ex: dossiers temporaires).</li>
+          <li style="margin-bottom: 8px;"><strong>Fichiers Physiques :</strong> Analyse vos dossiers sensibles récents (Bureau, Téléchargements, Temp, etc.) à la recherche de signatures de test (EICAR), de doubles extensions dangereuses (ex: <code>.pdf.exe</code>) et de mots-clés malveillants.</li>
+        </ul>
+
+        <h4 style="color: #ff8a1a; margin-top: 15px; margin-bottom: 5px; text-transform: uppercase; font-size: 13px;">🛡️ Que fait-il en cas de détection ?</h4>
+        <p style="margin-bottom: 15px;">Il fonctionne en mode <strong>audit et signalement passif</strong>. Les menaces s'affichent sur le radar et la console du HUD et J.A.R.V.I.S vous alerte vocalement.</p>
+        <p style="margin-bottom: 15px; color: #ff8a1a; font-style: italic;">Par sécurité pour vos données, il ne supprime pas de fichiers et ne bloque pas de processus automatiquement afin d'éviter tout faux positif.</p>
+      </div>
+
+      <div style="display: flex; gap: 15px; flex-direction: column; margin-top: 20px;">
+        <button class="settings-btn" id="av-info-modal-ok" style="border-color: #ff8a1a; color: #ff8a1a; background: rgba(255, 138, 26, 0.05); width: 100%; padding: 10px; cursor: pointer; font-weight: bold;">J'AI COMPRIS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ IPTV & VIDEO PLAYER PANEL — Iron Man HUD ═══════════════════════ -->
+  <div id="iptv-panel" class="iptv-panel hidden">
+    <!-- Le contenu est injecté dynamiquement par iptv_player.ts -->
+  </div>
+
+  <!-- ══ HOME ASSISTANT PANEL — Iron Man HUD ═══════════════════════ -->
+  <div id="ha-panel" class="ha-panel hidden draggable">
+    <div class="ha-panel-header" id="ha-panel-drag-handle">
+      <div class="ha-panel-title">
+        <span class="ha-pulse-dot"></span>
+        <span class="ha-title-text">🏠 DOMOTIQUE // CONNECTIVITÉ HOME ASSISTANT</span>
+      </div>
+      <div class="ha-panel-controls">
+        <button id="ha-panel-close-btn" class="ha-control-btn" title="Fermer">[ X ]</button>
+      </div>
+    </div>
+    
+    <div class="ha-panel-body">
+      <!-- Barre d'outils / Recherche -->
+      <div class="ha-toolbar">
+        <div class="ha-search-wrapper">
+          <span class="ha-search-icon">🔍</span>
+          <input type="text" id="ha-search-input" placeholder="RECHERCHER UN APPAREIL..." autocomplete="off" />
+        </div>
+        <button id="ha-refresh-btn" class="ha-toolbar-btn" title="Rafraîchir les états">🔄 ACTUALISER</button>
+      </div>
+
+      <div class="ha-layout-container">
+        <!-- Barre latérale pour filtres de catégories -->
+        <div class="ha-sidebar">
+          <button class="ha-tab-btn active" data-category="all">
+            <span class="tab-icon">⚡</span> <span class="tab-label">TOUT</span>
+          </button>
+          <button class="ha-tab-btn" data-category="light">
+            <span class="tab-icon">💡</span> <span class="tab-label">LUMIÈRES</span>
+          </button>
+          <button class="ha-tab-btn" data-category="switch">
+            <span class="tab-icon">🔌</span> <span class="tab-label">PRISES & INTERS</span>
+          </button>
+          <button class="ha-tab-btn" data-category="sensor">
+            <span class="tab-icon">🌡️</span> <span class="tab-label">CAPTEURS</span>
+          </button>
+          <button class="ha-tab-btn" data-category="fan">
+            <span class="tab-icon">🌀</span> <span class="tab-label">VENTILATEURS</span>
+          </button>
+          <button class="ha-tab-btn" data-category="vacuum">
+            <span class="tab-icon">🧹</span> <span class="tab-label">ASPIRATEURS</span>
+          </button>
+          <button class="ha-tab-btn" data-category="other">
+            <span class="tab-icon">⚙️</span> <span class="tab-label">AUTRES</span>
+          </button>
+        </div>
+
+        <!-- Zone d'affichage des appareils -->
+        <div class="ha-content">
+          <div id="ha-entities-grid" class="ha-entities-grid">
+            <!-- Les cartes d'entités seront injectées ici en JavaScript -->
+            <div class="ha-loading-msg">CHARGEMENT DE LA GRILLE DOMOTIQUE...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ha-panel-footer">
+      <span class="ha-status-label">SYS_STATUS // CONNECTED TO HOME ASSISTANT</span>
+    </div>
+  </div>
+
+  <!-- ══ FLOATING BROWSER CONTROLS ON HUD ═══════════════════════════════ -->
+  <div id="hud-browser-controls" class="hidden">
+    <button id="hud-browser-dock-btn" class="hud-browser-btn" title="Ancrer / Détacher le navigateur">⚡ DÉTACHER</button>
+    <button id="hud-browser-close-btn" class="hud-browser-btn danger" title="Fermer le navigateur">❌ FERMER</button>
+  </div>
+
+  <!-- ══ WEBCAM PREVIEW PANEL — Bottom Right ══════════════════════ -->
+  <div id="webcam-preview-panel" class="webcam-preview-panel hidden">
+    <div class="webcam-header" id="webcam-drag-handle">
+      <span class="webcam-dot"></span>
+      <span class="webcam-title-text">📹 RETOUR CAMÉRA</span>
+      <button id="webcam-close-btn" class="webcam-control-close-btn" title="Fermer la caméra">&times;</button>
+    </div>
+    <div class="webcam-body">
+      <video id="webcam-video" autoplay playsinline muted></video>
+    </div>
+  </div>
+
+  <!-- 💻 MATRIX CODING ANIMATION OVERLAY 💻 -->
+  <div id="coding-matrix-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;font-family:'Courier New', monospace;color:#00ff00;overflow:hidden;pointer-events:none;">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%, -50%);text-align:center;z-index:2;background:rgba(0,0,0,0.7);padding:20px;border:1px solid #00ff00;box-shadow:0 0 20px #00ff00;border-radius:10px;">
+      <h1 style="margin:0;font-size:2em;text-shadow:0 0 10px #00ff00;">J.A.R.V.I.S WEBMASTER</h1>
+      <p style="margin:10px 0 0 0;font-size:1.2em;">Génération du code source et des images en cours...</p>
+    </div>
+    <div id="matrix-code-container" style="position:absolute;top:0;left:0;right:0;bottom:0;padding:20px;font-size:14px;line-height:1.5;white-space:pre-wrap;opacity:0.4;display:flex;flex-direction:column-reverse;">
+      <!-- Code lines will be injected here via JS -->
+    </div>
+  </div>
+
+  <!-- ══ FIRST LAUNCH WELCOME OVERLAY ═══════════════════════════════ -->
+  <div id="first-launch-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px);">
+    <div style="background:rgba(0,30,60,0.95);border:1px solid #00e5ff;box-shadow:0 0 30px rgba(0,229,255,0.4);border-radius:8px;max-width:600px;width:90%;padding:30px;color:#00e5ff;font-family:'Courier New',monospace;text-align:center;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,transparent,#00e5ff,transparent);animation:pulse-glow 2s infinite;"></div>
+      
+      <h2 style="font-size:24px;margin-top:0;text-shadow:0 0 10px #00e5ff;text-transform:uppercase;letter-spacing:2px;">MERCI D'AVOIR INSTALLÉ J.A.R.V.I.S</h2>
+      
+      <div style="margin:20px 0;text-align:left;font-size:15px;line-height:1.6;color:#a0e5ff;background:rgba(0,229,255,0.05);padding:20px;border-left:3px solid #00e5ff;">
+        <p style="margin-top:0;"><strong>J.A.R.V.I.S</strong> est un projet personnel ambitieux, conçu pour repousser les limites de l'assistance virtuelle sur ordinateur.</p>
+        <p>Ce projet est <strong style="color:#00e5ff;">100% open-source et entièrement gratuit</strong>.</p>
+        
+        <div style="margin-top:20px;padding:15px;border:1px solid #ff3366;background:rgba(255,51,102,0.1);color:#ff3366;">
+          <h3 style="margin-top:0;font-size:16px;display:flex;align-items:center;gap:10px;">
+            ⚠️ AVERTISSEMENT LÉGAL
+          </h3>
+          <p style="margin-bottom:0;font-size:14px;"><strong>Ce logiciel ne peut en aucun cas être vendu ou monétisé de quelque manière que ce soit.</strong> Toute revente est strictement interdite.</p>
+        </div>
+      </div>
+      
+      <p style="margin-bottom:25px;font-size:14px;">Pour plus d'informations, des tutoriels ou pour soutenir le projet, visitez le site officiel.</p>
+      
+      <div style="display:flex;gap:15px;justify-content:center;">
+        <button id="first-launch-btn-site" style="background:#00e5ff;color:#000;border:none;padding:12px 25px;font-family:'Courier New',monospace;font-weight:bold;font-size:16px;cursor:pointer;border-radius:4px;box-shadow:0 0 15px rgba(0,229,255,0.5);transition:all 0.3s;letter-spacing:1px;">SITE OFFICIEL</button>
+        <button id="first-launch-btn-close" style="background:transparent;color:#00e5ff;border:1px solid #00e5ff;padding:12px 25px;font-family:'Courier New',monospace;font-weight:bold;font-size:16px;cursor:pointer;border-radius:4px;transition:all 0.3s;letter-spacing:1px;">J'AI COMPRIS</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

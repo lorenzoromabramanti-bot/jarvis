@@ -1,0 +1,95 @@
+# ==========================================
+# J.A.R.V.I.S — Dépendances Python
+# Site : www.techenclair.fr
+# ==========================================
+# Python supporté : 3.10, 3.11, 3.12 (recommandé), 3.13 (expérimental)
+# IMPORTANT : Les versions utilisent >= pour garantir
+# la compatibilité avec toutes les configurations.
+# ==========================================
+
+# --- IA & LLM ---
+google-genai>=1.0.0
+google-generativeai>=0.8.0
+groq
+openai
+anthropic>=0.40.0
+
+# --- Google APIs (Gmail, Drive, Calendar, Sheets, Docs, YouTube) ---
+google-auth>=2.0.0
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.1.0
+google-api-python-client>=2.0.0
+youtube-transcript-api>=0.6.0   # Résumé de vidéos YouTube via sous-titres
+
+# --- Web & Réseau ---
+flask
+flask-cors
+requests>=2.28.0
+websockets>=12.0
+aiohttp>=3.9.0
+httpx>=0.25.0
+
+# --- Audio & TTS ---
+SpeechRecognition>=3.10.0
+edge-tts>=6.0.0
+pyttsx3>=2.90
+pygame>=2.5.0
+PyAudio>=0.2.14
+# audioop-lts : fourni le module `audioop` retiré en Python 3.13
+# Requis par SpeechRecognition sur Python >= 3.13
+audioop-lts>=0.2.1; python_version >= "3.13"
+
+# --- Vision & Interface ---
+pyautogui>=0.9.50
+Pillow>=10.0.0
+screeninfo>=0.8.0
+opencv-python
+pywebview>=4.0.0
+pycaw>=20181226
+screen-brightness-control>=0.16.0
+
+# --- Utilitaires ---
+python-dotenv
+colorama>=0.4.0
+tenacity>=8.0.0
+pyperclip>=1.8.0
+tabulate>=0.9.0
+tqdm>=4.60.0
+numpy>=1.24.0
+psutil>=5.9.0
+
+# --- Windows ---
+pypiwin32>=223
+pywin32>=300
+comtypes>=1.4.0
+
+# --- Messagerie unifiée ---
+# imaplib/email/ssl sont dans la stdlib. Extras :
+msal>=1.30.0           # OAuth Microsoft Graph (Outlook, IMAP basique coupé)
+mcp>=1.2.0             # Serveur MCP : expose la boîte mail à Claude / agents MCP
+
+# --- Divers ---
+pydantic>=2.0.0
+packaging>=23.0
+
+# --- NVIDIA Nemotron ASR (OPTIONNEL — nécessite GPU NVIDIA recommandé) ---
+# Décommentez les lignes suivantes pour activer la transcription locale :
+# torch>=2.0.0
+# nemo_toolkit[asr]>=2.0.0
+ 
+# --- Developer Tools ---
+customtkinter>=5.2.0
+tkinterweb>=3.22.0
+
+# --- Ajoutes le 13/08/2026 apres verification des imports reels ---------
+# Ces paquets etaient importes par le code mais absents d'ici : une
+# installation neuve suivant le README aurait echoue. edge-tts est le plus
+# grave, son import dans main2.py n'est pas protege.
+edge-tts>=7.2.0          # synthese vocale — import INCONDITIONNEL dans main2
+pystray>=0.19.0          # icone pres de l'horloge, sans elle fermer = quitter
+distro>=1.9.0            # nom de la distribution Linux (tools/machine.py)
+
+# Facultatifs, non installes sur la machine de developpement : leurs
+# fonctions se desactivent proprement si le paquet manque.
+# pygrabber>=0.2          # enumeration des cameras (vision_module)
+# winshell>=0.6           # raccourcis Windows (Windows uniquement)

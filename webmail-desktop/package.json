@@ -1,0 +1,31 @@
+{
+  "name": "jarvis-mail-desktop",
+  "version": "1.0.0",
+  "description": "JARVIS Mail — messagerie unifiée (Gmail, iCloud, Outlook), app de bureau connectée à JARVIS.",
+  "main": "main.js",
+  "author": "TechEnClair",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^32.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "fr.techenclair.jarvismail",
+    "productName": "JARVIS Mail",
+    "directories": { "output": "installer" },
+    "files": ["main.js", "offline.html", "icon.ico", "package.json"],
+    "win": { "target": "nsis", "icon": "icon.ico" },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "JARVIS Mail"
+    }
+  }
+}

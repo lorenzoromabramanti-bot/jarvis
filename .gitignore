@@ -1,0 +1,53 @@
+.env
+token_outlook.json
+credentials_LISEZ_MOI.txt
+jarvis_listes.json
+__pycache__/
+venv/
+frontend/node_modules/
+frontend/dist/
+node_modules/
+_backups/
+_pre_freellm_snapshot/
+_setup/
+quarantine/
+models/
+mobile/
+video_gen/
+*.bak_*
+*.bak-*
+*.log
+*.rar
+unins000.*
+.remember/
+webmail-desktop/node_modules/
+webmail-desktop/dist/
+
+# Donnees personnelles : conversations, notes, config utilisateur.
+# Elles changeaient a chaque utilisation, salissant le depot en permanence —
+# ce qui bloque l'envoi de propositions a un agent (auto_amelioration.py
+# exige un depot propre). Les fichiers restent sur disque, seul le suivi git
+# est retire.
+jarvis_conversations.json
+jarvis_config.json
+ObsidianVault/
+
+# Fichiers audio temporaires de la synthese vocale. JARVIS en cree un par
+# phrase a chaque reponse parlee : non ignores, ils salissaient le depot en
+# permanence et rebloquaient l'envoi de propositions a un agent.
+jarvis_tts_*.mp3
+
+# Sorties de build. webmail-desktop/installer/win-unpacked contenait 74
+# fichiers pour 265 Mo — une application Electron compilee, commitee dans le
+# depot. Un livrable se publie, il ne se versionne pas : il se regenere a
+# partir des sources, et sa presence ici rendait le depot inutilisable pour
+# quiconque le clonerait.
+webmail-desktop/installer/
+*.asar
+
+# Etat d'execution d'outils, pas du projet. .claude-flow contient le PID d'un
+# demon et des metriques reecrites en permanence : ces fichiers apparaissaient
+# modifies a chaque commande, brouillant tout diff. settings.local.json porte
+# des reglages propres a cette machine, comme son nom l'indique.
+.claude-flow/
+.claude/          # configuration d'outillage (ruflo, Claude Code), pas JARVIS

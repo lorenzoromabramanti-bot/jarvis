@@ -1,0 +1,1 @@
+{"chosen_models": {"Gemini": "gemini-3.5-flash", "Grok": "grok-4.5", "Claude": "claude-3-5-sonnet-20241022", "Mistral": "mistral-large-latest", "Groq": "llama-3.3-70b-versatile", "Ollama": "gemma4:26b", "ChatGPT": "gpt-5.6"}}
