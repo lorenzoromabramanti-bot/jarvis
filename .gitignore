@@ -51,3 +51,9 @@ webmail-desktop/installer/
 # des reglages propres a cette machine, comme son nom l'indique.
 .claude-flow/
 .claude/          # configuration d'outillage (ruflo, Claude Code), pas JARVIS
+
+# Outil de mainteneur, pas du produit. Quelqu'un qui clone le depot ne peut
+# rien publier dessus. Et surtout : sa liste de motifs interdits contient les
+# chaines interdites — un scanner dont les motifs vivent dans l'arbre scanne
+# se signale lui-meme, indefiniment.
+publier.py

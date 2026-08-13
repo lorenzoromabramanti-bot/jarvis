@@ -31,11 +31,24 @@ import re
 import urllib.error
 import urllib.request
 
-from config import VERSION
+from config import VERSION, _charger_env
 
-# Dépôt public interrogé. Modifiable sans toucher au code : une installation
-# peut suivre un fork, et les essais ne doivent pas viser le vrai dépôt.
-DEPOT = os.getenv("JARVIS_DEPOT", "").strip()
+
+def depot_configure():
+    """
+    Le dépôt à interroger, lu AU MOMENT DE L'APPEL.
+
+    Une constante posée à l'import gelait la valeur avant que le .env soit
+    chargé : `maj.py` lancé seul répondait « aucun dépôt configuré » alors
+    que la ligne était bien dans le fichier. Le même piège que
+    config.configuration(), pour la même raison — supposer que quelqu'un
+    d'autre a déjà chargé l'environnement.
+
+    Modifiable sans toucher au code : une installation peut suivre un fork,
+    et les essais ne doivent pas viser le vrai dépôt.
+    """
+    _charger_env()
+    return os.getenv("JARVIS_DEPOT", "").strip()
 
 DELAI = 6            # secondes. Court : on démarre, on ne négocie pas.
 UA = "JARVIS/%s (verification de mise a jour)" % VERSION
@@ -69,7 +82,7 @@ def verifier(depot=None, delai=DELAI):
          "url": str, "notes": str, "publiee": str}
         {"ok": False, "raison": str}
     """
-    depot = (depot or DEPOT).strip()
+    depot = (depot or depot_configure()).strip()
     if not depot:
         return {"ok": False, "raison": "aucun dépôt configuré (JARVIS_DEPOT)"}
 
@@ -131,7 +144,7 @@ if __name__ == "__main__":
     print("VERIFICATION DE MISE A JOUR")
     print("=" * 70)
     print("  version locale : %s" % VERSION)
-    print("  depot          : %s" % (DEPOT or "(non configure)"))
+    print("  depot          : %s" % (depot_configure() or "(non configure)"))
     r = verifier()
     for cle, valeur in r.items():
         print("  %-14s %s" % (cle, str(valeur)[:70]))
