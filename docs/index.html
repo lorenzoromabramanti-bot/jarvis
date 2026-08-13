@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS — Journal de bord</title>
+<meta name="description" content="Le journal d'ingenierie reel de JARVIS : mesures, pannes trouvees, correctifs verifies.">
+<style>
+  :root {
+    --ground:      #E3E1D6;
+    --panel:       #D8D5C6;
+    --panel-line:  #C7C3B0;
+    --ink:         #24261F;
+    --muted:       #63614F;
+    --rule:        #B9B6A4;
+    --signal:      #146B63;
+    --signal-soft: rgba(20, 107, 99, 0.10);
+    --fault:       #8A4A1E;
+    --fault-soft:  rgba(138, 74, 30, 0.10);
+    --shadow:      rgba(36, 38, 31, 0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #14140F;
+      --panel:       #1D1D15;
+      --panel-line:  #2A281E;
+      --ink:         #ECE7D6;
+      --muted:       #948F76;
+      --rule:        #38362A;
+      --signal:      #5FBDB3;
+      --signal-soft: rgba(95, 189, 179, 0.12);
+      --fault:       #D68A4C;
+      --fault-soft:  rgba(214, 138, 76, 0.12);
+      --shadow:      rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #14140F;
+    --panel:       #1D1D15;
+    --panel-line:  #2A281E;
+    --ink:         #ECE7D6;
+    --muted:       #948F76;
+    --rule:        #38362A;
+    --signal:      #5FBDB3;
+    --signal-soft: rgba(95, 189, 179, 0.12);
+    --fault:       #D68A4C;
+    --fault-soft:  rgba(214, 138, 76, 0.12);
+    --shadow:      rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", ui-serif, serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono {
+    font-family: "Cascadia Code", "JetBrains Mono", "SF Mono", Consolas,
+                 ui-monospace, monospace;
+  }
+
+  a { color: var(--signal); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 3px;
+  }
+
+  h1, h2, h3 { text-wrap: balance; font-weight: 600; margin: 0; }
+
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  .wide {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── Masthead : le vrai banner de demarrage de JARVIS ─────────────── */
+  .masthead {
+    padding: 64px 0 46px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .banner {
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 3px;
+    padding: 22px 24px;
+    font-size: 13.5px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    color: var(--muted);
+    box-shadow: 0 1px 0 var(--shadow);
+    min-height: 176px;
+  }
+  .banner .hi   { color: var(--ink); }
+  .banner .sig  { color: var(--signal); }
+  .cursor {
+    display: inline-block;
+    width: 8px; height: 1em;
+    background: var(--signal);
+    vertical-align: text-bottom;
+    animation: blink 1s steps(1) infinite;
+  }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; opacity: .6; } }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .thesis {
+    margin-top: 30px;
+    font-size: clamp(1.5rem, 3.6vw, 2.1rem);
+    line-height: 1.35;
+  }
+  .thesis .mono { color: var(--muted); font-size: 0.5em; display: block; margin-bottom: 10px; letter-spacing: .04em; text-transform: uppercase; }
+
+  .install {
+    margin-top: 26px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .install a.dl {
+    font-family: inherit;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 3px;
+    padding: 9px 13px;
+    font-size: 14px;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .install a.dl:hover { border-color: var(--signal); }
+  .install .src { color: var(--muted); font-size: 14px; }
+
+  /* ── Sections generiques ───────────────────────────────────────────── */
+  section { padding: 52px 0; border-bottom: 1px solid var(--rule); }
+
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .lede {
+    font-size: 1.05rem;
+    max-width: 62ch;
+    color: var(--ink);
+  }
+  .lede + .lede { margin-top: 14px; }
+
+  /* ── Chiffres mesures ─────────────────────────────────────────────── */
+  .stats {
+    margin-top: 34px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  @media (min-width: 640px) {
+    .stats { grid-template-columns: repeat(4, 1fr); }
+  }
+  .stat {
+    background: var(--ground);
+    padding: 22px 20px;
+  }
+  .stat .n {
+    font-variant-numeric: tabular-nums;
+    font-size: 1.9rem;
+    letter-spacing: -0.01em;
+  }
+  .stat .n .unit { font-size: 0.95rem; color: var(--muted); margin-left: 2px; }
+  .stat .l { margin-top: 6px; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+  .stat.good .n { color: var(--signal); }
+  .stat.bad  .n { color: var(--fault); }
+
+  /* ── Pipeline (diagramme) ─────────────────────────────────────────── */
+  .flow {
+    margin-top: 36px;
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    flex-wrap: wrap;
+    font-size: 14px;
+  }
+  .fbox {
+    flex: 1 1 200px;
+    border: 1px solid var(--rule);
+    padding: 16px 18px;
+    background: var(--panel);
+  }
+  .fbox h3 { font-size: 14px; }
+  .fbox p { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+  .farrow {
+    flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 14px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .fbox.hit  { border-color: var(--signal); }
+  .fbox.hit  .tag { color: var(--signal); }
+  .fbox.miss { border-color: var(--fault); }
+  .fbox.miss .tag { color: var(--fault); }
+  .tag { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; }
+  @media (max-width: 640px) {
+    .flow { flex-direction: column; }
+    .farrow { padding: 6px 0; transform: rotate(90deg); }
+  }
+
+  /* ── Journal ──────────────────────────────────────────────────────── */
+  .entry {
+    padding: 40px 0;
+    border-top: 1px solid var(--rule);
+    opacity: 0; transform: translateY(10px);
+    transition: opacity .5s ease, transform .5s ease;
+  }
+  .entry.in { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .entry { opacity: 1; transform: none; transition: none; } }
+  .entry:first-of-type { border-top: none; padding-top: 0; }
+
+  .entry-head {
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .entry-no { color: var(--muted); font-size: 13px; }
+  .entry-head h3 { font-size: 1.25rem; }
+
+  .beat { margin: 16px 0; }
+  .beat .k {
+    display: inline-block;
+    font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+    padding: 2px 7px; border-radius: 2px;
+    margin-bottom: 8px;
+  }
+  .beat.fault .k { background: var(--fault-soft); color: var(--fault); }
+  .beat.fix   .k { background: var(--signal-soft); color: var(--signal); }
+  .beat p { margin: 0; color: var(--ink); }
+
+  pre.term {
+    margin: 14px 0 0;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-left: 3px solid var(--fault);
+    border-radius: 2px;
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-x: auto;
+    color: var(--muted);
+  }
+  pre.term .hl { color: var(--ink); }
+  pre.term .bad-line { color: var(--fault); }
+
+  .delta {
+    margin-top: 14px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    font-size: 14px;
+  }
+  .delta .from { color: var(--fault); text-decoration: line-through; text-decoration-color: var(--fault); }
+  .delta .to { color: var(--signal); font-weight: 600; }
+  .delta .arrow { color: var(--muted); }
+
+  /* ── Verification ─────────────────────────────────────────────────── */
+  .checks {
+    margin-top: 30px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  .check {
+    background: var(--ground);
+    padding: 14px 16px;
+    font-size: 13.5px;
+  }
+  .check .file { color: var(--signal); display: block; margin-bottom: 4px; }
+  .check .what { color: var(--muted); line-height: 1.5; }
+
+  .principle {
+    margin-top: 26px;
+    padding: 18px 20px;
+    border-left: 3px solid var(--signal);
+    background: var(--signal-soft);
+    font-size: 15px;
+  }
+
+  /* ── Pied ─────────────────────────────────────────────────────────── */
+  footer { padding: 46px 0 70px; }
+  .foot-grid {
+    display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .foot-grid .mono { font-size: 13px; color: var(--muted); }
+  footer .note { margin-top: 22px; color: var(--muted); font-size: 13px; max-width: 60ch; }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--signal); }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="banner mono" id="banner" aria-label="Sortie console reelle de JARVIS au demarrage"></div>
+    <p class="thesis">
+      <span class="mono">Ce que cette page raconte</span>
+      Un assistant vocal construit à coups de vraies pannes trouvées, mesurées,
+      corrigées — pas de fonctionnalités promises.
+    </p>
+    <div class="install">
+      <a class="dl mono" href="https://github.com/lorenzoromabramanti-bot/jarvis/releases/latest">Installer-JARVIS.exe</a>
+      <span class="src">— 11 Mo, télécharge le code plutôt que de l'embarquer</span>
+    </div>
+  </div>
+</header>
+
+<section aria-labelledby="pipeline-h">
+  <div class="wide">
+    <div class="eyebrow">Le pipeline, mesuré</div>
+    <h2 id="pipeline-h" class="lede">
+      Une question passe d'abord par une chaîne d'outils locaux. Le modèle
+      n'intervient que si aucun d'eux ne répond — et jusqu'à récemment, il
+      intervenait bien plus souvent qu'il n'aurait dû.
+    </h2>
+
+    <div class="flow" role="img" aria-label="Diagramme : question, puis chaine locale, puis modele en dernier recours">
+      <div class="fbox">
+        <span class="tag">Entrée</span>
+        <h3>Voix ou texte</h3>
+        <p>Canal distingué : la voix reste concise, le texte peut se déployer.</p>
+      </div>
+      <div class="farrow">→</div>
+      <div class="fbox hit">
+        <span class="tag">Chaîne locale</span>
+        <h3>10 outils, priorité 20 à 120</h3>
+        <p>Heure, calcul, conversions, informations sur la machine.</p>
+      </div>
+      <div class="farrow">→</div>
+      <div class="fbox miss">
+        <span class="tag">Dernier recours</span>
+        <h3>Modèle</h3>
+        <p>Uniquement si rien dans la chaîne ne correspond.</p>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat good">
+        <div class="n">2<span class="unit">–6 ms</span></div>
+        <div class="l">une question locale, sans appeler de modèle</div>
+      </div>
+      <div class="stat bad">
+        <div class="n">13<span class="unit">–15 s</span></div>
+        <div class="l">avant correctif, pour une question sur la machine elle-même</div>
+      </div>
+      <div class="stat">
+        <div class="n">142<span class="unit">/142</span></div>
+        <div class="l">actions du code rattachées à une capacité déclarée — zéro orpheline</div>
+      </div>
+      <div class="stat">
+        <div class="n">127<span class="unit"> s</span></div>
+        <div class="l">d'un dossier vide à un JARVIS qui répond, mesuré</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="journal-h">
+  <div class="wide">
+    <div class="eyebrow">Journal</div>
+    <h2 id="journal-h" class="lede">
+      Cinq pannes réelles, dans l'ordre où elles ont été trouvées — pas
+      choisies pour être flatteuses.
+    </h2>
+
+    <article class="entry">
+      <div class="entry-head">
+        <span class="entry-no mono">01</span>
+        <h3>Une phrase pouvait figer JARVIS pour de bon</h3>
+      </div>
+      <div class="beat fault">
+        <span class="k">Constat</span>
+        <p>« Neuf puissance neuf puissance neuf puissance neuf » se traduisait en <code class="mono">9**9**9**9</code>. Python calcule ça sans jamais rendre la main.</p>
+      </div>
+      <pre class="term mono"><span class="hl">$ time python -c "9**9**9**9"</span>
+<span class="bad-line">^C   — toujours bloqué apres 15 s, processus tué</span></pre>
+      <div class="beat fix">
+        <span class="k">Correctif</span>
+        <p>L'évaluation est passée d'un <code class="mono">eval()</code> filtré à un parcours d'arbre syntaxique en liste blanche, qui borne la puissance <em>avant</em> de la calculer.</p>
+      </div>
+      <div class="delta mono">
+        <span class="from">bloqué indéfiniment</span>
+        <span class="arrow">→</span>
+        <span class="to">refusé en ~0,01 ms</span>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="entry-head">
+        <span class="entry-no mono">02</span>
+        <h3>Vingt tables de domotique, zéro entité réelle</h3>
+      </div>
+      <div class="beat fault">
+        <span class="k">Constat</span>
+        <p>« Allume le salon » ciblait <code class="mono">light.salon</code>. L'entité n'existait pas — mais JARVIS répondait « J'allume le salon » quand même.</p>
+      </div>
+      <pre class="term mono"><span class="hl">48 entités déclarées dans ha_config.py</span>
+<span class="bad-line">0 existent parmi les 737 entités réelles</span></pre>
+      <div class="beat fix">
+        <span class="k">Correctif</span>
+        <p>Les tables figées sont vidées ; la résolution interroge désormais le Home Assistant vivant, et dit ce qui existe vraiment quand rien ne correspond.</p>
+      </div>
+      <div class="delta mono">
+        <span class="from">« j'allume le salon », rien ne bouge</span>
+        <span class="arrow">→</span>
+        <span class="to">« Home Assistant n'en déclare que 2 : … »</span>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="entry-head">
+        <span class="entry-no mono">03</span>
+        <h3>Écrit, testé, jamais branché</h3>
+      </div>
+      <div class="beat fault">
+        <span class="k">Constat</span>
+        <p><code class="mono">ha_resolution.py</code> existait depuis des semaines — exactement pour remplacer les tables mortes du point 02. Personne ne l'importait, sauf son propre test.</p>
+      </div>
+      <div class="beat fix">
+        <span class="k">Correctif</span>
+        <p>Branché aux deux points de distribution réels (actions du modèle, messages du HUD), avec une garde qui interroge le module au lieu de supposer qu'il tourne.</p>
+      </div>
+      <div class="delta mono">
+        <span class="from">code mort, silencieux</span>
+        <span class="arrow">→</span>
+        <span class="to">appelé sur les 2 chemins</span>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="entry-head">
+        <span class="entry-no mono">04</span>
+        <h3>Un accent manqué coûtait treize secondes</h3>
+      </div>
+      <div class="beat fault">
+        <span class="k">Constat</span>
+        <p>« combien de mémoire vive utilisée » (dicté, sans accent) ne correspondait pas au motif « <em>mémoire</em> vive » du code. La question repartait vers le modèle, qui répondait n'avoir aucun accès à la machine.</p>
+      </div>
+      <pre class="term mono"><span class="bad-line">« quelle est mon adresse ip »           13 412 ms</span>
+<span class="bad-line">« quelle est ma version de windows »    14 988 ms</span></pre>
+      <div class="beat fix">
+        <span class="k">Correctif</span>
+        <p>Comparaison insensible aux accents des deux côtés — et le modèle du processeur, jusque-là confondu avec sa charge, en a profité pour être distingué.</p>
+      </div>
+      <div class="delta mono">
+        <span class="from">jusqu'à 15 s</span>
+        <span class="arrow">→</span>
+        <span class="to">1 à 6 ms</span>
+      </div>
+    </article>
+
+    <article class="entry">
+      <div class="entry-head">
+        <span class="entry-no mono">05</span>
+        <h3>Une importation qui appelle sys.exit()</h3>
+      </div>
+      <div class="beat fault">
+        <span class="k">Constat</span>
+        <p>Sur Linux sans tkinter, <code class="mono">import pyautogui</code> lève <code class="mono">SystemExit</code> — qui n'hérite pas de <code class="mono">Exception</code>. Sept sites d'import, tous protégés par un <code class="mono">except Exception</code> inopérant. Le processus mourait sans un mot.</p>
+      </div>
+      <div class="beat fix">
+        <span class="k">Correctif</span>
+        <p>Les points d'entrée attrapent désormais <code class="mono">BaseException</code>, en laissant passer <code class="mono">KeyboardInterrupt</code>.</p>
+      </div>
+      <div class="delta mono">
+        <span class="from">processus disparaît, aucune trace</span>
+        <span class="arrow">→</span>
+        <span class="to">module absent, raison donnée</span>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section aria-labelledby="verif-h">
+  <div class="wide">
+    <div class="eyebrow">Vérifié, pas supposé</div>
+    <h2 id="verif-h" class="lede">
+      Chaque fichier <code class="mono">_test_*.py</code> existe parce qu'une
+      panne réelle l'a rendu nécessaire — pas par discipline abstraite.
+    </h2>
+
+    <div class="checks mono">
+      <div class="check"><span class="file">_test_calcul_sur.py</span><span class="what">5 variantes de la bombe exponentielle, refusées en &lt;1 ms</span></div>
+      <div class="check"><span class="file">_test_catalogue.py</span><span class="what">142 actions du code, 0 orpheline non déclarée</span></div>
+      <div class="check"><span class="file">_test_machine.py</span><span class="what">accentué et non accentué donnent la même réponse</span></div>
+      <div class="check"><span class="file">_test_garde_fous.py</span><span class="what">un article qui parle de banque reste ordinaire</span></div>
+      <div class="check"><span class="file">_test_portabilite.py</span><span class="what">aucun import Windows inconditionnel</span></div>
+      <div class="check"><span class="file">_test_amorceur.py</span><span class="what">l'environnement est jugé en l'essayant, pas sur son code retour</span></div>
+    </div>
+
+    <div class="principle">
+      Une fonction indisponible le dit. Elle ne renvoie pas une liste vide,
+      ne répond pas « c'est fait », n'invente pas de valeur par défaut.
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wide">
+    <div class="foot-grid">
+      <div>
+        <div class="mono">jarvis</div>
+        <div class="note">Domotique, courrier, système. Répond en local en
+          quelques millisecondes quand il le peut ; le dit quand il ne peut pas.
+          <br><a href="https://github.com/lorenzoromabramanti-bot/jarvis">Code source sur GitHub</a></div>
+      </div>
+      <div class="mono" style="text-align:right">
+        Windows — éprouvé<br>
+        Linux — éprouvé sur Ubuntu 26.04<br>
+        macOS — jamais essayé sur une vraie machine
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var reduit = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var banniere = [
+    "   J . A . R . V . I . S   —  Systeme En Ligne",
+    "============================================================",
+    "  Interface PC     : http://localhost:8001",
+    "  Interface Mobile : http://192.168.1.116:8000",
+    "",
+    "  Commandes vocales actives.",
+    "  Dites 'Jarvis' pour commencer.",
+    "============================================================"
+  ].join("\n");
+  var cible = document.getElementById('banner');
+
+  function poserCurseur() {
+    var c = document.createElement('span');
+    c.className = 'cursor';
+    c.setAttribute('aria-hidden', 'true');
+    cible.appendChild(c);
+  }
+
+  if (reduit) {
+    cible.textContent = banniere;
+    poserCurseur();
+  } else {
+    var i = 0;
+    cible.textContent = '';
+    (function taper() {
+      cible.textContent = banniere.slice(0, i);
+      i += Math.max(1, Math.round(Math.random() * 3));
+      if (i <= banniere.length) {
+        requestAnimationFrame(function () { setTimeout(taper, 6); });
+      } else {
+        cible.textContent = banniere;
+        poserCurseur();
+      }
+    })();
+  }
+
+  var entrees = document.querySelectorAll('.entry');
+  if ('IntersectionObserver' in window && !reduit) {
+    var obs = new IntersectionObserver(function (list) {
+      list.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); }
+      });
+    }, { threshold: 0.12 });
+    entrees.forEach(function (e) { obs.observe(e); });
+  } else {
+    entrees.forEach(function (e) { e.classList.add('in'); });
+  }
+})();
+</script>
+</body>
+</html>
