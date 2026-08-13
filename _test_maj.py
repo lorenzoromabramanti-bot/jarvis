@@ -48,9 +48,25 @@ def verifier():
     print("  OK  versions illisibles sans plantage")
 
     # ── Echecs ──────────────────────────────────────────────────────────
-    r = maj.verifier(depot="")
-    assert r["ok"] is False and "dépôt" in r["raison"], r
+    # « Aucun depot configure » ne peut plus se dire en passant depot="" :
+    # une chaine vide signifie desormais « prends celui du .env », et il y en
+    # a un. On neutralise la source le temps du controle, sinon ce test
+    # verifierait le contraire de ce qu'il annonce.
+    vrai = maj.depot_configure
+    maj.depot_configure = lambda: ""
+    try:
+        r = maj.verifier()
+        assert r["ok"] is False and "dépôt" in r["raison"], r
+    finally:
+        maj.depot_configure = vrai
     print("  OK  sans depot configure : refus explique, pas d'exception")
+
+    # Et avec le depot reel, la chaine complete repond.
+    r = maj.verifier()
+    assert r.get("ok"), "le depot configure ne repond pas : %r" % r
+    assert r["locale"] == maj.VERSION
+    print("  OK  depot reel interroge : locale %s, distante %s, a jour %s"
+          % (r["locale"], r["distante"], r["a_jour"]))
 
     debut = time.perf_counter()
     r = maj.verifier(depot="ce-depot/n-existe-pas-du-tout-12345", delai=8)

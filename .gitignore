@@ -57,3 +57,10 @@ webmail-desktop/installer/
 # chaines interdites — un scanner dont les motifs vivent dans l'arbre scanne
 # se signale lui-meme, indefiniment.
 publier.py
+
+# Bruit visible sur le depot public : un fichier de debogage rempli de
+# « send_message a demarre! », un numero de cache interne, et une note de
+# travail qui tutoie l'utilisateur et decrit sa redirection OneDrive.
+DEBUG_ALIVE.txt
+.jarvis_cache_version
+docs/proposition_memoire_partagee.md
