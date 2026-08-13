@@ -68,7 +68,7 @@
       <div class="av-panel-title">SECURITY_CORE // ANTIVIRUS_SCAN</div>
       <button class="av-panel-close" id="av-panel-close-btn">&times;</button>
     </div>
-    
+
     <div class="av-panel-status-bar">
       <span id="av-status-label">SYS_STATUS: STANDBY</span>
       <span id="av-threats-count">MENACES DÉTECTÉES: 0</span>
@@ -129,14 +129,14 @@
           IP : Chargement...
         </div>
       </div>
-      
+
       <div class="vpn-country-selector">
         <label for="vpn-country-select">CHOISIR UN PAYS :</label>
         <select id="vpn-country-select" class="vpn-select">
           <option value="">Chargement des pays...</option>
         </select>
       </div>
-      
+
       <div class="vpn-controls">
         <button id="vpn-connect-btn" class="vpn-action-btn connect-btn">SE CONNECTER</button>
         <button id="vpn-disconnect-btn" class="vpn-action-btn disconnect-btn" disabled>SE DÉCONNECTER</button>
@@ -214,7 +214,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Restaurant Details Overlay -->
     <div id="restaurant-details-overlay" class="restaurant-details-overlay hidden">
       <div class="restaurant-details-container">
@@ -275,7 +275,7 @@
       <div class="obsidian-panel-title">JARVIS // OBSIDIAN_MEMORY_VAULT</div>
       <button class="obsidian-panel-close" id="obsidian-panel-close-btn">&times;</button>
     </div>
-    
+
     <div class="obsidian-panel-body">
       <!-- Left side: notes list -->
       <div class="obsidian-list-col">
@@ -287,7 +287,7 @@
           <!-- Dynamique -->
         </div>
       </div>
-      
+
       <!-- Right side: editor -->
       <div class="obsidian-editor-col" id="obsidian-editor-container">
         <input type="text" id="obsidian-note-title" placeholder="Titre de la note...">
@@ -298,7 +298,7 @@
         </div>
       </div>
     </div>
-    
+
     <div class="obsidian-panel-footer">
       <span>JARVIS_HUD_OBSIDIAN_V1.0</span>
     </div>
@@ -320,7 +320,7 @@
       <div class="uninstaller-panel-title">JARVIS // SOFTWARE_UNINSTALLER</div>
       <button class="uninstaller-panel-close" id="uninstaller-panel-close-btn">&times;</button>
     </div>
-    
+
     <div class="uninstaller-panel-body">
       <!-- VUE 1 : Liste des applications -->
       <div id="uninstaller-list-view" class="uninstaller-view">
@@ -331,7 +331,7 @@
           <div class="uninstaller-loading">CHARGEMENT DE LA LISTE DES LOGICIELS...</div>
         </div>
       </div>
-      
+
       <!-- VUE 2 : Scan / Désinstallation / Traces -->
       <div id="uninstaller-action-view" class="uninstaller-view hidden">
         <!-- Animation radar pendant le scan -->
@@ -344,7 +344,7 @@
           </div>
           <div class="uninstaller-status-msg" id="uninstaller-status-msg">En attente de la désinstallation...</div>
         </div>
-        
+
         <!-- Liste des traces détectées -->
         <div id="uninstaller-leftovers-container" class="uninstaller-leftovers-container hidden">
           <div class="uninstaller-leftovers-header">
@@ -363,7 +363,7 @@
         </div>
       </div>
     </div>
-    
+
     <div class="uninstaller-panel-footer">
       <span>JARVIS_HUD_UNINSTALLER_V1.0</span>
     </div>
@@ -380,7 +380,7 @@
       <button class="uninstaller-panel-close" id="jarvis-os-wizard-close-btn">&times;</button>
     </div>
     <div class="uninstaller-panel-body" style="padding: 20px; font-family: 'Courier New', monospace; color: #00e5ff;">
-      
+
       <!-- Étape 1 : Présentation -->
       <div id="os-step-1">
         <h3 style="margin-top:0; text-shadow: 0 0 10px #00e5ff;">BIENVENUE DANS JARVIS OS</h3>
@@ -416,7 +416,7 @@
         <p style="color: rgba(0,229,255,0.8); line-height: 1.5; margin-bottom: 15px;">
           Prêt à initialiser le sous-système. Le téléchargement peut prendre quelques minutes selon votre connexion.
         </p>
-        
+
         <div id="os-progress-container" class="hidden" style="margin-bottom: 15px;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px;">
             <span id="os-progress-status">Téléchargement en cours...</span>
@@ -433,7 +433,7 @@
           <button class="uninstaller-btn" id="os-btn-install" style="border-color:#ff3366; color:#ff3366; background:rgba(255,51,102,0.05); box-shadow: 0 0 10px rgba(255,51,102,0.2);">LANCER L'INSTALLATION</button>
         </div>
       </div>
-      
+
     </div>
     <div class="uninstaller-panel-footer">
       <span>JARVIS_OS_SETUP_V1.0</span>
@@ -448,7 +448,7 @@
     <div class="uninstaller-panel-header" id="jarvis-os-header">
       <div class="uninstaller-panel-drag-icon">🐧</div>
       <div class="uninstaller-panel-title">JARVIS OS // SUBSYSTEM</div>
-      
+
       <!-- Toolbar controls -->
       <div style="flex: 1; display: flex; justify-content: flex-end; gap: 10px; margin-right: 20px;">
         <button class="uninstaller-btn secondary" id="os-toolbar-appstore" style="padding: 2px 10px; font-size: 11px; color: #00e5ff; border-color: rgba(0,229,255,0.4); background: rgba(0,229,255,0.08);">🛒 APP STORE</button>
@@ -457,11 +457,11 @@
         <button class="uninstaller-btn secondary" id="os-toolbar-stop" style="padding: 2px 10px; font-size: 11px; color: #ff3366; border-color: rgba(255,51,102,0.3);">🛑 ÉTEINDRE</button>
         <button class="uninstaller-btn secondary" id="os-toolbar-uninstall" style="padding: 2px 10px; font-size: 11px; color: #ff3366; border-color: rgba(255,51,102,0.3); margin-left: 20px;" title="Désinstaller et supprimer les fichiers">🗑️ DÉSINSTALLER</button>
       </div>
-      
+
       <button class="uninstaller-panel-close" id="jarvis-os-fullscreen-btn" style="margin-right: 10px;" title="Plein Écran">[ ]</button>
       <button class="uninstaller-panel-close" id="jarvis-os-close-btn">&times;</button>
     </div>
-    
+
     <div class="uninstaller-panel-body" style="padding: 0; background: #000; overflow: hidden; position: relative;">
       <div id="os-loading-overlay" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,5,15,0.9); z-index: 2; font-family: 'Courier New', monospace; color: #00e5ff;">
         <div class="pulse" style="width: 20px; height: 20px; background: #00e5ff; border-radius: 50%; margin-bottom: 20px;"></div>
@@ -469,7 +469,7 @@
       </div>
       <iframe id="jarvis-os-iframe" style="width: 100%; height: 100%; border: none;" allow="clipboard-read; clipboard-write; microphone; camera; display-capture; autoplay; fullscreen; speaker"></iframe>
     </div>
-    
+
     <div class="uninstaller-panel-footer">
       <span id="os-status-text">ÉTAT: HORS LIGNE</span>
       <span>JARVIS_OS_CORE_V1.0</span>
@@ -489,7 +489,7 @@
     <div class="uninstaller-panel-body" style="padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;">
       <!-- Search bar -->
       <div style="display: flex; gap: 10px; align-items: center;">
-        <input id="os-appstore-search" type="text" placeholder="🔍 Rechercher une application..." 
+        <input id="os-appstore-search" type="text" placeholder="🔍 Rechercher une application..."
           style="flex: 1; background: rgba(0,229,255,0.06); border: 1px solid rgba(0,229,255,0.25); border-radius: 6px; padding: 8px 14px; color: #e0f7ff; font-family: 'Orbitron', monospace; font-size: 13px; outline: none;">
         <button class="uninstaller-btn" id="os-appstore-custom-install" style="font-size: 12px; padding: 8px 16px; white-space: nowrap;">📦 INSTALL. PERSO.</button>
       </div>
@@ -529,7 +529,7 @@
       <div class="uninstaller-panel-title">JARVIS // SYSTEM_UPGRADER</div>
       <button class="uninstaller-panel-close" id="winget-panel-close-btn">&times;</button>
     </div>
-    
+
     <div class="uninstaller-panel-body">
       <!-- Main view: list of upgrades -->
       <div class="uninstaller-view">
@@ -551,7 +551,7 @@
           <button class="uninstaller-btn secondary" id="winget-refresh-btn" style="flex:0.5;">ACTUALISER</button>
         </div>
       </div>
-      
+
       <!-- Overlay view: Logs console when upgrading -->
       <div id="winget-logs-container" class="uninstaller-leftovers-container hidden" style="position: absolute; top: 50px; left: 0; right: 0; bottom: 45px; background: rgba(0, 5, 12, 0.98); z-index: 10; padding: 15px; display: flex; flex-direction: column; border-top: 1px solid rgba(0, 229, 255, 0.3);">
         <div style="font-family:'Courier New', monospace; font-size: 11px; margin-bottom: 10px; color: #00e5ff; border-bottom: 1px dashed rgba(0, 229, 255, 0.3); padding-bottom: 5px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
@@ -562,7 +562,7 @@
         <button class="uninstaller-btn secondary" id="winget-close-logs-btn" style="margin-top: 10px; align-self: flex-end;">FERMER LA CONSOLE</button>
       </div>
     </div>
-    
+
     <div class="uninstaller-panel-footer">
       <span>JARVIS_HUD_UPGRADER_V1.0</span>
     </div>
@@ -672,7 +672,7 @@
       </div>
       <div id="boot-logo-text">J.A.R.V.I.S</div>
       <div id="boot-logo-sub">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
-      <div id="boot-logo-version">CORE v9.0 &nbsp;·&nbsp; BUILD TECHENCLAIR &nbsp;·&nbsp; <span id="boot-build-year"></span></div>
+      <div id="boot-logo-version">CORE v9.0 &nbsp;·&nbsp; BUILD LOCAL &nbsp;·&nbsp; <span id="boot-build-year"></span></div>
     </div>
 
     <!-- Separator -->
@@ -701,7 +701,7 @@
     <!-- Bottom status bar -->
     <div id="boot-statusbar">
       <span id="boot-status-text">DÉMARRAGE EN COURS...</span>
-      <span id="boot-statusbar-right">www.techenclair.fr</span>
+      <span id="boot-statusbar-right"></span>
     </div>
   </div>
 
@@ -762,7 +762,7 @@
     <div class="dropdown-corner tr"></div>
     <div class="dropdown-corner bl"></div>
     <div class="dropdown-corner br"></div>
-    
+
     <div class="dropdown-header">◈ CONTROLES_SYSTEME // MENU</div>
 
     <div class="dropdown-search" style="padding:10px 14px 4px;">
@@ -784,7 +784,7 @@
           </button>
         </div>
       </div>
-      
+
       <!-- Section 2: Performances & Accès -->
       <div class="dropdown-section">
         <div class="section-title">PERFORMANCES & ACCÈS</div>
@@ -930,7 +930,7 @@
   <div id="update-banner">SYSTEM_UPDATE_AVAILABLE</div>
 
   <div id="assistant-label">J.A.R.V.I.S <span style="font-size:10px;opacity:0.5;margin-left:10px;font-weight:normal;">by
-      www.techenclair.fr</span></div>
+      </span></div>
 
   <div id="keyboard-hud"
     style="display:none;position:fixed;bottom:275px;left:50%;transform:translateX(-50%);z-index:200;width:85%;max-width:600px;pointer-events:auto;">
@@ -973,7 +973,7 @@
           <div class="cmd-cat-title">💬 COMMANDES GÉNÉRALES &amp; IDENTITÉ</div>
           <div class="cmd-grid">
             <div class="cmd-item"><span class="cmd-text">"Jarvis, que peux-tu faire ?"</span><span class="cmd-desc">Affiche le menu d'aide</span></div>
-            <div class="cmd-item"><span class="cmd-text">"Qui t'a créé ?"</span><span class="cmd-desc">Présente ton créateur TechEnClair</span></div>
+            <div class="cmd-item"><span class="cmd-text">"Qui t'a créé ?"</span><span class="cmd-desc">Présente ton créateur </span></div>
             <div class="cmd-item"><span class="cmd-text">"Quelle heure est-il ?"</span><span class="cmd-desc">Heure locale actuelle</span></div>
             <div class="cmd-item"><span class="cmd-text">"Quelle est la date d'aujourd'hui ?"</span><span class="cmd-desc">Date du jour</span></div>
             <div class="cmd-item"><span class="cmd-text">"Raconte-moi une blague"</span><span class="cmd-desc">Blague aléatoire</span></div>
@@ -1394,8 +1394,6 @@
       style="position:absolute;top:14px;left:20px;z-index:20;color:rgba(0,229,255,.7);font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;pointer-events:none;line-height:1.8;">
       <div style="font-size:20px;font-weight:bold;letter-spacing:5px;margin-bottom:5px;">J.A.R.V.I.S</div>
       <div style="font-size:10px;letter-spacing:3px;opacity:0.7;margin-bottom:10px;">SYSTÈME DE NAVIGATION</div>
-      <div style="font-size:9px;letter-spacing:1px;opacity:0.5;">by www.techenclair.fr</div>
-      <div style="font-size:9px;letter-spacing:1px;opacity:0.5;">TIKTOK : TECHENCLAIR</div>
     </div>
     <div
       style="position:absolute;top:14px;right:20px;text-align:right;z-index:20;color:rgba(0,229,255,.7);font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;pointer-events:none;line-height:1.8;">
@@ -1821,10 +1819,7 @@
 
       <!-- ══ LIENS ══════════════════════════════════════════════ -->
       <div class="settings-links">
-        <a class="settings-link-btn" href="https://www.techenclair.fr/" target="_blank">&#127760; Site Web</a>
-        <a class="settings-link-btn paypal" href="https://www.paypal.com/paypalme/TechEnClair?country.x=FR&locale.x=fr_FR" target="_blank">&#10084; Soutenir</a>
         <a class="settings-link-btn discord" href="https://discord.gg/TGpxArpNcE" target="_blank">&#128172; Discord</a>
-        <a class="settings-link-btn tiktok" href="https://www.tiktok.com/@techenclair" target="_blank">&#9654; TikTok</a>
       </div>
     </div>
   </div>
@@ -2065,7 +2060,7 @@
 
       <div style="font-size: 13px; line-height: 1.6; color: #e0e0e0; max-height: 400px; overflow-y: auto; padding-right: 10px;">
         <p style="margin-bottom: 15px;">L'antivirus intégré à J.A.R.V.I.S est un outil d'audit de sécurité local développé sur mesure pour ce projet (sans dépendance externe lourde).</p>
-        
+
         <h4 style="color: #ff8a1a; margin-top: 15px; margin-bottom: 5px; text-transform: uppercase; font-size: 13px;">🔍 Trois niveaux d'analyse :</h4>
         <ul style="margin-bottom: 15px; padding-left: 20px; list-style-type: square;">
           <li style="margin-bottom: 8px;"><strong>Registre Windows :</strong> Inspecte les clés de démarrage pour détecter des programmes malveillants s'exécutant automatiquement.</li>
@@ -2100,7 +2095,7 @@
         <button id="ha-panel-close-btn" class="ha-control-btn" title="Fermer">[ X ]</button>
       </div>
     </div>
-    
+
     <div class="ha-panel-body">
       <!-- Barre d'outils / Recherche -->
       <div class="ha-toolbar">
@@ -2184,13 +2179,13 @@
   <div id="first-launch-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px);">
     <div style="background:rgba(0,30,60,0.95);border:1px solid #00e5ff;box-shadow:0 0 30px rgba(0,229,255,0.4);border-radius:8px;max-width:600px;width:90%;padding:30px;color:#00e5ff;font-family:'Courier New',monospace;text-align:center;position:relative;overflow:hidden;">
       <div style="position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,transparent,#00e5ff,transparent);animation:pulse-glow 2s infinite;"></div>
-      
+
       <h2 style="font-size:24px;margin-top:0;text-shadow:0 0 10px #00e5ff;text-transform:uppercase;letter-spacing:2px;">MERCI D'AVOIR INSTALLÉ J.A.R.V.I.S</h2>
-      
+
       <div style="margin:20px 0;text-align:left;font-size:15px;line-height:1.6;color:#a0e5ff;background:rgba(0,229,255,0.05);padding:20px;border-left:3px solid #00e5ff;">
         <p style="margin-top:0;"><strong>J.A.R.V.I.S</strong> est un projet personnel ambitieux, conçu pour repousser les limites de l'assistance virtuelle sur ordinateur.</p>
         <p>Ce projet est <strong style="color:#00e5ff;">100% open-source et entièrement gratuit</strong>.</p>
-        
+
         <div style="margin-top:20px;padding:15px;border:1px solid #ff3366;background:rgba(255,51,102,0.1);color:#ff3366;">
           <h3 style="margin-top:0;font-size:16px;display:flex;align-items:center;gap:10px;">
             ⚠️ AVERTISSEMENT LÉGAL
@@ -2198,9 +2193,9 @@
           <p style="margin-bottom:0;font-size:14px;"><strong>Ce logiciel ne peut en aucun cas être vendu ou monétisé de quelque manière que ce soit.</strong> Toute revente est strictement interdite.</p>
         </div>
       </div>
-      
+
       <p style="margin-bottom:25px;font-size:14px;">Pour plus d'informations, des tutoriels ou pour soutenir le projet, visitez le site officiel.</p>
-      
+
       <div style="display:flex;gap:15px;justify-content:center;">
         <button id="first-launch-btn-site" style="background:#00e5ff;color:#000;border:none;padding:12px 25px;font-family:'Courier New',monospace;font-weight:bold;font-size:16px;cursor:pointer;border-radius:4px;box-shadow:0 0 15px rgba(0,229,255,0.5);transition:all 0.3s;letter-spacing:1px;">SITE OFFICIEL</button>
         <button id="first-launch-btn-close" style="background:transparent;color:#00e5ff;border:1px solid #00e5ff;padding:12px 25px;font-family:'Courier New',monospace;font-weight:bold;font-size:16px;cursor:pointer;border-radius:4px;transition:all 0.3s;letter-spacing:1px;">J'AI COMPRIS</button>

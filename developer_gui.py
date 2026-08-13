@@ -62,7 +62,7 @@ class JarvisDeveloperGUI(ctk.CTk):
         self.header_label.pack(side="left")
 
         # Crédit Tech en Clair
-        self.credit_label = ctk.CTkLabel(self.chat_header, text="créé par www.techenclair.fr - Projet OpenSource (Interdit à la revente)", font=ctk.CTkFont(size=12, slant="italic"), text_color="#7f8c8d")
+        self.credit_label = ctk.CTkLabel(self.chat_header, text="Projet OpenSource (Interdit à la revente)", font=ctk.CTkFont(size=12, slant="italic"), text_color="#7f8c8d")
         self.credit_label.pack(side="left", padx=(15, 0), pady=(4, 0))
 
         # Sélecteur visuel de Modèle

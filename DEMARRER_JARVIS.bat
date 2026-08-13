@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul 2>&1
-TITLE J.A.R.V.I.S - www.techenclair.fr
+TITLE J.A.R.V.I.S
 COLOR 0B
 cd /d "%~dp0"
 

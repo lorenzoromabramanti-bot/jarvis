@@ -2,7 +2,6 @@
 #  ha_config.py — Configuration Home Assistant & Météo
 #  Personnalisez CE fichier selon votre installation domotique
 #  Ne touchez pas main2.py pour la domotique, tout est ici.
-#  Site : www.techenclair.fr
 # ============================================================
 
 import os

@@ -3,7 +3,7 @@ import base64
 import time
 try:
     import pyautogui
-except ImportError:
+except BaseException:
     pyautogui = None
 try:
     import cv2

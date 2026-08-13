@@ -68,3 +68,9 @@ docs/proposition_memoire_partagee.md
 # Raccourcis Windows : ils pointent vers des emplacements de CETTE
 # machine et n'ont aucun sens ailleurs.
 *.lnk
+
+# Sorties de compilation de l'amorceur. L'exe fait 11 Mo et se reconstruit
+# depuis les sources ; il se publie en piece jointe de release, il ne se
+# versionne pas.
+amorceur/build/
+amorceur/dist/

@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 try:
     import pyautogui
-except ImportError:
+except BaseException:
     pyautogui = None
 import ctypes
 import time

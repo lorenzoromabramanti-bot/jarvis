@@ -1,6 +1,6 @@
 try:
     import pyautogui
-except ImportError:
+except BaseException:
     pyautogui = None
 import time
 import pyperclip

@@ -38,7 +38,24 @@ l'horloge. Pour l'arrêter : « quitter jarvis », ou le menu de cette icône.
 
 ## Installation
 
-Il faut **Python 3.12** et **Git**.
+**Téléchargez l'installeur depuis la page des [versions](../../releases), et
+lancez-le.** Il trouve un Python utilisable, récupère la dernière version,
+prépare tout, puis ouvre l'assistant de configuration.
+
+| Système | Fichier | État |
+|---|---|---|
+| Windows 10 / 11 | `Installer-JARVIS.exe` | éprouvé |
+| Linux | `python3 amorceur/amorceur.py` | éprouvé sur Ubuntu 26.04 |
+| macOS | `python3 amorceur/amorceur.py` | **jamais essayé sur un vrai Mac** — voir [docs/macos.md](docs/macos.md) |
+
+L'installeur pèse 11 Mo : il télécharge JARVIS plutôt que de l'embarquer.
+Vous pouvez donc lire le code avant qu'il ne s'installe — ce qui compte pour
+un programme qui pilote votre machine.
+
+Il faut **Python 3.10 à 3.13**. La 3.14 est trop récente : plusieurs
+dépendances n'ont pas encore de version compilée pour elle.
+
+### À la main, si vous préférez
 
 ```bash
 git clone <url-du-depot> jarvis
@@ -46,13 +63,7 @@ cd jarvis
 python -m venv venv
 venv\Scripts\python.exe -m pip install -r requirements.txt
 copy .env.example .env
-```
-
-Ouvrez `.env` et renseignez au minimum les deux réglages de la section
-« Indispensable ». Puis :
-
-```bash
-venv\Scripts\python.exe main2.py
+venv\Scripts\python.exe installeur.py
 ```
 
 Pour savoir ce qui manque à tout moment :
@@ -63,6 +74,12 @@ venv\Scripts\python.exe config.py
 
 Cette commande liste ce qui est disponible sur votre machine et **quelles
 fonctions sont dégradées, avec la raison**.
+
+### La reconnaissance vocale est séparée
+
+`requirements-voix.txt` pèse plusieurs gigaoctets (torch, Nemotron). Sans
+elle, JARVIS fonctionne au clavier, par la barre rapide et par le HUD ; seule
+la dictée manque, et elle le dit.
 
 ## Réglages
 

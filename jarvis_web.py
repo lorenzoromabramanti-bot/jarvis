@@ -24,7 +24,7 @@ import json
 import urllib.request
 
 _TIMEOUT = 8
-_UA = {"User-Agent": "JARVIS/1.0 (+techenclair.fr)"}
+_UA = {"User-Agent": "JARVIS/1.0"}
 
 # Mots FR (sans accents) → code ISO 4217. Les entrées multi-mots doivent
 # être testées AVANT les simples (« dollar canadien » avant « dollar »).

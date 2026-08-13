@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Configuration de J.A.R.V.I.S</title>
+<!--
+  Assistant de configuration.
+
+  Même famille visuelle que le HUD : la teinte vient du même système (--hue à
+  186), pour que l'installeur soit la première page de JARVIS et non un objet
+  étranger posé devant.
+
+  Pas de bibliothèque, pas de fichier externe. Cette page doit s'ouvrir sur
+  une machine où rien n'est encore installé.
+-->
+<style>
+  :root {
+    --hue: 186;
+    --accent:      hsl(var(--hue), 100%, 63%);
+    --accent-doux: hsl(var(--hue), 100%, 63%, 0.12);
+    --accent-bord: hsl(var(--hue), 100%, 63%, 0.32);
+    --fond:        #080b10;
+    --fond-carte:  #0e131b;
+    --fond-haut:   #0b1017;
+    --texte:       #d6e6e8;
+    --sourdine:    #6b858a;
+    --alerte:      #ffb454;
+    --refus:       #ff6b6b;
+    --ok:          #4ade80;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--fond); color: var(--texte);
+    font-family: "Segoe UI", -apple-system, system-ui, sans-serif;
+    font-size: 14.5px; line-height: 1.6;
+    display: flex; flex-direction: column;
+    -webkit-user-select: none; user-select: none;
+    overflow: hidden;
+  }
+
+  /* ── Progression ───────────────────────────────────────────────── */
+  header {
+    flex: 0 0 auto; padding: 26px 40px 0;
+    background: var(--fond-haut);
+    border-bottom: 1px solid rgba(255,255,255,.05);
+  }
+  .marque {
+    font-family: Consolas, ui-monospace, monospace;
+    font-size: 12px; letter-spacing: 4px; color: var(--accent);
+    margin-bottom: 20px;
+  }
+  .marque span { color: var(--sourdine); letter-spacing: 1px; margin-left: 10px; }
+  .etapes { display: flex; gap: 4px; padding-bottom: 0; }
+  .etape {
+    flex: 1; padding-bottom: 12px; font-size: 11.5px; letter-spacing: .6px;
+    color: var(--sourdine); border-bottom: 2px solid rgba(255,255,255,.07);
+    transition: color .25s, border-color .25s;
+  }
+  .etape.faite { color: var(--texte); border-color: var(--accent-bord); }
+  .etape.active { color: var(--accent); border-color: var(--accent); }
+
+  /* ── Contenu ───────────────────────────────────────────────────── */
+  main { flex: 1; overflow-y: auto; padding: 34px 40px; }
+  main::-webkit-scrollbar { width: 8px; }
+  main::-webkit-scrollbar-thumb { background: rgba(255,255,255,.09); border-radius: 4px; }
+
+  h1 { font-size: 25px; font-weight: 600; letter-spacing: -.2px; margin-bottom: 8px; }
+  .chapeau { color: var(--sourdine); margin-bottom: 26px; max-width: 640px; }
+
+  .cartes { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 860px) { .cartes { grid-template-columns: 1fr; } }
+
+  .carte {
+    background: var(--fond-carte); border: 1px solid rgba(255,255,255,.07);
+    border-radius: 11px; padding: 15px 17px; cursor: pointer;
+    transition: border-color .18s, background .18s, transform .12s;
+    position: relative;
+  }
+  .carte:hover { border-color: var(--accent-bord); transform: translateY(-1px); }
+  .carte.choisie { border-color: var(--accent); background: var(--accent-doux); }
+  .carte.bloquee { opacity: .5; cursor: not-allowed; }
+  .carte.bloquee:hover { transform: none; border-color: rgba(255,255,255,.07); }
+  .carte .titre { font-weight: 600; margin-bottom: 3px; display: flex;
+                  align-items: center; gap: 9px; }
+  .carte .texte { color: var(--sourdine); font-size: 13px; }
+  .carte .manque { color: var(--alerte); font-size: 12px; margin-top: 7px; }
+  .coche {
+    width: 17px; height: 17px; border-radius: 5px; flex: 0 0 17px;
+    border: 1.5px solid rgba(255,255,255,.22); position: relative;
+  }
+  .carte.choisie .coche { background: var(--accent); border-color: var(--accent); }
+  .carte.choisie .coche::after {
+    content: ""; position: absolute; left: 5px; top: 1px;
+    width: 4px; height: 9px; border: solid #06131a;
+    border-width: 0 2px 2px 0; transform: rotate(42deg);
+  }
+  .carte.figee .coche { background: var(--sourdine); border-color: var(--sourdine); }
+
+  .grand { padding: 22px 24px; }
+  .grand .titre { font-size: 17px; }
+
+  /* ── Champs ────────────────────────────────────────────────────── */
+  .champ { margin-bottom: 20px; max-width: 620px; }
+  .champ label { display: block; font-weight: 600; margin-bottom: 3px; }
+  .champ .role { color: var(--sourdine); font-size: 13px; margin-bottom: 8px; }
+  .champ input {
+    width: 100%; padding: 11px 13px; border-radius: 9px;
+    background: #060a0e; border: 1px solid rgba(255,255,255,.11);
+    color: var(--texte); font-family: Consolas, ui-monospace, monospace;
+    font-size: 13.5px; outline: none;
+    -webkit-user-select: text; user-select: text;
+  }
+  .champ input:focus { border-color: var(--accent); }
+  .champ input.faux { border-color: var(--refus); }
+  .champ .aide { font-size: 12px; margin-top: 6px; color: var(--sourdine); }
+  .champ .aide a { color: var(--accent); text-decoration: none; cursor: pointer; }
+  .champ .aide a:hover { text-decoration: underline; }
+  .champ .erreur { color: var(--refus); font-size: 12px; margin-top: 6px; }
+  .deja { color: var(--ok); font-size: 12px; }
+
+  /* ── Garde-fous ────────────────────────────────────────────────── */
+  .garde { background: var(--fond-carte); border: 1px solid rgba(255,255,255,.07);
+           border-radius: 11px; padding: 16px 18px; margin-bottom: 11px; }
+  .garde .titre { font-weight: 600; display: flex; align-items: center;
+                  gap: 9px; margin-bottom: 4px; }
+  .garde .texte { color: var(--sourdine); font-size: 13px; }
+  .cadenas { color: var(--accent); font-size: 12px; }
+  .avert { margin-top: 13px; padding: 13px 15px; border-radius: 9px;
+           background: rgba(255,180,84,.07); border: 1px solid rgba(255,180,84,.25); }
+  .avert .quoi { color: var(--alerte); font-size: 13px; margin-bottom: 10px; }
+  .avert input { width: 100%; padding: 9px 12px; border-radius: 7px;
+                 background: #060a0e; border: 1px solid rgba(255,255,255,.13);
+                 color: var(--texte); font-family: Consolas, monospace;
+                 font-size: 12.5px; outline: none;
+                 -webkit-user-select: text; user-select: text; }
+  .avert .phrase { font-family: Consolas, monospace; color: var(--alerte);
+                   font-size: 12.5px; margin: 7px 0; }
+  .lien-retirer { color: var(--sourdine); font-size: 12.5px; cursor: pointer;
+                  margin-top: 9px; display: inline-block; }
+  .lien-retirer:hover { color: var(--alerte); }
+
+  /* ── Pied ──────────────────────────────────────────────────────── */
+  footer {
+    flex: 0 0 auto; padding: 17px 40px; background: var(--fond-haut);
+    border-top: 1px solid rgba(255,255,255,.05);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .compte { flex: 1; color: var(--sourdine); font-size: 13px; }
+  button {
+    padding: 10px 22px; border-radius: 9px; border: 1px solid transparent;
+    font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: background .16s, border-color .16s, opacity .16s;
+  }
+  .principal { background: var(--accent); color: #05161b; }
+  .principal:hover { background: hsl(var(--hue), 100%, 70%); }
+  .principal:disabled { opacity: .32; cursor: not-allowed; }
+  .discret { background: none; color: var(--sourdine);
+             border-color: rgba(255,255,255,.12); }
+  .discret:hover { color: var(--texte); border-color: rgba(255,255,255,.24); }
+
+  .resume { background: var(--fond-carte); border-radius: 11px; padding: 20px 22px;
+            border: 1px solid rgba(255,255,255,.07); max-width: 640px; }
+  .resume .ligne { display: flex; gap: 12px; padding: 6px 0; font-size: 13.5px; }
+  .resume .ligne b { color: var(--accent); font-weight: 600; min-width: 26px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="marque">J·A·R·V·I·S<span id="version"></span></div>
+  <div class="etapes" id="etapes"></div>
+</header>
+
+<main id="contenu"></main>
+
+<footer>
+  <div class="compte" id="compte"></div>
+  <button class="discret" id="retour">Retour</button>
+  <button class="principal" id="suivant">Continuer</button>
+</footer>
+
+<script>
+const ETAPES = ["Bienvenue", "Mode", "Capacités", "Réglages", "Protections", "Terminé"];
+let etape = 0;
+let mode = "simple";
+let donnees = null;
+let choisies = new Set();
+let saisies = {};
+let gardesARetirer = new Set();
+let rapport = null;
+
+const $ = (id) => document.getElementById(id);
+const api = () => window.pywebview && window.pywebview.api;
+
+function dessinerEtapes() {
+  $("etapes").innerHTML = ETAPES.map((nom, i) =>
+    `<div class="etape ${i === etape ? "active" : i < etape ? "faite" : ""}">${i + 1}. ${nom}</div>`
+  ).join("");
+}
+
+// ── Les écrans ───────────────────────────────────────────────────────
+function ecranBienvenue() {
+  return `
+    <h1>Configurons JARVIS</h1>
+    <p class="chapeau">Quelques questions pour savoir ce que vous voulez qu'il
+      fasse, et ce dont il a besoin pour le faire. Rien n'est définitif : tout
+      se change ensuite dans les réglages.</p>
+    <div class="resume">
+      <div class="ligne"><b>1</b><span>Vous choisissez ce que JARVIS peut faire.</span></div>
+      <div class="ligne"><b>2</b><span>Il ne vous demande que ce qui sert à ces choix-là.</span></div>
+      <div class="ligne"><b>3</b><span>Les protections restent actives par défaut.</span></div>
+    </div>`;
+}
+
+function ecranMode() {
+  const carte = (cle, titre, texte) => `
+    <div class="carte grand ${mode === cle ? "choisie" : ""}" data-mode="${cle}">
+      <div class="titre"><div class="coche"></div>${titre}</div>
+      <div class="texte">${texte}</div>
+    </div>`;
+  return `
+    <h1>Comment voulez-vous l'installer ?</h1>
+    <p class="chapeau">Ce choix se change plus tard. Il décide surtout du
+      nombre de questions posées.</p>
+    <div class="cartes">
+      ${carte("simple", "Simple",
+        "L'essentiel, en langage clair. Les protections sont actives et ne " +
+        "peuvent pas être retirées depuis l'interface.")}
+      ${carte("avance", "Avancé",
+        "Toutes les capacités, les clés saisies à la main, et la possibilité " +
+        "de retirer une protection après un avertissement.")}
+    </div>`;
+}
+
+function ecranCapacites() {
+  const liste = donnees.capacites.map(c => {
+    const oblig = c.obligatoire;
+    const actif = oblig || choisies.has(c.cle);
+    const classes = ["carte", actif ? "choisie" : "", oblig ? "figee" : "",
+                     !c.disponible && !oblig ? "bloquee" : ""].join(" ");
+    return `
+      <div class="${classes}" data-cap="${c.cle}" ${oblig ? 'data-fige="1"' : ""}>
+        <div class="titre"><div class="coche"></div>${c.titre}</div>
+        <div class="texte">${c.description}</div>
+        ${!c.disponible ? `<div class="manque">Indisponible : ${c.manques[0]}</div>` : ""}
+        ${c.comptes ? `<div class="manque">${c.comptes}</div>` : ""}
+      </div>`;
+  }).join("");
+  return `
+    <h1>Que voulez-vous qu'il sache faire ?</h1>
+    <p class="chapeau">Cochez ce qui vous intéresse. Ce qui est décoché ne sera
+      pas seulement caché : JARVIS refusera de le faire.</p>
+    <div class="cartes">${liste}</div>`;
+}
+
+function reglagesNecessaires() {
+  const requis = new Set();
+  donnees.capacites.forEach(c => {
+    if (choisies.has(c.cle) || c.obligatoire) (c.reglages || []).forEach(r => requis.add(r));
+  });
+  return donnees.reglages.filter(r => r.variables.some(v => requis.has(v)));
+}
+
+function ecranReglages() {
+  const necessaires = reglagesNecessaires();
+  if (!necessaires.length) {
+    return `<h1>Rien à renseigner</h1>
+      <p class="chapeau">Ce que vous avez choisi ne demande aucune clé.</p>`;
+  }
+  const champs = necessaires.map(r => r.variables.map(v => {
+    const jeton = v === "JARVIS_ACCESS_TOKEN";
+    return `
+      <div class="champ">
+        <label>${v}</label>
+        <div class="role">${r.role}</div>
+        ${jeton && !donnees.a_deja_un_jeton
+          ? `<div class="aide">Laissez vide : une clé aléatoire sera engendrée.
+             En inventer une donne souvent « jarvis123 ».</div>`
+          : `<input data-cle="${v}" type="text" spellcheck="false"
+               placeholder="${r.renseigne ? "déjà renseigné — laissez vide pour ne pas changer" : "collez la valeur ici"}"
+               value="${saisies[v] || ""}">
+             <div class="aide">${r.renseigne ? '<span class="deja">✓ déjà renseigné</span> · ' : ""}
+               ${r.source.startsWith("http")
+                 ? `<a data-url="${r.source}">obtenir une clé</a>`
+                 : r.source}</div>
+             <div class="erreur" data-erreur="${v}"></div>`}
+      </div>`;
+  }).join("")).join("");
+  return `
+    <h1>Ce dont il a besoin</h1>
+    <p class="chapeau">Uniquement ce qui sert à vos choix. Un champ laissé vide
+      garde la valeur déjà en place.</p>
+    ${champs}`;
+}
+
+function ecranGardes() {
+  const liste = donnees.gardes.map(g => {
+    const retire = gardesARetirer.has(g.cle);
+    return `
+      <div class="garde">
+        <div class="titre">${g.titre}
+          ${!g.desactivable ? '<span class="cadenas">— verrouillé en mode simple</span>' : ""}
+          ${retire ? '<span style="color:var(--refus);font-size:12px">— sera retiré</span>' : ""}
+        </div>
+        <div class="texte">${g.description}</div>
+        ${g.desactivable ? `
+          <div class="lien-retirer" data-ouvrir="${g.cle}">Retirer cette protection…</div>
+          <div class="avert" data-avert="${g.cle}" style="display:none">
+            <div class="quoi"><b>Ce que vous perdez :</b> ${g.consequence}</div>
+            <div>Pour confirmer, recopiez exactement :</div>
+            <div class="phrase">${g.phrase}</div>
+            <input data-phrase="${g.cle}" spellcheck="false" placeholder="recopiez la phrase ci-dessus">
+          </div>` : ""}
+      </div>`;
+  }).join("");
+  return `
+    <h1>Protections</h1>
+    <p class="chapeau">Actives par défaut. ${mode === "simple"
+      ? "En mode simple, elles ne peuvent pas être retirées ici."
+      : "Vous pouvez en retirer une, après avoir lu ce que ça implique."}</p>
+    ${liste}`;
+}
+
+function ecranFin() {
+  if (!rapport) return `<h1>Enregistrement…</h1>`;
+  const l = [];
+  l.push(`<div class="ligne"><b>${rapport.capacites.length}</b><span>capacité(s) activée(s)</span></div>`);
+  if (rapport.reglages_ecrits)
+    l.push(`<div class="ligne"><b>${rapport.reglages_ecrits}</b><span>réglage(s) enregistré(s)</span></div>`);
+  if (rapport.jeton_genere)
+    l.push(`<div class="ligne"><b>✓</b><span>clé d'accès engendrée automatiquement</span></div>`);
+  if (rapport.gardes_retires.length)
+    l.push(`<div class="ligne"><b style="color:var(--refus)">!</b><span>${rapport.gardes_retires.length} protection(s) retirée(s)</span></div>`);
+  (rapport.capacites_refusees || []).forEach(r =>
+    l.push(`<div class="ligne"><b style="color:var(--alerte)">·</b><span>${r}</span></div>`));
+  const degradees = (donnees.degradees || []).map(d =>
+    `<div class="ligne"><b style="color:var(--alerte)">·</b><span>${d.nom} : ${d.manque.join(", ")}</span></div>`).join("");
+  return `
+    <h1>C'est prêt</h1>
+    <p class="chapeau">JARVIS est configuré. Vous pouvez tout modifier plus
+      tard depuis l'onglet Réglages.</p>
+    <div class="resume">${l.join("")}</div>
+    ${degradees ? `<p class="chapeau" style="margin-top:22px">Fonctions
+      indisponibles sur cette machine :</p><div class="resume">${degradees}</div>` : ""}`;
+}
+
+// ── Navigation ───────────────────────────────────────────────────────
+const ECRANS = [ecranBienvenue, ecranMode, ecranCapacites, ecranReglages,
+                ecranGardes, ecranFin];
+
+function dessiner() {
+  dessinerEtapes();
+  $("contenu").innerHTML = ECRANS[etape]();
+  $("contenu").scrollTop = 0;
+  $("retour").style.visibility = etape === 0 ? "hidden" : "visible";
+  $("suivant").textContent = etape === ECRANS.length - 1 ? "Lancer JARVIS"
+                            : etape === ECRANS.length - 2 ? "Enregistrer" : "Continuer";
+  majCompte();
+  brancher();
+}
+
+function majCompte() {
+  if (etape === 2) {
+    const n = donnees.capacites.filter(c => choisies.has(c.cle) || c.obligatoire).length;
+    $("compte").textContent = `${n} capacité(s) sur ${donnees.capacites.length}`;
+  } else if (etape === 3) {
+    const n = reglagesNecessaires().length;
+    $("compte").textContent = n ? `${n} réglage(s) concerné(s)` : "";
+  } else {
+    $("compte").textContent = "";
+  }
+}
+
+function brancher() {
+  document.querySelectorAll("[data-mode]").forEach(el =>
+    el.onclick = () => { mode = el.dataset.mode; recharger(); });
+
+  document.querySelectorAll("[data-cap]").forEach(el => {
+    if (el.dataset.fige || el.classList.contains("bloquee")) return;
+    el.onclick = () => {
+      const c = el.dataset.cap;
+      choisies.has(c) ? choisies.delete(c) : choisies.add(c);
+      el.classList.toggle("choisie");
+      majCompte();
+    };
+  });
+
+  document.querySelectorAll("[data-cle]").forEach(el => {
+    el.oninput = async () => {
+      saisies[el.dataset.cle] = el.value;
+      const bloc = document.querySelector(`[data-erreur="${el.dataset.cle}"]`);
+      const r = await api().verifier_cle(el.dataset.cle, el.value);
+      el.classList.toggle("faux", !r.ok);
+      if (bloc) bloc.textContent = r.ok ? "" : r.message;
+    };
+  });
+
+  document.querySelectorAll("[data-url]").forEach(el =>
+    el.onclick = () => api().ouvrir(el.dataset.url));
+
+  document.querySelectorAll("[data-ouvrir]").forEach(el =>
+    el.onclick = () => {
+      const b = document.querySelector(`[data-avert="${el.dataset.ouvrir}"]`);
+      if (b) b.style.display = b.style.display === "none" ? "block" : "none";
+    });
+
+  document.querySelectorAll("[data-phrase]").forEach(el =>
+    el.oninput = () => {
+      const cle = el.dataset.phrase;
+      const g = donnees.gardes.find(x => x.cle === cle);
+      const exact = el.value.trim().toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "") === g.phrase;
+      exact ? gardesARetirer.add(cle) : gardesARetirer.delete(cle);
+      el.style.borderColor = exact ? "var(--refus)" : "rgba(255,255,255,.13)";
+    });
+}
+
+async function recharger() {
+  donnees = await api().donnees(mode);
+  // Une capacité réservée au mode avancé disparaît si on revient en simple :
+  // la garder cochée en douce serait exactement le contournement à éviter.
+  const connues = new Set(donnees.capacites.map(c => c.cle));
+  [...choisies].forEach(c => { if (!connues.has(c)) choisies.delete(c); });
+  if (!choisies.size) donnees.capacites.forEach(c => { if (c.defaut) choisies.add(c.cle); });
+  dessiner();
+}
+
+$("retour").onclick = () => { if (etape > 0) { etape--; dessiner(); } };
+
+$("suivant").onclick = async () => {
+  if (etape === ECRANS.length - 1) { await api().terminer(); return; }
+  if (etape === ECRANS.length - 2) {
+    $("suivant").disabled = true;
+    rapport = await api().enregistrer(mode, [...choisies], saisies, [...gardesARetirer]);
+    $("suivant").disabled = false;
+  }
+  etape++;
+  dessiner();
+};
+
+// Démarrage : attendre que le pont Python soit prêt.
+(function attendre() {
+  if (!api()) return setTimeout(attendre, 60);
+  api().donnees(mode).then(d => {
+    donnees = d;
+    $("version").textContent = "v" + d.version + " · " + d.systeme;
+    d.capacites.forEach(c => { if (c.defaut) choisies.add(c.cle); });
+    dessiner();
+  });
+})();
+</script>
+</body>
+</html>

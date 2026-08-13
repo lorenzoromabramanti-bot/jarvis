@@ -7,7 +7,7 @@ cd /d "%~dp0"
 echo.
 echo  ============================================================
 echo   J.A.R.V.I.S -- NETTOYAGE DU CACHE WEBVIEW2
-echo   www.techenclair.fr
+echo   J.A.R.V.I.S
 echo  ============================================================
 echo.
 echo  [!] FERMEZ JARVIS avant de continuer !

@@ -37,7 +37,8 @@ _browser_window = None
 _main_hwnd = None
 _browser_hwnd = None
 _is_docked = False
-_default_url = "https://www.techenclair.fr"
+# Page neutre : ouvrir le site d'un tiers au demarrage n'a pas de sens.
+_default_url = "about:blank"
 _main_webview_window = None  # Reference to main JARVIS pywebview window
 
 # --- CODE D'INJECTION JS (ADBLOCK + TOOLBAR) ---

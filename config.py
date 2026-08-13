@@ -51,7 +51,7 @@ from pathlib import Path
 #
 # Un numéro de version n'est pas décoratif : sans lui, la vérification de
 # mise à jour n'a rien à comparer. Il doit monter à chaque publication.
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 SYSTEME = platform.system()            # 'Windows' | 'Darwin' | 'Linux'
 EST_WINDOWS = SYSTEME == "Windows"
@@ -169,10 +169,18 @@ class ModuleAbsent:
 
 
 def module_ou_substitut(nom, raison=""):
-    """Importe le module, ou renvoie un substitut qui expliquera son absence."""
+    """
+    Importe le module, ou renvoie un substitut qui expliquera son absence.
+
+    BaseException et non ImportError : un module peut appeler sys.exit() à
+    l'import (pyautogui le fait sur Linux sans tkinter), ce qui tuerait le
+    processus au lieu de produire un substitut.
+    """
     try:
         return __import__(nom)
-    except ImportError:
+    except KeyboardInterrupt:
+        raise
+    except BaseException:
         return ModuleAbsent(nom, raison)
 
 
@@ -257,10 +265,24 @@ def _commande(nom):
 
 
 def _importable(module):
+    """
+    Le module se charge-t-il ici ?
+
+    On attrape BaseException, pas seulement Exception, et ce n'est pas de la
+    prudence excessive : certains paquets appellent sys.exit() À L'IMPORT.
+    Mesuré sur Ubuntu 26.04 sans tkinter, `import pyautogui` lève SystemExit
+    — qui n'hérite PAS de Exception. Le processus entier mourait donc en
+    silence au milieu de capacites(), et comme cette fonction est appelée par
+    l'installeur, le catalogue et config lui-même, JARVIS ne démarrait pas.
+
+    KeyboardInterrupt reste transmis : interrompre doit toujours interrompre.
+    """
     try:
         __import__(module)
         return True
-    except Exception:
+    except KeyboardInterrupt:
+        raise
+    except BaseException:
         return False
 
 

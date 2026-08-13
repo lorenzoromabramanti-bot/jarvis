@@ -1,6 +1,5 @@
 # ══════════════════════════════════════════════════════════════
 #  NVIDIA Nemotron / Canary ASR — Module local pour J.A.R.V.I.S
-#  Site : www.techenclair.fr
 # ══════════════════════════════════════════════════════════════
 #  Ce module est 100% optionnel. Il n'est activé que si
 #  l'utilisateur bascule le toggle "NEMOTRON ASR" dans l'UI.

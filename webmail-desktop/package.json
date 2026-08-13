@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "JARVIS Mail — messagerie unifiée (Gmail, iCloud, Outlook), app de bureau connectée à JARVIS.",
   "main": "main.js",
-  "author": "TechEnClair",
+  "author": "",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -14,7 +14,7 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "fr.techenclair.jarvismail",
+    "appId": "local.jarvis.mail",
     "productName": "JARVIS Mail",
     "directories": { "output": "installer" },
     "files": ["main.js", "offline.html", "icon.ico", "package.json"],

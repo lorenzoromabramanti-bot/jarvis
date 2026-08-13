@@ -1,6 +1,5 @@
 # ==========================================
 # J.A.R.V.I.S — Dépendances Python
-# Site : www.techenclair.fr
 # ==========================================
 # Python supporté : 3.10, 3.11, 3.12 (recommandé), 3.13 (expérimental)
 # IMPORTANT : Les versions utilisent >= pour garantir
@@ -31,7 +30,6 @@ httpx>=0.25.0
 
 # --- Audio & TTS ---
 SpeechRecognition>=3.10.0
-edge-tts>=6.0.0
 pyttsx3>=2.90
 pygame>=2.5.0
 PyAudio>=0.2.14
@@ -45,7 +43,7 @@ Pillow>=10.0.0
 screeninfo>=0.8.0
 opencv-python
 pywebview>=4.0.0
-pycaw>=20181226
+pycaw>=20181226; sys_platform == "win32"
 screen-brightness-control>=0.16.0
 
 # --- Utilitaires ---
@@ -59,9 +57,9 @@ numpy>=1.24.0
 psutil>=5.9.0
 
 # --- Windows ---
-pypiwin32>=223
-pywin32>=300
-comtypes>=1.4.0
+pypiwin32>=223; sys_platform == "win32"
+pywin32>=300; sys_platform == "win32"
+comtypes>=1.4.0; sys_platform == "win32"
 
 # --- Messagerie unifiée ---
 # imaplib/email/ssl sont dans la stdlib. Extras :

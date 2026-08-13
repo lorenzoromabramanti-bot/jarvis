@@ -2832,7 +2832,7 @@ function runBootSequence(): void {
           
           if (btnSite) {
             btnSite.onclick = () => {
-              window.open("https://www.techenclair.fr", "_blank");
+              // (Lien vers le site d'un tiers retire.)
               closeFirstLaunch();
             };
           }
