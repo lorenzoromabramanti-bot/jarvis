@@ -1,0 +1,25 @@
+# ---------------------------------------------------------------------
+#  J.A.R.V.I.S — reconnaissance vocale (facultatif)
+# ---------------------------------------------------------------------
+#  SEPARE de requirements.txt pour une raison de taille : torch et
+#  nemo_toolkit pesent plusieurs gigaoctets. Les imposer a toute installation
+#  ferait payer ce telechargement a quelqu'un qui veut seulement taper ses
+#  demandes.
+#
+#  Sans ces paquets, JARVIS demarre et fonctionne : le clavier, la barre
+#  rapide (Ctrl+Alt+J) et le HUD marchent. SEULE la dictee est indisponible,
+#  et elle le dit.
+#
+#      venv\Scripts\python.exe -m pip install -r requirements-voix.txt
+#
+#  ATTENTION AUX VERSIONS CUDA : la machine de developpement porte
+#  torch 2.11.0+cu128, une compilation liee a une version precise de CUDA.
+#  Elle n'est PAS epinglee ici — l'imposer ferait echouer l'installation sur
+#  toute machine sans ce CUDA, et sur macOS et Linux. pip choisira la
+#  compilation adaptee. Pour tirer parti d'une carte NVIDIA, suivez plutot
+#  les instructions de https://pytorch.org avant cette commande.
+# ---------------------------------------------------------------------
+
+torch>=2.0.0
+nemo_toolkit[asr]>=2.0.0
+pyarrow>=14.0.0

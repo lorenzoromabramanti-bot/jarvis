@@ -1,0 +1,229 @@
+/* ============================================================================
+   J.A.R.V.I.S — THÈME « NÉON TERMINAL »
+   Rétro-hacker : vert néon (#35ff8b) + cyan secondaire (#00e5ff) sur noir pur,
+   scanlines CRT. Réversible : actif uniquement sous html[data-theme="neon"].
+   Les !important sont nécessaires pour surcharger les styles inline cyan.
+   ============================================================================ */
+
+html[data-theme="neon"] {
+  --neon: #35ff8b;
+  --neon-dim: rgba(53, 255, 139, 0.4);
+  --neon-soft: rgba(53, 255, 139, 0.08);
+  --cyan: #00e5ff;
+}
+
+/* Fond général noir profond + vignette */
+html[data-theme="neon"] body {
+  background: #000 !important;
+}
+
+/* Scanlines + léger flicker CRT (au-dessus de tout, sans bloquer les clics) */
+html[data-theme="neon"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99998;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(53, 255, 139, 0.035) 3px,
+    rgba(0, 0, 0, 0) 4px
+  );
+  mix-blend-mode: screen;
+}
+
+/* ── Titre assistant + bouton menu ─────────────────────────────────────── */
+html[data-theme="neon"] #assistant-label,
+html[data-theme="neon"] #jarvis-menu-btn {
+  color: var(--neon) !important;
+  text-shadow: 0 0 8px rgba(53, 255, 139, 0.6) !important;
+  border-color: var(--neon-dim) !important;
+}
+html[data-theme="neon"] #jarvis-menu-btn {
+  background: rgba(0, 0, 0, 0.7) !important;
+  border: 1px solid var(--neon-dim) !important;
+  border-radius: 4px !important;
+}
+html[data-theme="neon"] #jarvis-menu-btn.active {
+  box-shadow: 0 0 18px rgba(53, 255, 139, 0.4) !important;
+}
+
+/* ── Menu déroulant ────────────────────────────────────────────────────── */
+html[data-theme="neon"] #jarvis-menu-dropdown {
+  background: rgba(0, 6, 2, 0.96) !important;
+  border: 1px solid var(--neon-dim) !important;
+  box-shadow: 0 0 40px rgba(53, 255, 139, 0.15), inset 0 0 60px rgba(53, 255, 139, 0.03) !important;
+}
+html[data-theme="neon"] #jarvis-menu-dropdown .dropdown-header,
+html[data-theme="neon"] #jarvis-menu-dropdown .section-title,
+html[data-theme="neon"] #jarvis-menu-dropdown .section-title span {
+  color: var(--neon) !important;
+  -webkit-text-fill-color: var(--neon) !important;
+  background: none !important;
+  text-shadow: 0 0 6px rgba(53, 255, 139, 0.5) !important;
+  border-color: var(--neon-dim) !important;
+}
+html[data-theme="neon"] .dropdown-corner,
+html[data-theme="neon"] .dropdown-scanlines {
+  border-color: var(--neon) !important;
+}
+
+/* ── Boutons d'action (le cœur du menu) ────────────────────────────────── */
+html[data-theme="neon"] #jarvis-menu-dropdown .menu-action-btn {
+  color: #9dffc7 !important;
+  background: var(--neon-soft) !important;
+  border: 1px solid var(--neon-dim) !important;
+  border-radius: 4px !important;
+  text-shadow: 0 0 4px rgba(53, 255, 139, 0.35) !important;
+  box-shadow: 0 0 10px rgba(53, 255, 139, 0.06) !important;
+  transition: all 0.18s ease !important;
+}
+html[data-theme="neon"] #jarvis-menu-dropdown .menu-action-btn:hover {
+  background: rgba(53, 255, 139, 0.14) !important;
+  border-color: var(--neon) !important;
+  box-shadow: 0 0 18px rgba(53, 255, 139, 0.35) !important;
+  color: #eaffef !important;
+}
+html[data-theme="neon"] #jarvis-menu-dropdown .menu-action-btn[aria-pressed="true"] {
+  border-color: var(--neon) !important;
+  box-shadow: 0 0 16px rgba(53, 255, 139, 0.4) !important;
+}
+html[data-theme="neon"] #jarvis-menu-dropdown .menu-action-btn .btn-icon {
+  color: var(--neon) !important;
+  -webkit-text-fill-color: var(--neon) !important;
+  filter: drop-shadow(0 0 3px rgba(53, 255, 139, 0.5)) !important;
+}
+
+/* ── Répertoire de commandes ───────────────────────────────────────────── */
+html[data-theme="neon"] #commands-panel .cmd-category {
+  border-color: var(--neon-dim) !important;
+}
+html[data-theme="neon"] #commands-panel .cmd-cat-title {
+  color: var(--neon) !important;
+  -webkit-text-fill-color: var(--neon) !important;
+  text-shadow: 0 0 6px rgba(53, 255, 139, 0.5) !important;
+}
+html[data-theme="neon"] #commands-panel .cmd-item {
+  border-color: rgba(53, 255, 139, 0.18) !important;
+}
+html[data-theme="neon"] #commands-panel .cmd-item:hover {
+  background: rgba(53, 255, 139, 0.1) !important;
+  border-color: var(--neon) !important;
+}
+html[data-theme="neon"] #commands-panel .cmd-text {
+  color: #bfffda !important;
+}
+html[data-theme="neon"] #commands-panel .cmd-desc {
+  color: rgba(53, 255, 139, 0.55) !important;
+}
+
+/* ── Panneaux HUD génériques + modales ─────────────────────────────────── */
+html[data-theme="neon"] [class*="-panel"],
+html[data-theme="neon"] #settings-modal > div,
+html[data-theme="neon"] #api-keys-modal > div {
+  background: rgba(0, 6, 2, 0.94) !important;
+  border-color: var(--neon-dim) !important;
+  box-shadow: 0 0 40px rgba(53, 255, 139, 0.12) !important;
+}
+html[data-theme="neon"] [class*="-panel-title"],
+html[data-theme="neon"] [class*="-panel-header"] {
+  color: var(--neon) !important;
+  text-shadow: 0 0 6px rgba(53, 255, 139, 0.5) !important;
+}
+
+/* ── Champs de saisie ──────────────────────────────────────────────────── */
+html[data-theme="neon"] input,
+html[data-theme="neon"] textarea,
+html[data-theme="neon"] select {
+  color: var(--neon) !important;
+  border-color: var(--neon-dim) !important;
+  background: rgba(53, 255, 139, 0.05) !important;
+}
+html[data-theme="neon"] input::placeholder,
+html[data-theme="neon"] textarea::placeholder {
+  color: rgba(53, 255, 139, 0.4) !important;
+}
+
+/* ── Sous-titres / HUD texte ───────────────────────────────────────────── */
+html[data-theme="neon"] #subtitle-hud,
+html[data-theme="neon"] #subtitle-text {
+  color: var(--neon) !important;
+  text-shadow: 0 0 8px rgba(53, 255, 139, 0.5) !important;
+}
+
+/* ── Boutons de réglages ───────────────────────────────────────────────── */
+html[data-theme="neon"] .settings-btn,
+html[data-theme="neon"] .settings-btn.primary {
+  color: var(--neon) !important;
+  border-color: var(--neon-dim) !important;
+  background: rgba(53, 255, 139, 0.08) !important;
+}
+html[data-theme="neon"] .settings-btn:hover {
+  background: rgba(53, 255, 139, 0.16) !important;
+}
+
+/* ── Badges / compteurs ────────────────────────────────────────────────── */
+html[data-theme="neon"] .badge {
+  background: var(--neon) !important;
+  color: #001a0a !important;
+}
+
+/* ── Barres de défilement ──────────────────────────────────────────────── */
+html[data-theme="neon"] ::-webkit-scrollbar-thumb {
+  background: rgba(53, 255, 139, 0.4) !important;
+}
+
+/* ── HUD horloge/CPU/RAM (Iron Man style) — cyan par défaut, neon ici ──── */
+html[data-theme="neon"] #orb-clock-hud {
+  background: rgba(53, 255, 139, 0.03) !important;
+  border-color: var(--neon-dim) !important;
+  box-shadow:
+    0 0 25px rgba(53, 255, 139, 0.07),
+    inset 0 0 15px rgba(53, 255, 139, 0.04) !important;
+}
+html[data-theme="neon"] #orb-clock-hud::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(53, 255, 139, 0.55) 50%, transparent 100%) !important;
+}
+html[data-theme="neon"] #orb-clock-hud .hud-tl,
+html[data-theme="neon"] #orb-clock-hud .hud-tr,
+html[data-theme="neon"] #orb-clock-hud .hud-bl,
+html[data-theme="neon"] #orb-clock-hud .hud-br {
+  border-color: var(--neon) !important;
+}
+html[data-theme="neon"] #orb-clock-hud .hud-prefix {
+  color: rgba(53, 255, 139, 0.45) !important;
+}
+html[data-theme="neon"] #orb-time-display {
+  color: var(--neon) !important;
+  animation-name: hud-glow-neon !important;
+}
+@keyframes hud-glow-neon {
+  0%, 100% {
+    text-shadow:
+      0 0 12px rgba(53, 255, 139, 0.85),
+      0 0 28px rgba(53, 255, 139, 0.45),
+      0 0 55px rgba(53, 255, 139, 0.18);
+  }
+  50% {
+    text-shadow:
+      0 0 16px rgba(53, 255, 139, 1),
+      0 0 36px rgba(53, 255, 139, 0.65),
+      0 0 70px rgba(53, 255, 139, 0.28);
+  }
+}
+html[data-theme="neon"] .hud-lbl {
+  color: rgba(53, 255, 139, 0.35) !important;
+}
+html[data-theme="neon"] #orb-date-display {
+  color: rgba(53, 255, 139, 0.55) !important;
+}
+html[data-theme="neon"] .stat-label {
+  color: rgba(53, 255, 139, 0.4) !important;
+}
+html[data-theme="neon"] .stat-value {
+  color: var(--neon) !important;
+  text-shadow: 0 0 10px rgba(53, 255, 139, 0.5) !important;
+}
+/* .stat-critical reste rouge d'alerte dans tous les themes — c'est voulu. */

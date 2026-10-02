@@ -1,0 +1,294 @@
+/* ============================================================================
+   J.A.R.V.I.S — THÈME « AURUM »
+   Refonte audacieuse : command-deck holographique. On abandonne le cyan froid
+   pour un or/ambre en fusion (#ffbf5e) sur noir chaud profond, verre premium
+   avec profondeur, glow raffiné (halos larges/doux au lieu du néon dur),
+   accents géométriques dorés et micro-animations soyeuses.
+   Réversible : actif uniquement sous html[data-theme="aurum"].
+   Les !important surchargent les styles inline cyan de l'app.
+   Contrainte frigo respectée : aucun backdrop-filter sur le dashboard HA
+   (voir bloc « garde-fou perf » en bas).
+   ============================================================================ */
+
+html[data-theme="aurum"] {
+  --au-gold: #ffbf5e;
+  --au-gold-bright: #ffd68a;
+  --au-gold-deep: #d98a2b;
+  --au-gold-dim: rgba(255, 191, 94, 0.42);
+  --au-gold-soft: rgba(255, 191, 94, 0.09);
+  --au-ink: #0a0806;
+  --au-ink-2: #120d08;
+  --au-glass: rgba(20, 14, 8, 0.78);
+  --au-hair: rgba(255, 191, 94, 0.28);
+  --au-text: #f4e6cf;
+  --au-hot: #ff6a9a; /* accent secondaire (états pressés / vivants) */
+  --au-glow-lg: 0 0 60px rgba(255, 191, 94, 0.10), 0 0 120px rgba(255, 138, 40, 0.05);
+}
+
+/* ── Fond : noir chaud + double halo doré + grain subtil ─────────────────── */
+html[data-theme="aurum"] body {
+  background:
+    radial-gradient(1200px 800px at 78% 12%, rgba(255, 150, 50, 0.10), transparent 60%),
+    radial-gradient(900px 700px at 15% 90%, rgba(255, 90, 140, 0.06), transparent 62%),
+    radial-gradient(100% 100% at 50% 0%, #14100b 0%, var(--au-ink) 55%, #050403 100%)
+    !important;
+}
+
+/* Vignette + très léger flicker chaud (au-dessus, ne bloque pas les clics) */
+html[data-theme="aurum"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99998;
+  background:
+    radial-gradient(130% 130% at 50% 50%, transparent 62%, rgba(0, 0, 0, 0.55) 100%);
+  mix-blend-mode: multiply;
+}
+
+/* ── Titre assistant + bouton menu ─────────────────────────────────────── */
+html[data-theme="aurum"] #assistant-label,
+html[data-theme="aurum"] #jarvis-menu-btn {
+  color: var(--au-gold) !important;
+  text-shadow: 0 0 10px rgba(255, 191, 94, 0.45), 0 0 30px rgba(255, 138, 40, 0.18) !important;
+  border-color: var(--au-hair) !important;
+  letter-spacing: 0.14em !important;
+}
+html[data-theme="aurum"] #jarvis-menu-btn {
+  background: linear-gradient(180deg, rgba(255, 191, 94, 0.06), rgba(0, 0, 0, 0.5)) !important;
+  border: 1px solid var(--au-hair) !important;
+  border-radius: 8px !important;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease !important;
+}
+html[data-theme="aurum"] #jarvis-menu-btn.active,
+html[data-theme="aurum"] #jarvis-menu-btn:hover {
+  box-shadow: 0 0 22px rgba(255, 191, 94, 0.28), inset 0 0 22px rgba(255, 191, 94, 0.05) !important;
+  border-color: var(--au-gold) !important;
+}
+
+/* ── Menu déroulant ────────────────────────────────────────────────────── */
+html[data-theme="aurum"] #jarvis-menu-dropdown {
+  background: linear-gradient(180deg, rgba(24, 17, 10, 0.96), rgba(10, 8, 6, 0.97)) !important;
+  border: 1px solid var(--au-hair) !important;
+  border-radius: 14px !important;
+  box-shadow:
+    0 24px 70px -20px rgba(0, 0, 0, 0.8),
+    0 0 50px rgba(255, 191, 94, 0.10),
+    inset 0 1px 0 rgba(255, 214, 138, 0.10) !important;
+}
+html[data-theme="aurum"] #jarvis-menu-dropdown .dropdown-header,
+html[data-theme="aurum"] #jarvis-menu-dropdown .section-title,
+html[data-theme="aurum"] #jarvis-menu-dropdown .section-title span {
+  color: var(--au-gold-bright) !important;
+  -webkit-text-fill-color: var(--au-gold-bright) !important;
+  background: none !important;
+  text-shadow: 0 0 8px rgba(255, 191, 94, 0.4) !important;
+  border-color: var(--au-hair) !important;
+  letter-spacing: 0.16em !important;
+}
+html[data-theme="aurum"] .dropdown-corner,
+html[data-theme="aurum"] .dropdown-scanlines {
+  border-color: var(--au-gold) !important;
+}
+
+/* ── Boutons d'action (cœur du menu) ───────────────────────────────────── */
+html[data-theme="aurum"] #jarvis-menu-dropdown .menu-action-btn {
+  color: #ffe9c6 !important;
+  background: linear-gradient(180deg, var(--au-gold-soft), rgba(0, 0, 0, 0.25)) !important;
+  border: 1px solid var(--au-hair) !important;
+  border-radius: 10px !important;
+  text-shadow: 0 0 5px rgba(255, 191, 94, 0.3) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 214, 138, 0.06) !important;
+  transition: transform 0.16s ease, box-shadow 0.22s ease, border-color 0.22s ease, background 0.22s ease !important;
+}
+html[data-theme="aurum"] #jarvis-menu-dropdown .menu-action-btn:hover {
+  background: linear-gradient(180deg, rgba(255, 191, 94, 0.18), rgba(255, 138, 40, 0.05)) !important;
+  border-color: var(--au-gold) !important;
+  box-shadow: 0 0 24px rgba(255, 191, 94, 0.3), inset 0 1px 0 rgba(255, 214, 138, 0.14) !important;
+  color: #fff6e6 !important;
+  transform: translateY(-1px) !important;
+}
+html[data-theme="aurum"] #jarvis-menu-dropdown .menu-action-btn[aria-pressed="true"] {
+  border-color: var(--au-gold-bright) !important;
+  box-shadow: 0 0 20px rgba(255, 191, 94, 0.4), inset 0 0 18px rgba(255, 106, 154, 0.10) !important;
+}
+html[data-theme="aurum"] #jarvis-menu-dropdown .menu-action-btn .btn-icon {
+  color: var(--au-gold) !important;
+  -webkit-text-fill-color: var(--au-gold) !important;
+  filter: drop-shadow(0 0 4px rgba(255, 191, 94, 0.55)) !important;
+}
+
+/* ── Répertoire de commandes ───────────────────────────────────────────── */
+html[data-theme="aurum"] #commands-panel .cmd-category {
+  border-color: var(--au-hair) !important;
+}
+html[data-theme="aurum"] #commands-panel .cmd-cat-title {
+  color: var(--au-gold-bright) !important;
+  -webkit-text-fill-color: var(--au-gold-bright) !important;
+  text-shadow: 0 0 8px rgba(255, 191, 94, 0.4) !important;
+}
+html[data-theme="aurum"] #commands-panel .cmd-item {
+  border-color: rgba(255, 191, 94, 0.16) !important;
+  border-radius: 8px !important;
+}
+html[data-theme="aurum"] #commands-panel .cmd-item:hover {
+  background: rgba(255, 191, 94, 0.1) !important;
+  border-color: var(--au-gold) !important;
+}
+html[data-theme="aurum"] #commands-panel .cmd-text { color: #ffe9c6 !important; }
+html[data-theme="aurum"] #commands-panel .cmd-desc { color: rgba(255, 191, 94, 0.55) !important; }
+
+/* ── Panneaux HUD génériques + modales : verre premium ─────────────────── */
+html[data-theme="aurum"] [class*="-panel"],
+html[data-theme="aurum"] #settings-modal > div,
+html[data-theme="aurum"] #api-keys-modal > div {
+  background: var(--au-glass) !important;
+  border-color: var(--au-hair) !important;
+  border-radius: 14px !important;
+  backdrop-filter: blur(12px) saturate(1.15) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.15) !important;
+  box-shadow:
+    0 26px 80px -24px rgba(0, 0, 0, 0.85),
+    0 0 46px rgba(255, 191, 94, 0.08),
+    inset 0 1px 0 rgba(255, 214, 138, 0.08) !important;
+}
+html[data-theme="aurum"] [class*="-panel-title"],
+html[data-theme="aurum"] [class*="-panel-header"] {
+  color: var(--au-gold-bright) !important;
+  text-shadow: 0 0 8px rgba(255, 191, 94, 0.4) !important;
+  letter-spacing: 0.12em !important;
+}
+/* Liseré doré animé en tête des panneaux qui ont déjà un ::before de scan */
+html[data-theme="aurum"] [class*="-panel"]::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 191, 94, 0.6), transparent) !important;
+}
+
+/* ── Champs de saisie ──────────────────────────────────────────────────── */
+html[data-theme="aurum"] input,
+html[data-theme="aurum"] textarea,
+html[data-theme="aurum"] select {
+  color: var(--au-gold-bright) !important;
+  border-color: var(--au-hair) !important;
+  background: rgba(255, 191, 94, 0.05) !important;
+  border-radius: 8px !important;
+}
+html[data-theme="aurum"] input:focus,
+html[data-theme="aurum"] textarea:focus,
+html[data-theme="aurum"] select:focus {
+  border-color: var(--au-gold) !important;
+  box-shadow: 0 0 0 1px var(--au-gold-dim), 0 0 18px rgba(255, 191, 94, 0.18) !important;
+  outline: none !important;
+}
+html[data-theme="aurum"] input::placeholder,
+html[data-theme="aurum"] textarea::placeholder {
+  color: rgba(255, 191, 94, 0.4) !important;
+}
+
+/* ── Sous-titres / HUD texte ───────────────────────────────────────────── */
+html[data-theme="aurum"] #subtitle-hud,
+html[data-theme="aurum"] #subtitle-text {
+  color: var(--au-gold-bright) !important;
+  text-shadow: 0 0 12px rgba(255, 191, 94, 0.45), 0 0 30px rgba(255, 138, 40, 0.16) !important;
+}
+
+/* ── Boutons de réglages ───────────────────────────────────────────────── */
+html[data-theme="aurum"] .settings-btn,
+html[data-theme="aurum"] .settings-btn.primary {
+  color: var(--au-gold-bright) !important;
+  border-color: var(--au-hair) !important;
+  background: linear-gradient(180deg, rgba(255, 191, 94, 0.1), rgba(0, 0, 0, 0.2)) !important;
+  border-radius: 8px !important;
+}
+html[data-theme="aurum"] .settings-btn.primary {
+  background: linear-gradient(180deg, var(--au-gold), var(--au-gold-deep)) !important;
+  color: #2a1600 !important;
+  text-shadow: none !important;
+  box-shadow: 0 0 22px rgba(255, 191, 94, 0.35) !important;
+}
+html[data-theme="aurum"] .settings-btn:hover {
+  background: rgba(255, 191, 94, 0.16) !important;
+  border-color: var(--au-gold) !important;
+}
+
+/* ── Badges / compteurs ────────────────────────────────────────────────── */
+html[data-theme="aurum"] .badge {
+  background: linear-gradient(180deg, var(--au-gold-bright), var(--au-gold-deep)) !important;
+  color: #2a1600 !important;
+}
+
+/* ── Barres de défilement ──────────────────────────────────────────────── */
+html[data-theme="aurum"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 191, 94, 0.4) !important;
+  border-radius: 6px !important;
+}
+
+/* ── HUD horloge / CPU / RAM (Iron Man style) ──────────────────────────── */
+html[data-theme="aurum"] #orb-clock-hud {
+  background: linear-gradient(180deg, rgba(255, 191, 94, 0.04), rgba(0, 0, 0, 0.35)) !important;
+  border-color: var(--au-hair) !important;
+  border-radius: 12px !important;
+  box-shadow:
+    0 0 34px rgba(255, 191, 94, 0.08),
+    inset 0 0 18px rgba(255, 191, 94, 0.04) !important;
+}
+html[data-theme="aurum"] #orb-clock-hud::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 191, 94, 0.6) 50%, transparent 100%) !important;
+}
+html[data-theme="aurum"] #orb-clock-hud .hud-tl,
+html[data-theme="aurum"] #orb-clock-hud .hud-tr,
+html[data-theme="aurum"] #orb-clock-hud .hud-bl,
+html[data-theme="aurum"] #orb-clock-hud .hud-br {
+  border-color: var(--au-gold) !important;
+}
+html[data-theme="aurum"] #orb-clock-hud .hud-prefix { color: rgba(255, 191, 94, 0.45) !important; }
+html[data-theme="aurum"] #orb-time-display {
+  color: var(--au-gold-bright) !important;
+  animation-name: hud-glow-aurum !important;
+}
+@keyframes hud-glow-aurum {
+  0%, 100% {
+    text-shadow:
+      0 0 14px rgba(255, 191, 94, 0.8),
+      0 0 32px rgba(255, 138, 40, 0.4),
+      0 0 60px rgba(255, 106, 154, 0.14);
+  }
+  50% {
+    text-shadow:
+      0 0 20px rgba(255, 214, 138, 1),
+      0 0 44px rgba(255, 138, 40, 0.6),
+      0 0 78px rgba(255, 106, 154, 0.22);
+  }
+}
+html[data-theme="aurum"] .hud-lbl { color: rgba(255, 191, 94, 0.35) !important; }
+html[data-theme="aurum"] #orb-date-display { color: rgba(255, 191, 94, 0.6) !important; }
+html[data-theme="aurum"] .stat-label { color: rgba(255, 191, 94, 0.42) !important; }
+html[data-theme="aurum"] .stat-value {
+  color: var(--au-gold-bright) !important;
+  text-shadow: 0 0 12px rgba(255, 191, 94, 0.45) !important;
+}
+/* .stat-critical reste rouge d'alerte — voulu. */
+
+/* ── Boutons de fermeture / croix des panneaux ─────────────────────────── */
+html[data-theme="aurum"] [class*="-close"],
+html[data-theme="aurum"] [id*="close"] {
+  color: var(--au-gold) !important;
+}
+
+/* ============================================================================
+   GARDE-FOU PERF — contrainte frigo (voir [[frigo-dashboard-constraint]])
+   Le navigateur du frigo Samsung plante si le dashboard HA est lourd.
+   On coupe tout backdrop-filter et halo lourd sur les éléments du HA dashboard,
+   même quand le thème AURUM est actif.
+   ============================================================================ */
+html[data-theme="aurum"] #ha-dashboard,
+html[data-theme="aurum"] #ha-dashboard *,
+html[data-theme="aurum"] [class*="ha-"],
+html[data-theme="aurum"] [id*="ha-dashboard"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Respecte les préférences de mouvement réduit */
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="aurum"] #orb-time-display { animation: none !important; }
+}

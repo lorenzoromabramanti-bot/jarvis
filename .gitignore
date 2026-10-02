@@ -1,0 +1,105 @@
+.env
+token_outlook.json
+credentials_LISEZ_MOI.txt
+jarvis_listes.json
+__pycache__/
+venv/
+frontend/node_modules/
+frontend/dist/
+node_modules/
+_backups/
+_pre_freellm_snapshot/
+_setup/
+quarantine/
+models/
+mobile/
+video_gen/
+*.bak_*
+*.bak-*
+*.log
+*.rar
+unins000.*
+.remember/
+webmail-desktop/node_modules/
+webmail-desktop/dist/
+
+# Donnees personnelles : conversations, notes, config utilisateur.
+# Elles changeaient a chaque utilisation, salissant le depot en permanence —
+# ce qui bloque l'envoi de propositions a un agent (auto_amelioration.py
+# exige un depot propre). Les fichiers restent sur disque, seul le suivi git
+# est retire.
+jarvis_conversations.json
+jarvis_config.json
+ObsidianVault/
+
+# Fichiers audio temporaires de la synthese vocale. JARVIS en cree un par
+# phrase a chaque reponse parlee : non ignores, ils salissaient le depot en
+# permanence et rebloquaient l'envoi de propositions a un agent.
+jarvis_tts_*.mp3
+
+# Sorties de build. webmail-desktop/installer/win-unpacked contenait 74
+# fichiers pour 265 Mo — une application Electron compilee, commitee dans le
+# depot. Un livrable se publie, il ne se versionne pas : il se regenere a
+# partir des sources, et sa presence ici rendait le depot inutilisable pour
+# quiconque le clonerait.
+webmail-desktop/installer/
+*.asar
+
+# Etat d'execution d'outils, pas du projet. .claude-flow contient le PID d'un
+# demon et des metriques reecrites en permanence : ces fichiers apparaissaient
+# modifies a chaque commande, brouillant tout diff. settings.local.json porte
+# des reglages propres a cette machine, comme son nom l'indique.
+.claude-flow/
+# configuration d'outillage (ruflo, Claude Code), pas JARVIS
+.claude/
+.agents/
+
+# Outil de mainteneur, pas du produit. Quelqu'un qui clone le depot ne peut
+# rien publier dessus. Et surtout : sa liste de motifs interdits contient les
+# chaines interdites — un scanner dont les motifs vivent dans l'arbre scanne
+# se signale lui-meme, indefiniment.
+publier.py
+
+# Bruit visible sur le depot public : un fichier de debogage rempli de
+# « send_message a demarre! », un numero de cache interne, et une note de
+# travail qui tutoie l'utilisateur et decrit sa redirection OneDrive.
+DEBUG_ALIVE.txt
+.jarvis_cache_version
+docs/proposition_memoire_partagee.md
+
+# Raccourcis Windows : ils pointent vers des emplacements de CETTE
+# machine et n'ont aucun sens ailleurs.
+*.lnk
+
+# Sorties de compilation de l'amorceur. L'exe fait 11 Mo et se reconstruit
+# depuis les sources ; il se publie en piece jointe de release, il ne se
+# versionne pas.
+amorceur/build/
+amorceur/dist/
+
+# Journal de vie (demarrages/arrets) — local, jamais versionne
+jarvis_vie.log
+
+# Artefacts d outils et donnees generees (29/09)
+agentdb.rvf
+agentdb.rvf.lock
+ruvector.db
+docs/ruvector.db
+revisions/
+
+# Donnees d'execution propres a chaque utilisateur (profil, choix de modeles,
+# projets recents, journaux et etats des modules). Generees au premier usage.
+jarvis_memoire.json
+jarvis_model_config.json
+recent_projects.json
+confiance.json
+cout_usage.json
+projets_delegation.json
+plugins_etat.json
+taches_nocturnes.json
+veille_sujets.json
+capacites.json
+
+# Maquettes de conception : hors produit
+design/
+jarvis_tts_quota.json

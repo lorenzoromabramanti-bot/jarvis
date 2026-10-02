@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#35ff8b">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+  <title>JARVIS Mail</title>
+</head>
+<body>
+  <header>
+    <span class="logo">◈ J-MAIL</span>
+    <div class="actions">
+      <button class="icon-btn" id="refresh-btn" title="Rafraîchir">⟳ Relever</button>
+    </div>
+  </header>
+
+  <div id="accounts-bar"></div>
+  <div id="filters-bar">
+    <input id="search-input" type="search" placeholder="Rechercher (objet, expéditeur)…" autocomplete="off">
+    <button id="unread-toggle" class="filter-toggle" aria-pressed="false">● Non lus</button>
+  </div>
+  <div id="status">Connexion à JARVIS…</div>
+  <div id="list"></div>
+
+  <button id="add-fab" title="Ajouter une boîte">+</button>
+
+  <div id="modal">
+    <div class="card">
+      <h2>◈ AJOUTER UNE BOÎTE</h2>
+      <label>Nom</label>
+      <input id="f-name" placeholder="Ex : Perso, Boulot…">
+      <label>Fournisseur</label>
+      <select id="f-provider">
+        <option value="gmail">Gmail</option>
+        <option value="icloud">iCloud</option>
+        <option value="outlook">Outlook / Hotmail</option>
+        <option value="yahoo">Yahoo</option>
+        <option value="orange">Orange</option>
+        <option value="free">Free</option>
+        <option value="other">Autre (IMAP)</option>
+      </select>
+      <label>Adresse e-mail</label>
+      <input id="f-user" type="email" placeholder="vous@exemple.com" autocomplete="username">
+      <label>Mot de passe d'application</label>
+      <input id="f-pass" type="password" placeholder="Mot de passe d'application IMAP" autocomplete="off">
+      <div class="hint">
+        Utilisez un <b>mot de passe d'application</b> (pas votre mot de passe principal) :
+        Gmail &amp; iCloud → réglages de sécurité du compte ; Outlook → mot de passe d'app si l'IMAP basique est autorisé.
+        Stocké en local sur votre machine JARVIS.
+      </div>
+      <div class="row">
+        <button class="cancel" id="m-cancel">Annuler</button>
+        <button class="save" id="m-save">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Détail d'un mail -->
+  <div id="mail-modal">
+    <div id="mail-overlay"></div>
+    <div class="mail-card">
+      <div class="mail-card-head">
+        <span id="mail-close" class="mail-close" title="Fermer">✕</span>
+      </div>
+      <div id="mail-subject" class="mail-subject-full"></div>
+      <div class="mail-metaline"><span id="mail-from"></span> &nbsp;·&nbsp; <span id="mail-date"></span></div>
+      <div id="mail-body" class="mail-body-full"></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

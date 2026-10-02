@@ -1,0 +1,911 @@
+<title>JARVIS — git log</title>
+<meta name="description" content="git log — écrit par la machine. Le vrai journal git de JARVIS : cinq commits, texte non retouché." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap">
+
+<style>
+:root {
+  --bg: #07090E;
+  --surface: #0D111A;
+  --card: #121824;
+  --line: #1E2638;
+  --accent: #4A8FD4;
+  --ink: #E2E8F0;
+  --ink-2: #94A3B8;
+  --ink-3: #64748B;
+  --fast: #22C55E;
+  --slow: #EF4444;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--bg); }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+a { color: inherit; }
+button { font-family: inherit; }
+
+::selection { background: var(--accent); color: var(--bg); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--line); border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+.tnum { font-variant-numeric: tabular-nums; }
+
+.scanlines {
+  position: fixed; inset: 0; pointer-events: none; z-index: 60;
+  background: repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(255,255,255,.012) 3px, rgba(255,255,255,.012) 4px);
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(74,143,212,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74,143,212,.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+@keyframes marquee-x { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee-track { animation: marquee-x 46s linear infinite; will-change: transform; display: flex; white-space: nowrap; }
+
+@keyframes blink-caret { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+.caret { animation: blink-caret 1.1s steps(1) infinite; color: var(--accent); margin-left: 4px; }
+
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(74,143,212,.5); }
+  50% { opacity: .6; box-shadow: 0 0 0 5px rgba(74,143,212,0); }
+}
+.pulse-dot { animation: pulse-dot 2.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track, .caret, .pulse-dot { animation: none !important; }
+}
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+/* ── Header ─────────────────────────────────────────── */
+header.hdr {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  border-bottom: 1px solid var(--line);
+  background: rgba(7,9,14,.9); backdrop-filter: blur(8px);
+}
+header.hdr .row { max-width: 1080px; margin: 0 auto; padding: 0 24px; height: 48px; display: flex; align-items: center; gap: 16px; }
+.logo { display: flex; align-items: center; gap: 12px; min-width: 0; text-decoration: none; }
+.logo .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.logo span { font-size: 14px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.logo .sep { color: #475569; }
+.logo .accent { color: var(--accent); }
+nav.commitnav { display: none; align-items: center; gap: 16px; font-size: 12px; color: var(--ink-3); }
+nav.commitnav a { text-decoration: none; transition: color .15s; }
+nav.commitnav a:hover { color: var(--accent); }
+.hdr-meta { font-size: 11px; color: var(--ink-3); margin-left: auto; display: none; }
+@media (min-width: 768px) { nav.commitnav { display: flex; } .hdr-meta { display: block; } }
+
+/* ── Hero ───────────────────────────────────────────── */
+.hero { position: relative; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; overflow: hidden; padding-top: 48px; }
+.hero-bg { position: absolute; inset: 0; pointer-events: none; user-select: none; display: flex; flex-direction: column; justify-content: center; gap: 40px; will-change: transform; }
+.hero-bg div {
+  font-size: 16vw; line-height: 1; font-weight: 800; letter-spacing: -.04em;
+  color: var(--accent); white-space: nowrap; opacity: .05;
+}
+.hero-bg div:nth-child(odd) { margin-left: -4vw; }
+.hero-bg div:nth-child(even) { margin-left: 22vw; }
+
+.hero-inner { position: relative; max-width: 1080px; margin: 0 auto; padding: 0 24px; width: 100%; }
+.mask { overflow: hidden; }
+.mask > * { transform: translateY(110%); opacity: 0; transition: transform .9s cubic-bezier(.16,1,.3,1), opacity .5s ease; }
+.mask.in > * { transform: translateY(0); opacity: 1; }
+
+.hero-cmd { font-size: 13px; color: var(--ink-3); }
+.hero-cmd .p { color: var(--accent); }
+
+h1.hero-title { margin: 32px 0 0; font-size: clamp(2rem, 7vw, 4.4rem); font-weight: 800; letter-spacing: -.04em; line-height: .95; }
+h1.hero-title .line { color: #f1f5f9; display: block; }
+h1.hero-title .accent { color: var(--accent); }
+
+p.hero-sub { margin: 32px 0 0; max-width: 640px; font-size: 14px; line-height: 1.7; color: var(--ink-2); }
+p.hero-sub b { color: var(--ink); font-weight: 500; }
+
+dl.hero-stats { margin: 40px 0 0; display: flex; flex-wrap: wrap; gap: 16px 40px; font-size: 13px; }
+dl.hero-stats > div { border-left: 1px solid var(--line); padding-left: 12px; }
+dl.hero-stats dt { color: #475569; text-transform: uppercase; letter-spacing: .1em; font-size: 10px; margin: 0; }
+dl.hero-stats dd { color: var(--ink); margin: 4px 0 0; }
+
+.hero-statusbar {
+  position: relative; max-width: 1080px; margin: 64px auto 0; padding: 0 24px; width: 100%;
+  opacity: 0; transition: opacity .8s ease;
+}
+.hero-statusbar.in { opacity: 1; }
+.hero-statusbar .bar {
+  border: 1px solid var(--line); background: rgba(13,17,26,.8); padding: 10px 16px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; font-size: 11px; color: var(--ink-3);
+}
+.hero-statusbar .bar b { color: #cbd5e1; font-weight: 400; }
+.hero-statusbar .bar .ac { color: var(--accent); }
+.hero-statusbar .bar .last { margin-left: auto; display: none; }
+@media (min-width: 640px) { .hero-statusbar .bar .last { display: inline; } }
+
+/* ── Marquee ────────────────────────────────────────── */
+.marquee { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface); overflow: hidden; padding: 12px 0; }
+.marquee span { padding-right: 16px; font-size: 12px; color: #475569; }
+
+/* ── Commit sections ────────────────────────────────── */
+main.feed { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+article.commit {
+  scroll-margin-top: 80px; border-top: 1px solid var(--line); padding: 64px 0;
+  opacity: 0; transform: translateY(40px); transition: opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1);
+}
+article.commit.in { opacity: 1; transform: none; }
+@media (min-width: 640px) { article.commit { padding: 96px 0; } }
+
+.commit-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; font-size: 12px; }
+.commit-meta .idx { color: #475569; }
+.commit-meta .hashbtn {
+  background: none; border: none; color: var(--accent); font-family: inherit; font-size: 12px;
+  padding: 1px 4px; margin: 0 -4px; cursor: pointer; transition: background .15s;
+}
+.commit-meta .hashbtn:hover { background: rgba(74,143,212,.1); }
+.commit-meta .date { color: var(--ink-3); }
+.commit-meta .author { color: var(--ink-3); }
+
+h2.commit-title { margin: 16px 0 0; max-width: 720px; font-size: clamp(1.15rem, 3vw, 1.6rem); font-weight: 700; letter-spacing: -.015em; line-height: 1.3; color: #f1f5f9; }
+
+.commit-body { margin: 24px 0 0; max-width: 720px; display: flex; flex-direction: column; gap: 16px; font-size: 14px; line-height: 1.7; color: var(--ink-2); }
+.commit-body b { color: var(--ink); font-weight: 500; }
+
+.box { margin: 24px 0 0; border: 1px solid var(--line); background: var(--surface); max-width: 720px; }
+.box-head { padding: 8px 16px; border-bottom: 1px solid var(--line); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: #475569; }
+
+table.mtable { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.mtable td { padding: 10px 16px; border-bottom: 1px solid rgba(30,38,56,.6); }
+table.mtable tr:last-child td { border-bottom: 0; }
+table.mtable .q { color: #cbd5e1; }
+table.mtable .ms { text-align: right; color: var(--slow); white-space: nowrap; }
+table.mtable .ans { color: var(--ink-3); display: none; }
+@media (min-width: 768px) { table.mtable .ans { display: table-cell; } }
+
+/* diffstat */
+.diffstat { margin-top: 24px; max-width: 720px; }
+.diffstat ul { list-style: none; margin: 0; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.diffstat li { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 16px; align-items: center; font-size: 12px; }
+.diffstat .file { color: #cbd5e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.diffstat .cnt { text-align: right; white-space: nowrap; }
+.diffstat .cnt .a { color: var(--fast); }
+.diffstat .cnt .d { color: var(--slow); margin-left: 8px; }
+.diffstat .bar { grid-column: 1 / -1; height: 8px; display: none; gap: 1px; }
+@media (min-width: 640px) { .diffstat .bar { display: flex; } }
+.diffstat .bar i { display: block; height: 100%; }
+.diffstat .bar .ba { background: var(--fast); }
+.diffstat .bar .bd { background: var(--slow); }
+
+/* ── Interactive modules (shared) ─────────────────────── */
+.tool { margin-top: 32px; max-width: 720px; border: 1px solid var(--line); background: var(--surface); }
+.tool-head { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.tool-head .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: #475569; }
+.tool-body { padding: 16px; }
+.tool-foot { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; font-size: 11px; color: #475569; flex-wrap: wrap; }
+
+.seg { display: flex; border: 1px solid var(--line); }
+.seg button { padding: 4px 12px; font-size: 12px; background: none; border: none; color: var(--ink-2); cursor: pointer; transition: background .15s, color .15s; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-selected="true"] { background: var(--accent); color: var(--bg); font-weight: 600; }
+.seg button:not([aria-selected="true"]):hover { color: var(--ink); }
+
+.outline-btn {
+  padding: 4px 12px; font-size: 12px; border: 1px solid var(--accent); color: var(--accent);
+  background: none; cursor: pointer; transition: background .15s, color .15s;
+}
+.outline-btn:hover:not(:disabled) { background: var(--accent); color: var(--bg); }
+.outline-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* course de latence */
+.race-row { margin-bottom: 12px; }
+.race-row .top { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; font-size: 12px; margin-bottom: 4px; }
+.race-row .q { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.race-row .ms { white-space: nowrap; }
+.race-row .ms.slowc { color: var(--slow); }
+.race-row .ms.fastc { color: var(--fast); }
+.race-track { height: 16px; background: var(--bg); border: 1px solid var(--line); position: relative; overflow: hidden; }
+.race-track .fill { height: 100%; width: 0%; }
+.race-track .fill.slowc { background: var(--slow); }
+.race-track .fill.fastc { background: var(--fast); }
+
+/* bombe */
+.bomb-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.bomb-expr { font-size: 12px; color: #cbd5e1; background: var(--bg); border: 1px solid var(--line); padding: 2px 8px; }
+.bomb-head .outline-btn { margin-left: auto; }
+.bomb-grid { display: grid; grid-template-columns: 1fr; }
+@media (min-width: 768px) { .bomb-grid { grid-template-columns: 1fr 1fr; } }
+.bomb-panel { padding: 24px 16px; border-bottom: 1px solid var(--line); }
+@media (min-width: 768px) { .bomb-panel:first-child { border-right: 1px solid var(--line); border-bottom: 0; } }
+.bomb-panel .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: #475569; margin-bottom: 12px; }
+.bomb-counter { font-size: clamp(1.6rem, 5vw, 2.2rem); font-weight: 700; }
+.bomb-counter.slowc { color: #e2e8f0; }
+.bomb-counter.slowc.killed { color: var(--slow); }
+.bomb-counter.fastc { color: var(--fast); }
+.bomb-status { margin-top: 12px; font-size: 12px; line-height: 1.6; color: #64748b; min-height: 2.4em; }
+.bomb-bar { margin-top: 16px; height: 6px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
+.bomb-bar .fill { height: 100%; width: 0%; }
+.bomb-bar .fill.slowc { background: var(--slow); }
+.bomb-bar .fill.fastc { background: var(--fast); transition: width .3s; }
+
+/* résolveur */
+.ha-form { display: flex; gap: 8px; }
+.ha-inputwrap { flex: 1; display: flex; align-items: center; border: 1px solid var(--line); background: var(--bg); transition: border-color .15s; }
+.ha-inputwrap:focus-within { border-color: var(--accent); }
+.ha-inputwrap .chevron { padding-left: 12px; color: var(--accent); font-size: 14px; user-select: none; }
+.ha-inputwrap input { flex: 1; background: transparent; border: none; outline: none; padding: 10px 12px; font-size: 13px; color: var(--ink); font-family: inherit; }
+.ha-inputwrap input::placeholder { color: #475569; }
+.ha-form .outline-btn { padding: 0 16px; }
+.chips { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: 11px; color: var(--ink-3); border: 1px solid var(--line); padding: 4px 8px; background: none; cursor: pointer; transition: color .15s, border-color .15s; font-family: inherit; }
+.chip:hover { color: var(--ink); border-color: #64748b; }
+.ha-result { margin-top: 16px; border: 1px solid var(--line); background: var(--bg); padding: 12px 16px; font-size: 13px; display: none; }
+.ha-result.show { display: block; }
+.ha-result .tag { font-size: 11px; color: #64748b; }
+.ha-result .tag.ambig { color: #cbd5e1; }
+.ha-result .line { margin-top: 6px; }
+.ha-result .eid { color: var(--accent); font-weight: 600; }
+.ha-result .ename { color: #64748b; margin-left: 12px; font-size: 12px; }
+.ha-result ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.ha-result ul li { font-size: 12px; }
+.ha-result .note { margin-top: 8px; font-size: 11px; color: #475569; }
+.ha-result .unknown { color: var(--ink-2); }
+
+/* ── Footer ─────────────────────────────────────────── */
+footer.ftr { border-top: 1px solid var(--line); }
+footer.ftr .inner { max-width: 1080px; margin: 0 auto; padding: 64px 24px; }
+@media (min-width: 640px) { footer.ftr .inner { padding: 96px 24px; } }
+
+blockquote.creed {
+  max-width: 640px; margin: 0; opacity: 0; transform: translateY(30px);
+  transition: opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1);
+}
+blockquote.creed.in { opacity: 1; transform: none; }
+blockquote.creed p { margin: 0; font-size: clamp(1.05rem, 2.6vw, 1.4rem); font-weight: 600; line-height: 1.5; color: #e2e8f0; letter-spacing: -.01em; }
+blockquote.creed cite { display: block; margin-top: 16px; font-size: 11px; color: #475569; font-style: normal; }
+
+.ftr-grid { margin-top: 56px; display: grid; grid-template-columns: 1fr; gap: 40px; }
+@media (min-width: 768px) { .ftr-grid { grid-template-columns: 1fr 1fr; } }
+
+.pmatrix { border: 1px solid var(--line); background: var(--surface); }
+.pmatrix ul { list-style: none; margin: 0; padding: 0; }
+.pmatrix li { padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(30,38,56,.6); font-size: 13px; }
+.pmatrix li:last-child { border-bottom: 0; }
+.pmatrix .dot2 { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.pmatrix .dot2.ok { background: var(--fast); }
+.pmatrix .dot2.no { background: #475569; }
+.pmatrix .status { margin-left: auto; font-size: 12px; }
+.pmatrix .status.ok { color: var(--fast); }
+.pmatrix .status.no { color: #64748b; }
+
+.ftr-side { display: flex; flex-direction: column; justify-content: space-between; gap: 32px; }
+.ftr-side .note { font-size: 12px; color: #64748b; line-height: 1.7; }
+.ftr-side .note p { margin: 0 0 8px; }
+.ftr-side .note p:last-child { margin-bottom: 0; }
+a.ghlink {
+  display: inline-flex; align-items: center; gap: 12px; width: fit-content;
+  border: 1px solid var(--line); padding: 12px 16px; font-size: 13px; color: #cbd5e1;
+  text-decoration: none; transition: border-color .2s, color .2s;
+}
+a.ghlink:hover { border-color: var(--accent); color: var(--accent); }
+a.ghlink .arrow { transition: transform .2s; }
+a.ghlink:hover .arrow { transform: translateX(4px); }
+
+.ftr-bottom { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 11px; color: #475569; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mask > *, .hero-statusbar, article.commit, blockquote.creed { transition: none !important; opacity: 1 !important; transform: none !important; }
+}
+</style>
+
+<div class="scanlines" aria-hidden="true"></div>
+
+<header class="hdr">
+  <div class="row">
+    <a href="#top" class="logo">
+      <span class="dot pulse-dot" aria-hidden="true"></span>
+      <span>jarvis <span class="sep">/</span> <span class="accent">git log</span></span>
+    </a>
+    <nav class="commitnav" aria-label="commits">
+      <a href="#commit-1">01</a><a href="#commit-2">02</a><a href="#commit-3">03</a><a href="#commit-4">04</a><a href="#commit-5">05</a>
+    </nav>
+    <div class="hdr-meta tnum">12–13 août 2026 · 5 commits · 2049 lignes</div>
+  </div>
+</header>
+
+<section class="hero grid-bg" id="top">
+  <div class="hero-bg" id="heroBg" aria-hidden="true">
+    <div>549012a</div><div>d963a14</div><div>03a3e73</div><div>76e30d9</div><div>6e7f32d</div>
+  </div>
+
+  <div class="hero-inner">
+    <div class="mask" data-delay="100">
+      <p class="hero-cmd"><span class="p">$</span> git log --author="JARVIS &lt;jarvis@local&gt;" --oneline<span class="caret">▌</span></p>
+    </div>
+
+    <h1 class="hero-title">
+      <div class="mask" data-delay="250"><span class="line">git log</span></div>
+      <div class="mask" data-delay="400"><span class="line">— écrit par <span class="accent">la machine</span></span></div>
+    </h1>
+
+    <div class="mask" data-delay="600">
+      <p class="hero-sub">Ce qui suit est le vrai journal git de ce dépôt — cinq commits, texte non retouché, auteur <b>JARVIS &lt;jarvis@local&gt;</b>. Ceci n'est pas une page à son sujet ; c'est une lecture de ce qu'il a déjà écrit.</p>
+    </div>
+
+    <div class="mask" data-delay="750">
+      <dl class="hero-stats">
+        <div><dt>période</dt><dd>12–13 août 2026</dd></div>
+        <div><dt>durée</dt><dd>deux journées</dd></div>
+        <div><dt>commits</dt><dd>5</dd></div>
+        <div><dt>lignes changées</dt><dd>2049</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <div class="hero-statusbar" id="heroStatus">
+    <div class="bar tnum">
+      <span>branche : <b>main</b></span>
+      <span>HEAD → <span class="ac">6e7f32d</span></span>
+      <span>auteur : <b>JARVIS &lt;jarvis@local&gt;</b></span>
+      <span class="last">▼ lire le journal</span>
+    </div>
+  </div>
+</section>
+
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track" id="marqueeTrack"></div>
+</div>
+
+<main class="feed">
+
+  <!-- COMMIT 1 -->
+  <article class="commit" id="commit-1">
+    <div class="commit-meta">
+      <span class="idx tnum">commit 01/05</span>
+      <button class="hashbtn" data-hash="549012a">549012a</button>
+      <span class="date tnum">2026-08-12 20:51</span>
+      <span class="author">JARVIS &lt;jarvis@local&gt;</span>
+    </div>
+    <h2 class="commit-title">Domotique : résoudre les noms depuis Home Assistant, au lieu d'une table morte</h2>
+    <div class="commit-body">
+      <p>ha_config.py déclarait 64 entités home assistant codées en dur, toutes absentes de l'installation réelle. Home Assistant connaît déjà le nom de chaque appareil (« Climatiseur Chambre », « TV Salon », « Lumière Cuisine ») — ce sont déjà les mots qu'on emploie à voix haute. ha_resolution.py les lit en direct au lieu d'une table.</p>
+      <p>Principe : « NE JAMAIS DEVINER » — se tromper d'appareil est pire que ne rien faire ; deux candidats proches renvoient une ambiguïté, l'appelant doit préciser.</p>
+      <p>Résultat mesuré : 9 phrases sur 10 résolues correctement, la dixième ambiguë à juste titre (trois amplificateurs distincts dans la maison).</p>
+    </div>
+
+    <div class="tool" id="haTool">
+      <div class="tool-head">
+        <span class="lbl">annexe interactive — résolveur d'entités</span>
+        <span class="lbl" style="margin-left:auto">principe : NE JAMAIS DEVINER</span>
+      </div>
+      <div class="tool-body">
+        <form class="ha-form" id="haForm">
+          <div class="ha-inputwrap">
+            <span class="chevron">›</span>
+            <input id="haInput" type="text" placeholder="une phrase, ex. Allume le climatiseur de la chambre" autocomplete="off">
+          </div>
+          <button type="submit" class="outline-btn">résoudre</button>
+        </form>
+        <div class="chips" id="haChips"></div>
+        <div class="ha-result" id="haResult"></div>
+      </div>
+    </div>
+
+    <div class="box diffstat">
+      <div class="box-head">diffstat</div>
+      <ul>
+        <li><span class="file">ha_resolution.py</span><span class="cnt"><span class="a">+321</span></span><span class="bar"><i class="ba" style="width:100%"></i></span></li>
+        <li><span class="file">_test_ha_resolution.py</span><span class="cnt"><span class="a">+98</span></span><span class="bar"><i class="ba" style="width:30.5%"></i></span></li>
+      </ul>
+    </div>
+  </article>
+
+  <!-- COMMIT 2 -->
+  <article class="commit" id="commit-2">
+    <div class="commit-meta">
+      <span class="idx tnum">commit 02/05</span>
+      <button class="hashbtn" data-hash="d963a14">d963a14</button>
+      <span class="date tnum">2026-08-12 23:49</span>
+      <span class="author">JARVIS &lt;jarvis@local&gt;</span>
+    </div>
+    <h2 class="commit-title">Latence : JARVIS refusait de répondre sur la machine où il tourne</h2>
+    <div class="commit-body">
+      <p>JARVIS mettait jusqu'à 15 secondes à répondre « je ne sais pas » à des questions simples sur sa propre machine, pendant que le HUD affichait déjà le CPU/RAM en direct via psutil.</p>
+      <p>APRÈS correctif : les mêmes 16 questions répondent toutes en moins de 90 ms, la plupart sous 3 ms.</p>
+      <p>Cause racine trouvée : la fonction de correspondance comparait le texte accentué (« mémoire vive ») à un texte non accentué (saisi ou transcrit vocalement) — donc jamais de correspondance, systématiquement le fallback lent vers le modèle IA. La fonction tools.contient() normalise désormais les deux côtés (accents retirés avant comparaison).</p>
+    </div>
+
+    <div class="box">
+      <div class="box-head">mesures AVANT — vrais chiffres</div>
+      <table class="mtable">
+        <tbody>
+          <tr><td class="q">« quelle est ma version de windows »</td><td class="ms tnum">14 988 ms</td><td class="ans">→ « mes capteurs ne me permettent pas »</td></tr>
+          <tr><td class="q">« quelle est mon adresse ip »</td><td class="ms tnum">13 412 ms</td><td class="ans">→ « je ne peux pas lire directement »</td></tr>
+          <tr><td class="q">« combien de place libre sur le disque »</td><td class="ms tnum">7 974 ms</td><td class="ans">→ « pas d'accès direct »</td></tr>
+          <tr><td class="q">« combien de mémoire vive utilisée »</td><td class="ms tnum">6 355 ms</td><td class="ans">→ « pas d'accès direct »</td></tr>
+          <tr><td class="q">« suis-je connecté à internet »</td><td class="ms tnum">3 183 ms</td><td class="ans">→ « puisque nous conversons... »</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tool" id="raceTool">
+      <div class="tool-head">
+        <span class="lbl">annexe interactive — course de latence</span>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <div class="seg" role="tablist" aria-label="mode">
+            <button role="tab" aria-selected="true" data-mode="avant">avant</button>
+            <button role="tab" aria-selected="false" data-mode="apres">après</button>
+          </div>
+          <button class="outline-btn" id="raceRerun">relancer la course</button>
+        </div>
+      </div>
+      <div class="tool-body" id="raceRows"></div>
+      <div class="tool-foot">
+        <span>échelle partagée 0 – 15 000 ms · temps réel</span>
+        <span class="tnum" id="raceStatus">en cours…</span>
+      </div>
+    </div>
+
+    <div class="box diffstat">
+      <div class="box-head">diffstat</div>
+      <ul>
+        <li><span class="file">tools/machine.py</span><span class="cnt"><span class="a">+246</span></span><span class="bar"><i class="ba" style="width:100%"></i></span></li>
+        <li><span class="file">tools/__init__.py</span><span class="cnt"><span class="a">+27</span></span><span class="bar"><i class="ba" style="width:11%"></i></span></li>
+        <li><span class="file">tools/infos_systeme.py</span><span class="cnt"><span class="a">+15</span><span class="d">−11</span></span><span class="bar"><i class="ba" style="width:6.1%"></i><i class="bd" style="width:4.5%"></i></span></li>
+      </ul>
+    </div>
+  </article>
+
+  <!-- COMMIT 3 -->
+  <article class="commit" id="commit-3">
+    <div class="commit-meta">
+      <span class="idx tnum">commit 03/05</span>
+      <button class="hashbtn" data-hash="03a3e73">03a3e73</button>
+      <span class="date tnum">2026-08-13 13:22</span>
+      <span class="author">JARVIS &lt;jarvis@local&gt;</span>
+    </div>
+    <h2 class="commit-title">Une phrase pouvait figer JARVIS définitivement</h2>
+    <div class="commit-body">
+      <p>La phrase « neuf puissance neuf puissance neuf puissance neuf » se traduisait en l'expression Python 9**9**9**9, que Python calcule sans jamais rendre la main (nombre à des milliards de chiffres) — blocage total après 15 secondes, processus tué.</p>
+      <p>Le code utilisait eval() avec un dictionnaire de fonctions autorisées (sqrt, pow, pi, e), documenté comme « dette technique : risque d'exécution de code arbitraire » — mais le vrai bug n'était PAS l'exécution de code arbitraire (le filtre en amont ne laissait passer que des chiffres et opérateurs mathématiques), c'était l'épuisement de ressources par un calcul légal mais absurdement grand.</p>
+      <p>Correctif : nouveau module calcul_sur.py qui parse l'expression en arbre syntaxique (AST Python) et borne la puissance AVANT de calculer, pas après. Mesures : calcul normal avant = 4 ms, la bombe = 9014 ms (part au modèle qui doit alors expliquer), calcul normal après = 3 ms. 37 contrôles de test dont 5 variantes de « bombe » toutes refusées en moins d'une milliseconde.</p>
+    </div>
+
+    <div class="tool" id="bombTool">
+      <div class="tool-head bomb-head">
+        <span class="lbl">annexe interactive — la bombe</span>
+        <code class="bomb-expr">9**9**9**9</code>
+        <button class="outline-btn" id="bombBtn">lancer la bombe</button>
+      </div>
+      <div class="bomb-grid">
+        <div class="bomb-panel">
+          <div class="lbl">avant — eval() direct</div>
+          <div class="bomb-counter slowc tnum" id="bombSlow">0 ms</div>
+          <p class="bomb-status" id="bombSlowStatus">en attente — le calcul n'a pas encore commencé</p>
+          <div class="bomb-bar"><div class="fill slowc" id="bombSlowBar"></div></div>
+        </div>
+        <div class="bomb-panel">
+          <div class="lbl">après — calcul_sur.py (AST borné)</div>
+          <div class="bomb-counter fastc tnum" id="bombFast">— ms</div>
+          <p class="bomb-status" id="bombFastStatus">en attente du déclencheur</p>
+          <div class="bomb-bar"><div class="fill fastc" id="bombFastBar"></div></div>
+        </div>
+      </div>
+      <div class="tool-foot"><span>compteur en temps réel — mesure réelle du commit : 9 014 ms avant interception par le modèle</span></div>
+    </div>
+
+    <div class="box diffstat">
+      <div class="box-head">diffstat</div>
+      <ul>
+        <li><span class="file">calcul_sur.py</span><span class="cnt"><span class="a">+157</span></span><span class="bar"><i class="ba" style="width:100%"></i></span></li>
+        <li><span class="file">_test_calcul_sur.py</span><span class="cnt"><span class="a">+103</span></span><span class="bar"><i class="ba" style="width:65.6%"></i></span></li>
+        <li><span class="file">main2.py</span><span class="cnt"><span class="a">+19</span><span class="d">−9</span></span><span class="bar"><i class="ba" style="width:12.1%"></i><i class="bd" style="width:5.7%"></i></span></li>
+      </ul>
+    </div>
+  </article>
+
+  <!-- COMMIT 4 -->
+  <article class="commit" id="commit-4">
+    <div class="commit-meta">
+      <span class="idx tnum">commit 04/05</span>
+      <button class="hashbtn" data-hash="76e30d9">76e30d9</button>
+      <span class="date tnum">2026-08-13 17:12</span>
+      <span class="author">JARVIS &lt;jarvis@local&gt;</span>
+    </div>
+    <h2 class="commit-title">Catalogue des capacités : 16 entrées, adossées aux 142 points d'entrée réels</h2>
+    <div class="commit-body">
+      <p>Besoin d'un catalogue des fonctionnalités de JARVIS consultable par deux systèmes différents (deux modes d'installation) sans divergence entre eux. Une liste écrite à la main diverge dès qu'une fonction est ajoutée sans que personne ne s'en aperçoive.</p>
+      <p>Solution : chaque capacité déclare les points d'entrée code qu'elle couvre, et une fonction verifier_coherence() compare cette déclaration au code réel — résultat : 142 points déclarés, 142 points réels dans le code, correspondance exacte.</p>
+      <p>Le contrôle a été éprouvé en retirant délibérément une capacité (vpn_connect) du catalogue : elle est ressortie comme « orpheline » dans le contrôle, prouvant que le test détecte vraiment les incohérences.</p>
+    </div>
+    <div class="box diffstat">
+      <div class="box-head">diffstat</div>
+      <ul>
+        <li><span class="file">catalogue.py</span><span class="cnt"><span class="a">+394</span></span><span class="bar"><i class="ba" style="width:100%"></i></span></li>
+        <li><span class="file">_test_catalogue.py</span><span class="cnt"><span class="a">+140</span></span><span class="bar"><i class="ba" style="width:35.5%"></i></span></li>
+        <li><span class="file">main2.py</span><span class="cnt"><span class="a">+37</span></span><span class="bar"><i class="ba" style="width:9.4%"></i></span></li>
+      </ul>
+    </div>
+  </article>
+
+  <!-- COMMIT 5 -->
+  <article class="commit" id="commit-5">
+    <div class="commit-meta">
+      <span class="idx tnum">commit 05/05</span>
+      <button class="hashbtn" data-hash="6e7f32d">6e7f32d</button>
+      <span class="date tnum">2026-08-13 19:51</span>
+      <span class="author">JARVIS &lt;jarvis@local&gt;</span>
+    </div>
+    <h2 class="commit-title">Linux : JARVIS s'installe et se charge sur Ubuntu 26.04</h2>
+    <div class="commit-body">
+      <p>Première installation complète testée sur Linux nu (WSL2 Ubuntu 26.04) : 121 paquets installés, le fichier principal main2.py s'importe entièrement, 10 outils auto-découverts, 6 capacités sur 14 disponibles (les 7 absentes annoncent chacune pourquoi).</p>
+      <p>Quatre blocages trouvés en testant réellement : (1) des paquets Windows-only (pywin32, comtypes, pycaw) déclarés sans condition faisaient échouer pip entièrement ; (2) ensurepip est absent par défaut sur Debian/Ubuntu, l'installeur doit créer l'environnement virtuel puis s'amorcer lui-même ; (3) pygame sans version compilée pour Python 3.14 faisait échouer 48 autres paquets alors que tous ses imports étaient déjà protégés ; (4) le pire bug : sur Linux sans tkinter, « import pyautogui » lève SystemExit — qui n'hérite PAS de la classe Exception en Python — donc les blocs try/except Exception existants ne l'attrapaient pas du tout, le processus principal mourait silencieusement sans aucun message d'erreur ni trace.</p>
+      <p>Correctif : les fonctions d'import protégé attrapent désormais BaseException (en laissant explicitement passer KeyboardInterrupt).</p>
+    </div>
+    <div class="box diffstat">
+      <div class="box-head">diffstat</div>
+      <ul>
+        <li><span class="file">amorceur/amorceur.py</span><span class="cnt"><span class="a">+157</span><span class="d">−26</span></span><span class="bar"><i class="ba" style="width:100%"></i><i class="bd" style="width:16.6%"></i></span></li>
+        <li><span class="file">docs/macos.md</span><span class="cnt"><span class="a">+100</span></span><span class="bar"><i class="ba" style="width:63.7%"></i></span></li>
+        <li><span class="file">config.py</span><span class="cnt"><span class="a">+25</span><span class="d">−3</span></span><span class="bar"><i class="ba" style="width:15.9%"></i><i class="bd" style="width:1.9%"></i></span></li>
+        <li><span class="file">_test_amorceur.py</span><span class="cnt"><span class="a">+15</span><span class="d">−4</span></span><span class="bar"><i class="ba" style="width:9.6%"></i><i class="bd" style="width:2.5%"></i></span></li>
+        <li><span class="file">requirements.txt</span><span class="cnt"><span class="a">+4</span><span class="d">−5</span></span><span class="bar"><i class="ba" style="width:2.5%"></i><i class="bd" style="width:3.2%"></i></span></li>
+        <li><span class="file">main2.py</span><span class="cnt"><span class="a">+6</span><span class="d">−1</span></span><span class="bar"><i class="ba" style="width:3.8%"></i><i class="bd" style="width:0.6%"></i></span></li>
+        <li><span class="file">deezer_controller.py, file_manager.py, spotify_controller.py, vision_module.py</span><span class="cnt"><span class="a">+1</span><span class="d">−1</span> chacun</span></li>
+      </ul>
+      <div class="box-head" style="border-top:1px solid var(--line);border-bottom:0">10 fichiers modifiés, 311 insertions(+), 43 suppressions(−)</div>
+    </div>
+  </article>
+
+  <!-- VERSION 1.2.0 -->
+  <article class="commit" id="version-1-2-0">
+    <div class="commit-meta">
+      <span class="idx tnum">version 1.2.0</span>
+      <button class="hashbtn" data-hash="v1.2.0">v1.2.0</button>
+      <span class="date tnum">2026-10-01</span>
+      <span class="author">résumé de version, pas un commit</span>
+    </div>
+    <h2 class="commit-title">1.2.0 : plus de choses à distance, et tout ce qui est personnel devient une option éteinte</h2>
+    <div class="commit-body">
+      <p>Le gros de la version : JARVIS se pilote depuis Discord (texte et vocal), prévient quand une tâche de fond se termine, met des tâches de côté pour la nuit, découpe une demande qui compare plusieurs choses, et confie une tâche de code à Claude Code, Codex, OpenCode, Cursor Agent ou OpenClaw — ou la fait lui-même dans un bac à sable limité au projet.</p>
+      <p>Deux corrections comptent plus que le reste. Lancé avec Windows par pythonw, JARVIS s'arrêtait en silence : pythonw n'a pas de sortie standard, et la première écriture le tuait. Et quand Gemini ne répond pas, il bascule sur un modèle Ollama local au lieu de se taire ; la liste des modèles est lue sur le serveur réel, pas devinée.</p>
+      <p>Domotique : il ne dit plus « c'est fait » quand Home Assistant a refusé l'action. C'est la règle du projet, enfreinte une fois de plus et corrigée.</p>
+      <p>Tout ce qui dépend d'une installation particulière (emploi du temps scolaire, révisions, détection de présence par webcam, carte OSINT) est livré <b>désactivé</b>, sans valeur par défaut tirée d'une vraie maison. On l'active dans l'installeur, rubrique Capacités.</p>
+    </div>
+    <div class="box diffstat">
+      <div class="box-head">options livrées désactivées</div>
+      <ul>
+        <li><span class="file">emploi du temps scolaire (Pronote via Home Assistant)</span><span class="cnt"><span class="d">off</span></span></li>
+        <li><span class="file">quiz de révision la veille d'une évaluation</span><span class="cnt"><span class="d">off</span></span></li>
+        <li><span class="file">détection de présence par webcam</span><span class="cnt"><span class="d">off</span></span></li>
+        <li><span class="file">carte OSINT 3D (God's Eye View + ShadowBroker)</span><span class="cnt"><span class="d">off</span></span></li>
+        <li><span class="file">bot et vocal Discord, notes Notion</span><span class="cnt"><span class="d">off sans jeton</span></span></li>
+      </ul>
+    </div>
+  </article>
+
+</main>
+
+<footer class="ftr">
+  <div class="inner">
+    <blockquote class="creed" id="creedQuote">
+      <p>« Une fonction indisponible le dit. Elle ne renvoie pas une liste vide, ne répond pas "c'est fait", n'invente pas de valeur par défaut. »</p>
+      <cite>— principe transversal, commits 01–05</cite>
+    </blockquote>
+
+    <div class="ftr-grid">
+      <div class="pmatrix">
+        <div class="box-head">statuts plateforme</div>
+        <ul>
+          <li><span class="dot2 ok"></span><span>Windows</span><span class="status ok">éprouvé</span></li>
+          <li><span class="dot2 ok"></span><span>Linux — Ubuntu 26.04</span><span class="status ok">éprouvé</span></li>
+          <li><span class="dot2 no"></span><span>macOS</span><span class="status no">jamais essayé sur une vraie machine</span></li>
+        </ul>
+      </div>
+      <div class="ftr-side">
+        <div class="note">
+          <p>Cette page est une lecture du journal. Aucun texte de commit n'a été retouché, sauf les noms d'appareils de la maison, remplacés par des noms génériques.</p>
+          <p>La version 1.2.0 n'est pas un commit : c'est un résumé de version, écrit après coup.</p>
+          <p class="tnum">5 commits · 12–13 août 2026 · 2049 lignes changées · auteur : JARVIS &lt;jarvis@local&gt;</p>
+        </div>
+        <a class="ghlink" href="https://github.com/lorenzoromabramanti-bot/jarvis" target="_blank" rel="noopener noreferrer">
+          <span>code source — github.com/lorenzoromabramanti-bot/jarvis</span>
+          <span class="arrow">→</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="ftr-bottom tnum">
+      <span>git log — écrit par la machine</span>
+      <span>HEAD → 6e7f32d · fin du journal</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function fmt(n) { return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
+
+  /* ── reveal on load: hero mask lines + status bar ─────── */
+  document.querySelectorAll(".mask").forEach(function (el) {
+    var delay = reduced ? 0 : (parseInt(el.getAttribute("data-delay"), 10) || 0);
+    setTimeout(function () { el.classList.add("in"); }, delay);
+  });
+  setTimeout(function () {
+    document.getElementById("heroStatus").classList.add("in");
+  }, reduced ? 0 : 1200);
+
+  /* ── hero parallax on scroll (giant hash watermarks) ──── */
+  var heroBg = document.getElementById("heroBg");
+  var hero = document.querySelector(".hero");
+  if (!reduced) {
+    var ticking = false;
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function () {
+        var h = hero.offsetHeight || 1;
+        var p = Math.min(Math.max(window.scrollY / h, 0), 1);
+        heroBg.style.transform = "translateY(" + (p * 180) + "px)";
+        heroBg.style.opacity = 1 - p * 0.8;
+        ticking = false;
+      });
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+  }
+
+  /* ── reveal commit sections + footer quote on view ────── */
+  var revealObs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add("in"); revealObs.unobserve(e.target); }
+    });
+  }, { rootMargin: "-80px 0px -80px 0px" });
+  document.querySelectorAll("article.commit, #creedQuote").forEach(function (el) { revealObs.observe(el); });
+
+  /* ── marquee ticker ────────────────────────────────────── */
+  var ITEMS = [
+    "549012a — domotique : résolution par Home Assistant",
+    "d963a14 — latence : 15 000 ms → < 90 ms",
+    "03a3e73 — 9**9**9**9 refusé en 0,4 ms",
+    "76e30d9 — 142 points d'entrée, correspondance exacte",
+    "6e7f32d — ubuntu 26.04 : BaseException, pas Exception",
+    "v1.2.0 — options désactivées par défaut",
+    "NE JAMAIS DEVINER"
+  ];
+  var line = ITEMS.map(function (t) { return t + "  ·  "; }).join("");
+  var track = document.getElementById("marqueeTrack");
+  track.innerHTML = "<span>" + line + "</span><span>" + line + "</span>";
+
+  /* ── copyable commit hash ──────────────────────────────── */
+  document.querySelectorAll(".hashbtn").forEach(function (btn) {
+    var original = btn.textContent;
+    btn.addEventListener("click", function () {
+      var hash = btn.getAttribute("data-hash");
+      (navigator.clipboard ? navigator.clipboard.writeText(hash) : Promise.reject()).then(function () {
+        btn.textContent = "copié ✓";
+        setTimeout(function () { btn.textContent = original; }, 1200);
+      }).catch(function () {});
+    });
+  });
+
+  /* ── course de latence ─────────────────────────────────── */
+  var RACE = {
+    avant: [
+      { q: "quelle est ma version de windows", ms: 14988 },
+      { q: "quelle est mon adresse ip", ms: 13412 },
+      { q: "combien de place libre sur le disque", ms: 7974 },
+      { q: "combien de mémoire vive utilisée", ms: 6355 },
+      { q: "suis-je connecté à internet", ms: 3183 }
+    ],
+    apres: [
+      { q: "quelle est ma version de windows", ms: 2.4 },
+      { q: "quelle est mon adresse ip", ms: 1.8 },
+      { q: "combien de place libre sur le disque", ms: 41 },
+      { q: "combien de mémoire vive utilisée", ms: 2.9 },
+      { q: "suis-je connecté à internet", ms: 63 }
+    ]
+  };
+  var SCALE = 15000;
+  var raceRows = document.getElementById("raceRows");
+  var raceStatus = document.getElementById("raceStatus");
+  var raceMode = "avant";
+  var raceRaf = null;
+
+  function buildRaceRows() {
+    raceRows.innerHTML = "";
+    RACE[raceMode].forEach(function (r, i) {
+      var row = document.createElement("div");
+      row.className = "race-row";
+      row.innerHTML =
+        '<div class="top"><span class="q">« ' + r.q + ' »</span>' +
+        '<span class="ms tnum ' + (raceMode === "avant" ? "slowc" : "fastc") + '" data-i="' + i + '">0 ms</span></div>' +
+        '<div class="race-track"><div class="fill ' + (raceMode === "avant" ? "slowc" : "fastc") + '" data-i="' + i + '"></div></div>';
+      raceRows.appendChild(row);
+    });
+  }
+
+  function runRace() {
+    if (raceRaf) cancelAnimationFrame(raceRaf);
+    buildRaceRows();
+    var rows = RACE[raceMode];
+    var maxMs = Math.max.apply(null, rows.map(function (r) { return r.ms; }));
+    var start = null;
+    raceStatus.textContent = "en cours…";
+    function tick(t) {
+      if (start === null) start = t;
+      var elapsed = t - start;
+      rows.forEach(function (r, i) {
+        var cur = Math.min(elapsed, r.ms);
+        var pct = (cur / SCALE) * 100;
+        var msEl = raceRows.querySelector('.ms[data-i="' + i + '"]');
+        var fillEl = raceRows.querySelector('.fill[data-i="' + i + '"]');
+        fillEl.style.width = pct + "%";
+        msEl.textContent = (raceMode === "avant" ? fmt(cur) : cur.toFixed(1)) + " ms";
+      });
+      if (elapsed < maxMs && !reduced) {
+        raceRaf = requestAnimationFrame(tick);
+      } else {
+        rows.forEach(function (r, i) {
+          var msEl = raceRows.querySelector('.ms[data-i="' + i + '"]');
+          var fillEl = raceRows.querySelector('.fill[data-i="' + i + '"]');
+          fillEl.style.width = ((r.ms / SCALE) * 100) + "%";
+          msEl.textContent = (raceMode === "avant" ? fmt(r.ms) : r.ms.toFixed(1)) + " ms";
+        });
+        raceStatus.textContent = raceMode === "avant" ? "terminé — fallback modèle IA partout" : "terminé — tout répond < 90 ms";
+      }
+    }
+    raceRaf = requestAnimationFrame(tick);
+  }
+
+  document.querySelectorAll('#raceTool .seg button').forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      raceMode = btn.getAttribute("data-mode");
+      document.querySelectorAll('#raceTool .seg button').forEach(function (b) { b.setAttribute("aria-selected", String(b === btn)); });
+      runRace();
+    });
+  });
+  document.getElementById("raceRerun").addEventListener("click", runRace);
+
+  var raceObs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { if (e.isIntersecting) { runRace(); raceObs.unobserve(e.target); } });
+  }, { rootMargin: "0px 0px -20% 0px" });
+  raceObs.observe(document.getElementById("raceTool"));
+
+  /* ── la bombe ───────────────────────────────────────────── */
+  var KILL_AT = 15000;
+  var bombBtn = document.getElementById("bombBtn");
+  var bombSlow = document.getElementById("bombSlow"), bombSlowStatus = document.getElementById("bombSlowStatus"), bombSlowBar = document.getElementById("bombSlowBar");
+  var bombFast = document.getElementById("bombFast"), bombFastStatus = document.getElementById("bombFastStatus"), bombFastBar = document.getElementById("bombFastBar");
+  var bombRaf = null;
+
+  bombBtn.addEventListener("click", function () {
+    if (bombRaf) cancelAnimationFrame(bombRaf);
+    bombBtn.disabled = true;
+    bombBtn.textContent = "en cours…";
+    bombSlow.classList.remove("killed");
+    bombSlow.textContent = "0 ms";
+    bombSlowStatus.textContent = "python calcule sans jamais rendre la main — nombre à des milliards de chiffres…";
+    bombSlowBar.style.width = "0%";
+    bombFast.textContent = "— ms";
+    bombFastStatus.textContent = "en attente du déclencheur";
+    bombFastBar.style.width = "0%";
+
+    setTimeout(function () {
+      bombFast.textContent = "0,4 ms";
+      bombFastStatus.textContent = "refusé — la puissance est bornée dans l'arbre syntaxique, avant tout calcul";
+      bombFastBar.style.width = "2px";
+    }, reduced ? 0 : 400);
+
+    var start = null;
+    function tick(t) {
+      if (start === null) start = t;
+      var e = t - start;
+      if (e >= KILL_AT || reduced) {
+        bombSlow.textContent = fmt(KILL_AT) + " ms";
+        bombSlow.classList.add("killed");
+        bombSlowStatus.textContent = "toujours bloqué — processus tué à 15 000 ms";
+        bombSlowBar.style.width = "100%";
+        bombBtn.disabled = false;
+        bombBtn.textContent = "relancer";
+        return;
+      }
+      bombSlow.textContent = fmt(e) + " ms";
+      bombSlowBar.style.width = ((e / KILL_AT) * 100) + "%";
+      bombRaf = requestAnimationFrame(tick);
+    }
+    bombRaf = requestAnimationFrame(tick);
+  });
+
+  /* ── résolveur d'entités ────────────────────────────────── */
+  var ENTITIES = [
+    { id: "climate.chambre", name: "Climatiseur Chambre", keys: ["climatiseur", "clim", "chambre"] },
+    { id: "media_player.tv_salon", name: "TV Salon", keys: ["tv", "tele", "salon"] },
+    { id: "light.cuisine", name: "Lumière Cuisine", keys: ["lumiere", "lampe", "cuisine"] },
+    { id: "media_player.ampli", name: "Ampli", keys: ["ampli"] },
+    { id: "media_player.ampli_bureau", name: "Ampli Bureau", keys: ["ampli", "bureau"] },
+    { id: "media_player.ampli_terrasse", name: "Ampli Terrasse", keys: ["ampli", "terrasse"] }
+  ];
+  var AMPS = ENTITIES.slice(3);
+
+  function normalize(s) {
+    return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9\s]/g, " ");
+  }
+
+  function resolve(input) {
+    var text = normalize(input);
+    if (!text.trim()) return null;
+    var tokens = text.split(/\s+/);
+    function has(k) { return tokens.indexOf(k) !== -1 || text.indexOf(k) !== -1; }
+
+    if (has("ampli")) {
+      if (has("bureau")) return { type: "resolved", entity: ENTITIES[4] };
+      if (has("terrasse")) return { type: "resolved", entity: ENTITIES[5] };
+      return { type: "ambiguous", candidates: AMPS };
+    }
+
+    var scored = ENTITIES.slice(0, 3)
+      .map(function (e) { return { e: e, score: e.keys.filter(has).length }; })
+      .filter(function (s) { return s.score > 0; })
+      .sort(function (a, b) { return b.score - a.score; });
+
+    if (scored.length === 0) return { type: "unknown" };
+    if (scored.length > 1 && scored[0].score === scored[1].score) return { type: "ambiguous", candidates: scored.map(function (s) { return s.e; }) };
+    return { type: "resolved", entity: scored[0].e };
+  }
+
+  var PRESETS = [
+    "Allume le climatiseur de la chambre",
+    "Monte le son de l'ampli",
+    "Allume la lumière de la cuisine",
+    "Allume la télé du salon",
+    "Éteins le grille-pain"
+  ];
+  var haInput = document.getElementById("haInput");
+  var haResult = document.getElementById("haResult");
+  var haChips = document.getElementById("haChips");
+
+  PRESETS.forEach(function (p) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = p;
+    b.addEventListener("click", function () { haInput.value = p; render(resolve(p)); });
+    haChips.appendChild(b);
+  });
+
+  function render(result) {
+    if (!result) { haResult.classList.remove("show"); return; }
+    haResult.classList.add("show");
+    if (result.type === "resolved") {
+      haResult.innerHTML =
+        '<span class="tag">résolu — correspondance unique</span>' +
+        '<div class="line"><span class="eid">' + result.entity.id + '</span><span class="ename">« ' + result.entity.name + ' »</span></div>';
+    } else if (result.type === "ambiguous") {
+      haResult.innerHTML =
+        '<span class="tag ambig">ambiguïté — ' + result.candidates.length + ' candidats, précisez lequel :</span>' +
+        '<ul>' + result.candidates.map(function (c) { return '<li><span class="eid">' + c.id + '</span><span class="ename">« ' + c.name + ' »</span></li>'; }).join('') + '</ul>' +
+        '<p class="note">se tromper d\'appareil est pire que ne rien faire.</p>';
+    } else {
+      haResult.innerHTML = '<span class="unknown">appareil inconnu — aucune entité de l\'installation ne correspond. JARVIS ne devine pas : il ne fait rien.</span>';
+    }
+  }
+
+  document.getElementById("haForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    render(resolve(haInput.value));
+  });
+})();
+</script>
