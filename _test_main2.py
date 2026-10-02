@@ -49,6 +49,14 @@ for origine in (None, "", "http://localhost:5173", "http://127.0.0.1:8001",
 for origine in ("https://evil.example", "null", "http://localhost.evil.example",
                 "http://8.8.8.8", "https://127.0.0.1.nip.io"):
     verifier("origine refusee : %r" % origine, not main2._origine_autorisee(origine))
+_vieux = os.environ.get("JARVIS_ORIGINES")
+os.environ["JARVIS_ORIGINES"] = "mon-pc.exemple.ts.net, autre.exemple"
+verifier("JARVIS_ORIGINES : nom liste accepte", main2._origine_autorisee("https://mon-pc.exemple.ts.net"))
+verifier("JARVIS_ORIGINES : autre nom refuse", not main2._origine_autorisee("https://pirate.exemple.ts.net"))
+if _vieux is None:
+    del os.environ["JARVIS_ORIGINES"]
+else:
+    os.environ["JARVIS_ORIGINES"] = _vieux
 
 # ── #11 et #9 : confirmations ──────────────────────────────────────────
 dits, services, frappes, reponse_modele = [], [], [], {"v": ""}

@@ -555,6 +555,10 @@ REGLAGES = (
      "Délégation de code : proxy local (hôte:port) qui doit répondre avant de lancer "
      "OpenCode. Vide = aucune vérification.",
      "à saisir"),
+    (("JARVIS_ORIGINES",), False,
+     "Interface web servie sous un nom de domaine (ex. nom Tailscale en HTTPS) : "
+     "noms acceptés par le WebSocket, séparés par des virgules.",
+     "tailscale serve status"),
     (("JARVIS_DEPOT",), False,
      "Mises à jour : dépôt GitHub (propriétaire/nom) interrogé au lancement. "
      "Vide = aucune vérification.",

@@ -3190,13 +3190,17 @@ def _origine_autorisee(origine) -> bool:
     site visité pilotait JARVIS. Absente : client hors navigateur (app iOS,
     script, adaptateur d'un HUD externe). Acceptées : les noms locaux et les
     adresses IP privées (HUD, réseau local, Tailscale). Un nom de domaine
-    est refusé, y compris un nom qui pointerait sur 127.0.0.1 (rebinding DNS).
+    est refusé, y compris un nom qui pointerait sur 127.0.0.1 (rebinding DNS),
+    sauf ceux listés dans JARVIS_ORIGINES (ex. le nom Tailscale qui sert
+    l'interface mobile en HTTPS et relaie /ws vers ce WebSocket).
     """
     if not origine:
         return True
     import ipaddress
     hote = (urlparse(str(origine)).hostname or "").lower()
     if hote in ("localhost", "127.0.0.1", "::1") or hote.endswith(".localhost"):
+        return True
+    if hote in {h.strip().lower() for h in os.getenv("JARVIS_ORIGINES", "").split(",") if h.strip()}:
         return True
     try:
         ip = ipaddress.ip_address(hote)

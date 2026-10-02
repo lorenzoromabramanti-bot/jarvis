@@ -15,6 +15,7 @@ repartie au modele, meme si la reponse a l'air correcte.
 
 import asyncio
 import builtins
+import re
 import sys
 import time
 
@@ -63,7 +64,9 @@ def verifier():
     a = asyncio.run(tools.resoudre_async("combien de memoire vive utilisee"))
     b = asyncio.run(tools.resoudre_async("combien de mémoire vive utilisée"))
     assert a and b, "une des deux formes reste sans reponse"
-    assert a.split("—")[0] == b.split("—")[0], \
+    # Les chiffres bougent entre deux mesures (RAM a 0,1 % pres) : on compare la phrase.
+    sans_chiffres = lambda t: re.sub(r"[\d.,]+", "#", t.split("—")[0])
+    assert sans_chiffres(a) == sans_chiffres(b), \
         "accentuee et non accentuee divergent :\n    %r\n    %r" % (a, b)
     print("  OK  accents indifferents (c'etait la cause des 6 secondes)")
 
