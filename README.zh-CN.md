@@ -75,6 +75,8 @@ Ollama 服务器读取。
 
 ## 界面
 
+<p align="center"><img src="docs/images/orbe.webp" alt="JARVIS 的球体动画" width="340"></p>
+
 ![Agents 标签页列出本机找到的 AI 工具](docs/images/hud-agents.jpg)
 
 <img src="docs/images/hud-mobile.jpg" alt="手机上的界面" width="260" align="right">

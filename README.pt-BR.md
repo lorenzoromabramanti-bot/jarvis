@@ -84,6 +84,8 @@ só aparecem no modo avançado. Cada configuração está descrita no `.env.exam
 
 ## A interface
 
+<p align="center"><img src="docs/images/orbe.webp" alt="A esfera do JARVIS, em movimento" width="340"></p>
+
 ![A aba Agents lista as ferramentas de IA encontradas na máquina](docs/images/hud-agents.jpg)
 
 <img src="docs/images/hud-mobile.jpg" alt="A interface em um celular" width="260" align="right">

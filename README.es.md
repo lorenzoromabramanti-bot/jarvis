@@ -85,6 +85,8 @@ solo aparecen en modo avanzado. Cada ajuste se describe en `.env.example`.
 
 ## La interfaz
 
+<p align="center"><img src="docs/images/orbe.webp" alt="La esfera de JARVIS, en movimiento" width="340"></p>
+
 ![La pestaña Agents lista las herramientas de IA encontradas en el equipo](docs/images/hud-agents.jpg)
 
 <img src="docs/images/hud-mobile.jpg" alt="La interfaz en un teléfono" width="260" align="right">

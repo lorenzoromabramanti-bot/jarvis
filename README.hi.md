@@ -79,6 +79,8 @@ VPN, सॉफ़्टवेयर हटाना, Spotify और Deezer क�
 
 ## इंटरफ़ेस
 
+<p align="center"><img src="docs/images/orbe.webp" alt="JARVIS का गोला, चलते हुए" width="340"></p>
+
 ![Agents टैब मशीन पर मिले AI टूल्स की सूची दिखाता है](docs/images/hud-agents.jpg)
 
 <img src="docs/images/hud-mobile.jpg" alt="फ़ोन पर इंटरफ़ेस" width="260" align="right">

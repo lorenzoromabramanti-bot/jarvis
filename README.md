@@ -83,6 +83,8 @@ mode. Every setting is described in `.env.example`.
 
 ## The interface
 
+<p align="center"><img src="docs/images/orbe.webp" alt="The JARVIS orb, live" width="340"></p>
+
 ![The Agents tab lists the AI tools found on the machine](docs/images/hud-agents.jpg)
 
 <img src="docs/images/hud-mobile.jpg" alt="The interface on a phone" width="260" align="right">
