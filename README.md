@@ -1,119 +1,145 @@
+<div align="center">
+
 # J.A.R.V.I.S
 
-Assistant vocal de bureau. Il écoute, répond, et agit sur la machine : domotique
-Home Assistant, courrier, mises à jour logicielles, VPN, lancement
-d'applications, lecture de l'écran.
+**English** · [Français](README.fr.md) · [Español](README.es.md) · [中文](README.zh-CN.md) · [हिन्दी](README.hi.md) · [Português](README.pt-BR.md)
 
-Il tourne en fond, sans fenêtre, et s'invoque au clavier depuis n'importe quelle
+A desktop voice assistant. It listens, answers, and acts on your computer: Home Assistant,
+email, software updates, VPN, launching apps, reading the screen.
+
+[**Website**](https://lorenzoromabramanti-bot.github.io/jarvis/) · [**Download**](../../releases/latest)
+
+![The JARVIS interface](docs/images/hud-desktop.jpg)
+
+</div>
+
+It runs in the background, without a window, and can be summoned from the keyboard in any
 application.
 
 ---
 
-## Ce qu'il fait
+## What it does
 
-**Répondre.** Une chaîne d'outils locaux traite d'abord ce qu'elle sait faire —
-heure, calculs, conversions, informations sur la machine — en **deux à six
-millisecondes**, sans appeler de modèle. Le reste part au modèle.
+**Answer.** A chain of local tools first handles what it knows how to do — time,
+calculations, conversions, information about the machine — in **two to six milliseconds**,
+without calling a model. Everything else goes to the model.
 
-**Agir.** Lumières et prises Home Assistant, tri du courrier et brouillons de
-réponse, mises à jour `winget`, VPN, désinstallation de logiciels, contrôle de
-Spotify et Deezer. Onglets, vidéos, fenêtres, verrouillage et applications
-ouvertes se pilotent directement, sans passer par le modèle.
+**Act.** Home Assistant lights and plugs, sorting email and drafting replies, `winget`
+updates, VPN, uninstalling software, Spotify and Deezer control. Tabs, videos, windows,
+locking and open applications are driven directly, without going through the model.
 
-**Se taire quand il ne sait pas.** C'est un choix de conception, pas une
-politesse : un assistant qui répond « c'est fait » sans avoir rien fait est pire
-qu'un assistant qui refuse. En domotique, une action refusée par Home Assistant
-est maintenant annoncée comme un échec.
+**Stay quiet when it doesn't know.** This is a design choice, not politeness: an assistant
+that says "done" without doing anything is worse than one that refuses. In home automation,
+an action refused by Home Assistant is now reported as a failure.
 
-**Tenir sans Gemini.** Si Gemini ne répond pas, il bascule sur un modèle Ollama
-local. La liste des modèles est lue sur le serveur Ollama réel.
+**Keep going without Gemini.** If Gemini does not answer, it falls back to a local Ollama
+model. The list of models is read from the actual Ollama server.
 
-**Travailler à distance et en fond.**
+**Work remotely and in the background.**
 
 | | | |
 |---|---|---|
-| **Discord** | discuter avec JARVIS, lui donner des ordres ; il demande confirmation avant une action sensible. Il peut aussi rejoindre un salon vocal | jeton et identifiant dans `.env` |
-| **Notifications** | un message Discord ou Slack quand une tâche de fond se termine, sauf pendant les heures calmes | webhook dans `.env` |
-| **Cette nuit** | « fais ça cette nuit » : la tâche attend, le compte rendu arrive au briefing du matin | |
-| **Sous-tâches** | une demande qui compare plusieurs choses est découpée et traitée en parallèle ; au-delà de 5 sous-tâches, il demande | |
-| **Jusqu'à l'échéance** | il relit et améliore son travail tant qu'il reste du temps | |
+| **Discord** | chat with JARVIS and give it orders; it asks for confirmation before a sensitive action. It can also join a voice channel | token and ID in `.env` |
+| **Notifications** | a Discord or Slack message when a background task finishes, except during quiet hours | webhook in `.env` |
+| **Tonight** | "do this tonight": the task waits, the report arrives with the morning briefing | |
+| **Subtasks** | a request that compares several things is split up and handled in parallel; beyond 5 subtasks, it asks | |
+| **Until the deadline** | it rereads and improves its work while time remains | |
 
-**Coder.** Il confie une tâche de code à Claude Code, Codex, OpenCode, Cursor
-Agent ou OpenClaw, dans un projet que vous avez déclaré. Sans eux, son propre
-agent de fichiers lit, cherche et modifie le projet, enfermé dans le dossier du
-projet.
+**Code.** It hands a coding task to Claude Code, Codex, OpenCode, Cursor Agent or
+OpenClaw, in a project you have declared. Without them, its own file agent reads, searches
+and edits the project, locked inside the project folder.
 
-**Rendre des comptes.** Le coût et les jetons de chaque appel aux modèles sont
-visibles. Un journal de confiance par type d'action : l'autonomie se gagne
-action par action, elle n'est pas donnée d'avance.
+**Be accountable.** The cost and tokens of every model call are visible. A trust log per
+type of action: autonomy is earned action by action, not granted in advance.
 
-**Suivre.** Capacités facultatives, à cocher à l'installation ou dans les
-réglages — toutes désactivées par défaut :
+**Keep track.** Optional capabilities, to tick during installation or in the settings — all
+disabled by default:
 
 | | | |
 |---|---|---|
-| **Compétences ajoutées** | voir celles que JARVIS s'est écrites, en éteindre une sans la supprimer, savoir laquelle est cassée | « liste des compétences », « désactive la compétence *nom* » |
-| **Presse-papiers** | traduire, résumer, expliquer ou corriger ce qui vient d'être copié — le texte corrigé retourne dans le presse-papiers | « traduis le presse-papiers », « corrige les fautes du presse-papiers » |
-| **Veille de sujets** | un contrôle par jour sur les sujets choisis ; ce qui est nouveau est dit au briefing du matin, jamais en vous coupant | « surveille les annonces AMD », « qu'est-ce que tu surveilles ? » |
-| **Rappels système** | confiés au Planificateur de tâches : ils se déclenchent même JARVIS fermé, même après un redémarrage | action `rappel_os_creer` (HUD, app iOS) |
-| **Notes Notion** | créer, lire, modifier, supprimer et chercher des notes | jeton Notion dans `.env` |
+| **Added skills** | see the ones JARVIS wrote for itself, turn one off without deleting it, know which one is broken | "list skills", "disable skill *name*" |
+| **Clipboard** | translate, summarise, explain or correct what was just copied — the corrected text goes back to the clipboard | "translate the clipboard", "fix the clipboard" |
+| **Topic watch** | one check a day on chosen topics; anything new is mentioned in the morning briefing, never by interrupting you | "watch AMD announcements", "what are you watching?" |
+| **System reminders** | handed to the Task Scheduler: they fire even with JARVIS closed, even after a restart | action `rappel_os_creer` (HUD, iOS app) |
+| **Notion notes** | create, read, edit, delete and search notes | Notion token in `.env` |
 
-### Options désactivées par défaut
+### Options disabled by default
 
-Certaines fonctions dépendent d'une installation précise : une maison, un
-établissement scolaire, un service tiers. Elles sont livrées **éteintes**, sans
-aucune valeur par défaut. Tant que vous ne les réglez pas, elles ne font rien
-et le disent.
+Some features depend on a specific setup: a home, a school, a third-party service. They ship
+**switched off**, with no default value. Until you configure them, they do nothing and say
+so.
 
 | | | |
 |---|---|---|
-| **Emploi du temps** | les cours Pronote recopiés dans un agenda Google à part, les cours annulés marqués et le créneau rendu libre | Home Assistant avec l'intégration Pronote, compte Google |
-| **Révisions** | un quiz préparé la veille d'une évaluation, et « fais-moi réviser » | l'emploi du temps ci-dessus, Ollama |
-| **Présence par webcam** | une photo envoyée sur Discord quand quelqu'un passe devant le bureau | webcam, bot Discord |
-| **Carte OSINT 3D** | ouvre God's Eye View et ShadowBroker depuis JARVIS | ces deux programmes, installés à part |
-| **Délégation de code** | voir *Coder* plus haut | l'agent de code de votre choix |
+| **Timetable** | Pronote lessons copied into a separate Google calendar, cancelled lessons marked and the slot freed | Home Assistant with the Pronote integration, Google account |
+| **Revision** | a quiz prepared the day before a test, and "help me revise" | the timetable above, Ollama |
+| **Webcam presence** | a photo sent to Discord when someone walks past the desk | webcam, Discord bot |
+| **3D OSINT map** | opens God's Eye View and ShadowBroker from JARVIS | those two programs, installed separately |
+| **Code delegation** | see *Code* above | the coding agent of your choice |
 
-**Pour en activer une :** relancez l'installeur (`installeur.py`), rubrique
-*Capacités*, cochez-la, puis remplissez les réglages qu'il demande. Les options
-marquées « avancées » n'apparaissent qu'en mode avancé. Chaque réglage est
-décrit dans `.env.example`.
+**To enable one:** run the installer again (`installeur.py`), *Capabilities* section, tick
+it, then fill in the settings it asks for. Options marked "advanced" only appear in advanced
+mode. Every setting is described in `.env.example`.
 
-## Comment on lui parle
+## The interface
+
+![The Agents tab lists the AI tools found on the machine](docs/images/hud-agents.jpg)
+
+<img src="docs/images/hud-mobile.jpg" alt="The interface on a phone" width="260" align="right">
+
+A 3D orb that reacts to JARVIS's voice, the chat, the machine's status, and a *Data center*
+with tabs: tasks, skills, memory, schedule, media, daily life, home, security, settings,
+controls, agents and system. The **Agents** tab lists the AI tools found on the machine
+(coding assistants, MCP servers, model engines) and which ones are running.
+
+It also works on a phone, from the browser.
+
+The interface is built on [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui)
+by **JincocoDev** (ISC License, see [`frontend/LICENSE`](frontend/LICENSE)), itself based on the
+[Three.js Orb Visualizer](https://codepen.io/filipz/pen/yyyRgry) by **Filip Zrnzevic**. It has
+been rewired to talk directly to JARVIS.
+
+It needs **Node.js** (22 LTS recommended, 20.19 minimum). On first launch, JARVIS installs its
+packages by itself (`npm install`, one or two minutes). Without Node.js, JARVIS still works by
+voice and with the quick bar.
+
+<br clear="right">
+
+## How to talk to it
 
 | | |
 |---|---|
-| **Voix** | dire « Jarvis », puis la demande |
-| **Ctrl+Alt+J** | une barre apparaît au centre de l'écran, depuis n'importe quelle application |
-| **Le HUD** | interface complète — domotique, courrier, agenda, sécurité, réglages |
+| **Voice** | say "Jarvis", then the request |
+| **Ctrl+Alt+J** | a bar appears in the middle of the screen, from any application |
+| **The HUD** | the full interface — home, email, calendar, security, settings |
 
-Fermer la fenêtre ne l'arrête pas : il continue en fond, avec une icône près de
-l'horloge. Pour l'arrêter : « quitter jarvis », ou le menu de cette icône.
+Closing the window does not stop it: it keeps running in the background, with an icon near
+the clock. To stop it: "quit jarvis", or the menu of that icon.
 
 ---
 
 ## Installation
 
-**Téléchargez l'installeur depuis la page des [versions](../../releases), et
-lancez-le.** Il trouve un Python utilisable, récupère la dernière version,
-prépare tout, puis ouvre l'assistant de configuration.
+**Download the installer from the [releases](../../releases) page and run it.** It finds a
+usable Python, fetches the latest version, prepares everything, then opens the setup
+assistant.
 
-| Système | Fichier | État |
+| System | File | Status |
 |---|---|---|
-| Windows 10 / 11 | `Installer-JARVIS.exe` | éprouvé |
-| Linux | `python3 amorceur/amorceur.py` | éprouvé sur Ubuntu 26.04 |
-| macOS | `python3 amorceur/amorceur.py` | **jamais essayé sur un vrai Mac** — voir [docs/macos.md](docs/macos.md) |
+| Windows 10 / 11 | `Installer-JARVIS.exe` | tested |
+| Linux | `python3 amorceur/amorceur.py` | tested on Ubuntu 26.04 |
+| macOS | `python3 amorceur/amorceur.py` | **never tried on a real Mac** — see [docs/macos.md](docs/macos.md) |
 
-L'installeur pèse 11 Mo : il télécharge JARVIS plutôt que de l'embarquer.
-Vous pouvez donc lire le code avant qu'il ne s'installe — ce qui compte pour
-un programme qui pilote votre machine.
+The installer weighs 11 MB: it downloads JARVIS rather than bundling it. So you can read the
+code before it installs — which matters for a program that controls your computer.
 
-Il faut **Python 3.10 à 3.13**. La 3.14 est trop récente : plusieurs
-dépendances n'ont pas encore de version compilée pour elle.
+You need **Python 3.10 to 3.13**. 3.14 is too recent: several dependencies do not have a
+compiled version for it yet.
 
-### À la main, si vous préférez
+### By hand, if you prefer
 
 ```bash
-git clone <url-du-depot> jarvis
+git clone <repository-url> jarvis
 cd jarvis
 python -m venv venv
 ```
@@ -132,109 +158,101 @@ cp .env.example .env
 venv/bin/python3 installeur.py
 ```
 
-Pour savoir ce qui manque à tout moment (`venv\Scripts\python.exe` sous
-Windows, `venv/bin/python3` sous Linux/macOS) :
+To see what is missing at any time (`venv\Scripts\python.exe` on Windows, `venv/bin/python3`
+on Linux/macOS):
 
 ```bash
 config.py
 ```
 
-Cette commande liste ce qui est disponible sur votre machine et **quelles
-fonctions sont dégradées, avec la raison**.
+This command lists what is available on your machine and **which features are degraded,
+with the reason**.
 
-`requirements.txt` contient aussi `discord.py`, `discord-ext-voice-recv` et
-`PyNaCl`, pour le bot et le vocal Discord. Ils ne servent que si un jeton
-Discord est renseigné.
+`requirements.txt` also contains `discord.py`, `discord-ext-voice-recv` and `PyNaCl`, for the
+Discord bot and voice. They are only used if a Discord token is set.
 
-### La reconnaissance vocale est séparée
+### Speech recognition is separate
 
-`requirements-voix.txt` pèse plusieurs gigaoctets (torch, Nemotron). Sans
-elle, JARVIS fonctionne au clavier, par la barre rapide et par le HUD ; seule
-la dictée manque, et elle le dit.
+`requirements-voix.txt` weighs several gigabytes (torch, Nemotron). Without it, JARVIS works
+from the keyboard, the quick bar and the HUD; only dictation is missing, and it says so.
 
-## Réglages
+## Settings
 
-Deux sont nécessaires, le reste est facultatif. `.env.example` dit à quoi chacun
-sert et où l'obtenir.
+Two are required, the rest is optional. `.env.example` explains what each one is for and
+where to get it.
 
 | | |
 |---|---|
-| `GEMINI_API_KEY` | le modèle principal. Sans lui, seuls les outils locaux répondent |
-| `JARVIS_ACCESS_TOKEN` | protège le WebSocket, **qui exécute les commandes système** |
+| `GEMINI_API_KEY` | the main model. Without it, only the local tools answer |
+| `JARVIS_ACCESS_TOKEN` | protects the WebSocket, **which runs system commands** |
 
-Le second n'est pas optionnel en pratique : sans lui, l'authentification est
-désactivée et n'importe quel programme de la machine peut piloter JARVIS.
-Inventez une longue chaîne aléatoire.
-
----
-
-## Systèmes
-
-**Windows 10 et 11** — développé et éprouvé là.
-
-**Linux, macOS** — JARVIS démarre, mais une partie des fonctions est
-indisponible : celles qui reposent sur PowerShell, `winget`, le registre ou
-l'API Windows. Elles le **disent** au lieu d'échouer en vol, et `config.py` les
-énumère.
-
-> macOS n'a jamais été essayé sur une vraie machine. Ce qui est écrit ici est
-> ce que le code prévoit, pas ce qui a été constaté.
-
-## Vie privée
-
-Rien ne quitte la machine sauf les appels aux modèles que vous configurez, à la
-météo et à Home Assistant — et, si vous les activez, à Discord, Slack, Notion
-et Google Agenda.
-
-Les conversations, la configuration et le courrier restent en local. Les clés
-vivent dans `.env`, que `git` ignore. Le HUD masque les clés à l'affichage : il
-ne reçoit jamais leur valeur, seulement leur présence.
-
-Les actions irréversibles — envoyer un e-mail, désinstaller un logiciel —
-demandent un accord explicite et **montrent exactement ce qui va partir** avant
-de le faire.
-
-## Sécurité
-
-- **WebSocket protégé.** Un jeton est généré à l'installation. Sans jeton,
-  JARVIS n'écoute que sur la machine locale.
-- **Options éteintes pour de bon.** Une option non cochée reste désactivée,
-  même sans passer par l'installeur.
-- **Confirmation avant les actions à risque.** Alarme, serrure et pilotage du
-  PC à distance demandent un accord explicite.
-- **Délégation de code et rappels.** Le texte d'une tâche ou d'un rappel n'est
-  jamais exécuté comme une commande.
-
-## Mises à jour
-
-Version actuelle : **1.2.0**. Ce qui change est décrit dans
-[NOTES-1.2.0.md](NOTES-1.2.0.md).
-
-Au lancement, JARVIS demande à GitHub s'il existe une version plus récente et le
-signale. Il n'installe rien tout seul. Renseignez `JARVIS_DEPOT` dans `.env`
-pour activer cette vérification ; laissez-la vide pour la désactiver.
+The second is not optional in practice: without it, authentication is disabled and any
+program on the machine can drive JARVIS. The installer generates a long random one.
 
 ---
 
-## Contribuer
+## Systems
 
-Le projet garde deux règles, qui expliquent la forme du code :
+**Windows 10 and 11** — developed and tested there.
 
-**Une fonction indisponible le dit.** Elle ne renvoie pas une liste vide, ne
-répond pas « c'est fait », n'invente pas de valeur par défaut. La plupart des
-corrections de ce dépôt viennent d'avoir enfreint cette règle quelque part.
+**Linux, macOS** — JARVIS starts, but some features are unavailable: those that rely on
+PowerShell, `winget`, the registry or the Windows API. They **say so** instead of failing
+mid-flight, and `config.py` lists them.
 
-**Ce qui est affirmé est vérifié.** Les fichiers `_test_*.py` s'exécutent
-directement, sans cadre de test :
+> macOS has never been tried on a real machine. What is written here is what the code
+> intends, not what has been observed.
+
+## Privacy
+
+Nothing leaves the machine except the calls you configure to models, the weather and Home
+Assistant — and, if you enable them, Discord, Slack, Notion and Google Calendar.
+
+Conversations, configuration and email stay local. Keys live in `.env`, which `git` ignores.
+The HUD masks keys on screen: it never receives their value, only whether they are present.
+
+Irreversible actions — sending an email, uninstalling software — require explicit consent and
+**show exactly what is going to be sent** before doing it.
+
+## Security
+
+- **Protected WebSocket.** A token is generated at installation. Without a token, JARVIS only
+  listens on the local machine.
+- **Options stay off.** An unticked option stays disabled, even without going through the
+  installer.
+- **Confirmation before risky actions.** Alarm, lock and remote control of the PC require
+  explicit consent.
+- **Code delegation and reminders.** The text of a task or a reminder is never executed as a
+  command.
+
+## Updates
+
+Current version: **1.3.0**. What changed is described in [NOTES-1.3.0.md](NOTES-1.3.0.md).
+
+On launch, JARVIS asks GitHub whether a newer version exists and reports it. It never
+installs anything by itself. Set `JARVIS_DEPOT` in `.env` to enable this check; leave it
+empty to disable it.
+
+---
+
+## Contributing
+
+The project keeps two rules, which explain the shape of the code:
+
+**An unavailable feature says so.** It does not return an empty list, does not answer "done",
+does not invent a default value. Most fixes in this repository come from breaking this rule
+somewhere.
+
+**What is claimed is verified.** The `_test_*.py` files run directly, without a test
+framework:
 
 ```bash
 venv\Scripts\python.exe _test_machine.py
 ```
 
-Ils ne vérifient pas que le code fait ce qu'il fait, mais qu'il ne refait pas
-les erreurs déjà commises — une phrase qui figeait le programme, un prénom
-codé en dur, une comparaison de versions par ordre alphabétique.
+They do not check that the code does what it does, but that it does not repeat mistakes
+already made — a sentence that froze the program, a first name hard-coded, a version
+comparison done in alphabetical order.
 
-## Licence
+## License
 
-À définir.
+To be defined. The interface in `frontend/` is under the ISC License (JincocoDev).

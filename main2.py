@@ -12584,6 +12584,18 @@ def main():
 
     vite_ok = False
     if os.path.exists(frontend_dir):
+        # L'installeur .exe n'installe que les paquets Python : sans ceci, l'interface
+        # ne démarrait jamais chez qui n'avait pas lancé install.bat. Une seule fois.
+        if (not os.path.isdir(os.path.join(frontend_dir, "node_modules"))
+                and os.path.exists(os.path.join(frontend_dir, "package.json"))
+                and shutil.which("npm")):
+            print("[JARVIS] Premier lancement de l'interface : installation de ses paquets (npm install, "
+                  "une à deux minutes)...")
+            try:
+                subprocess.run("npm install --no-audit --no-fund", cwd=frontend_dir, shell=True,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=900)
+            except Exception as e:
+                print(f"[JARVIS] npm install a échoué : {e}")
         # Tentative 1 : Vite (npm run dev)
         try:
             print("[JARVIS] Tentative de lancement Vite (npm run dev)...")

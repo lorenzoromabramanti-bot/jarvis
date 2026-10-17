@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>JARVIS</title>
+<!--
+  Barre rapide — invoquee par un raccourci global depuis n'importe quelle
+  application. Volontairement une page a part, pas un panneau du HUD :
+
+  - elle doit s'ouvrir instantanement, donc sans Three.js, sans orbe, sans
+    les 13 onglets a construire ;
+  - le HUD tient dans une fenetre qu'on cherche ; celle-ci doit apparaitre
+    sous les doigts et disparaitre.
+
+  Elle ne parle pas au WebSocket : meme chemin que le HUD, POST /api/chat
+  puis SSE sur /api/events. Un seul interlocuteur cote serveur, donc les
+  niveaux d'autorisation s'appliquent ici aussi sans etre reecrits.
+-->
+<style>
+  :root {
+    --fond:   #080b10;
+    --cyan:   #35e7e0;
+    --texte:  #cfe9ea;
+    --sourdine: #5d7b7e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%; background: transparent; overflow: hidden;
+    font-family: "Consolas", "SF Mono", ui-monospace, monospace;
+    -webkit-user-select: none; user-select: none;
+  }
+  #cadre {
+    height: 100%; display: flex; flex-direction: column;
+    background: rgba(8, 11, 16, 0.97);
+    border: 1px solid rgba(53, 231, 224, 0.35);
+    border-radius: 14px;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.65),
+                inset 0 1px 0 rgba(53, 231, 224, 0.12);
+    overflow: hidden;
+  }
+  #ligne { display: flex; align-items: center; gap: 12px; padding: 0 18px; height: 62px; flex: 0 0 62px; }
+  #pastille {
+    width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px;
+    background: var(--cyan); box-shadow: 0 0 10px var(--cyan);
+    transition: background .2s, box-shadow .2s;
+  }
+  #pastille.occupe { animation: pulse 1s ease-in-out infinite; }
+  #pastille.erreur { background: #ff6b6b; box-shadow: 0 0 10px #ff6b6b; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+
+  #champ {
+    flex: 1; background: none; border: 0; outline: 0;
+    color: var(--texte); font: inherit; font-size: 16px; letter-spacing: .3px;
+    -webkit-user-select: text; user-select: text;
+  }
+  #champ::placeholder { color: var(--sourdine); }
+  #indice { color: var(--sourdine); font-size: 10px; letter-spacing: 1px; white-space: nowrap; }
+
+  /* flex:0 1 auto et non flex:1 — etire, la zone remplirait le cadre et
+     scrollHeight mesurerait l'etirement au lieu du texte, ce qui rendrait
+     l'ajustement de hauteur circulaire. */
+  #reponse {
+    display: none; flex: 0 1 auto; overflow-y: auto; max-height: 440px;
+    padding: 0 18px 18px; color: var(--texte);
+    font-size: 14px; line-height: 1.62; white-space: pre-wrap;
+    -webkit-user-select: text; user-select: text;
+    border-top: 1px solid rgba(53, 231, 224, 0.14);
+    padding-top: 14px;
+  }
+  #reponse.visible { display: block; }
+  #reponse::-webkit-scrollbar { width: 6px; }
+  #reponse::-webkit-scrollbar-thumb { background: rgba(53,231,224,.3); border-radius: 3px; }
+  .sourdine { color: var(--sourdine); font-style: italic; }
+</style>
+</head>
+<body>
+<div id="cadre">
+  <div id="ligne">
+    <div id="pastille"></div>
+    <input id="champ" autocomplete="off" spellcheck="false"
+           placeholder="Demander a JARVIS...">
+    <div id="indice">ECHAP</div>
+  </div>
+  <div id="reponse"></div>
+</div>
+
+<script>
+const champ    = document.getElementById('champ');
+const reponse  = document.getElementById('reponse');
+const pastille = document.getElementById('pastille');
+
+let runAttendu = null;
+
+// Le HUD a connu ce bug : le runId etait efface entre l'envoi et la reponse,
+// et le chat restait bloque sur TIMEOUT. Un run se clot sur SA reponse.
+function afficher(texte, sourdine) {
+  reponse.className = 'visible';
+  reponse.innerHTML = '';
+  const n = document.createElement(sourdine ? 'em' : 'span');
+  if (sourdine) n.className = 'sourdine';
+  n.textContent = texte;
+  reponse.appendChild(n);
+  // Apres le calcul de mise en page : mesurer dans le meme tour donnerait
+  // la hauteur d'avant l'insertion.
+  requestAnimationFrame(() => redimensionner(true));
+}
+
+function redimensionner(ouvert) {
+  // pywebview redimensionne la vraie fenetre : une page haute avec un fond
+  // transparent laisserait une zone morte cliquable sous la barre.
+  //
+  // La hauteur suit le CONTENU. Une valeur fixe donnait 470 px de noir pour
+  // repondre « il est 22h ». On mesure, on borne : en dessous de 120 px la
+  // reponse serait a l'etroit, au-dela de 520 px la barre mange l'ecran et
+  // c'est au HUD de prendre le relais.
+  // 66 = la ligne de saisie (62) plus la bordure. Doit correspondre a
+  // HAUTEUR_COMPACTE dans barre_rapide.py, sinon la barre s'ouvre a une
+  // hauteur et se referme a une autre.
+  let h = 66;
+  if (ouvert) {
+    const contenu = reponse.scrollHeight + 32;
+    h = Math.min(520, Math.max(120, 62 + contenu));
+  }
+  try { window.pywebview?.api?.redimensionner(h); } catch (e) {}
+}
+
+function fermer() {
+  champ.value = '';
+  reponse.className = '';
+  reponse.innerHTML = '';
+  runAttendu = null;
+  pastille.className = '';
+  redimensionner(false);
+  try { window.pywebview?.api?.cacher(); } catch (e) {}
+}
+
+async function envoyer() {
+  const texte = champ.value.trim();
+  if (!texte) return;
+  pastille.className = 'occupe';
+  afficher('...', true);
+  try {
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: texte }),
+    });
+    if (r.status === 428) {
+      // Meme politique que le HUD : le serveur refuse, on demande, on rejoue.
+      const d = await r.json().catch(() => ({}));
+      if (!confirm('AUTORISATION REQUISE\n\nNiveau ' + (d.niveau ?? '?')
+                   + '.\nCette action depasse le niveau d\'autonomie configure.'
+                   + '\n\nAutoriser une fois ?')) {
+        pastille.className = '';
+        afficher('Refuse.', true);
+        return;
+      }
+      const r2 = await fetch('/api/chat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: texte, confirme: true }),
+      });
+      if (!r2.ok) throw new Error('HTTP ' + r2.status);
+      runAttendu = (await r2.json().catch(() => ({}))).runId || '*';
+      return;
+    }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    runAttendu = (await r.json().catch(() => ({}))).runId || '*';
+  } catch (e) {
+    pastille.className = 'erreur';
+    afficher('JARVIS ne repond pas : ' + e.message, true);
+  }
+}
+
+champ.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyer(); }
+  if (e.key === 'Escape') { e.preventDefault(); fermer(); }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fermer(); });
+
+// ── Reponses ────────────────────────────────────────────────────────────
+const flux = new EventSource('/api/events');
+flux.onmessage = (ev) => {
+  let d; try { d = JSON.parse(ev.data); } catch { return; }
+  if (d.type) return;                       // heartbeat, systeme, outils...
+  if (d.role && d.role !== 'assistant') return;
+  if (!d.text) return;
+  // La barre n'affiche QUE les reponses a ses propres questions. Sans ce
+  // garde-fou, elle reprenait tout ce que JARVIS dit — y compris les
+  // reponses vocales declenchees ailleurs — et s'agrandissait pour un texte
+  // que personne ne lui avait demande. Ces echanges-la appartiennent au HUD.
+  if (!runAttendu) return;
+  // '*' : on accepte la premiere reponse venue, le serveur ne renvoie pas
+  // toujours le runId a l'envoi.
+  if (runAttendu !== '*' && d.runId !== runAttendu) return;
+  afficher(d.text, false);
+  if (d.done) { pastille.className = ''; runAttendu = null; }
+};
+
+// Appele par Python a chaque ouverture : champ vide et curseur dedans.
+window.reinitialiser = () => {
+  champ.value = '';
+  reponse.className = '';
+  reponse.innerHTML = '';
+  runAttendu = null;
+  pastille.className = '';
+  champ.focus();
+};
+champ.focus();
+</script>
+</body>
+</html>

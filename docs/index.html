@@ -1,911 +1,579 @@
-<title>JARVIS — git log</title>
-<meta name="description" content="git log — écrit par la machine. Le vrai journal git de JARVIS : cinq commits, texte non retouché." />
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>J.A.R.V.I.S</title>
+<meta name="description" content="JARVIS — a desktop voice assistant that answers, acts on your computer, and stays quiet when it doesn't know.">
+<meta property="og:title" content="J.A.R.V.I.S">
+<meta property="og:description" content="A desktop voice assistant that answers, acts, and stays quiet when it doesn't know.">
+<meta property="og:image" content="images/hud-desktop.jpg">
+<meta name="theme-color" content="#021311">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap">
-
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg: #07090E;
-  --surface: #0D111A;
-  --card: #121824;
-  --line: #1E2638;
-  --accent: #4A8FD4;
-  --ink: #E2E8F0;
-  --ink-2: #94A3B8;
-  --ink-3: #64748B;
-  --fast: #22C55E;
-  --slow: #EF4444;
+:root{
+  --fond:#021311; --fond2:#000706; --accent:#3df5d0; --accent2:#9ffbe8; --texte:#e6fffa; --doux:#7fb3aa;
+  --ligne:rgba(61,245,208,.22); --verre:rgba(4,30,27,.55);
 }
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:radial-gradient(ellipse at 50% 30%,#06302b 0%,var(--fond) 45%,var(--fond2) 100%) fixed;color:var(--texte);
+  font:16px/1.6 "Chakra Petch","Noto Sans","Noto Sans Devanagari","Noto Sans SC",system-ui,sans-serif;overflow-x:hidden}
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
 
-* { box-sizing: border-box; }
+/* barre du haut */
+header{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
+  padding:18px clamp(16px,4vw,48px);pointer-events:none}
+header > *{pointer-events:auto}
+.marque{font:600 13px/1 "JetBrains Mono",monospace;letter-spacing:.35em;color:var(--accent)}
+.outils{display:flex;gap:10px;align-items:center}
+select,.btn-mini{background:var(--verre);color:var(--texte);border:1px solid var(--ligne);border-radius:999px;
+  padding:7px 14px;font:500 12px "JetBrains Mono",monospace;letter-spacing:.08em;backdrop-filter:blur(8px);cursor:pointer;text-decoration:none}
+select:focus-visible,.btn:focus-visible,.btn-mini:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 
-html { background: var(--bg); }
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-  font-size: 15px;
-  line-height: 1.5;
+/* sections */
+main{position:relative;z-index:2}
+section{min-height:100vh;display:flex;align-items:center;padding:96px clamp(16px,6vw,96px)}
+section.droite{justify-content:flex-end}
+section.centre{justify-content:center;text-align:center}
+section.heros{align-items:flex-end;padding-bottom:110px}
+.heros .bloc{max-width:760px}
+.bloc{text-shadow:0 2px 24px rgba(0,0,0,.85)}
+.bloc{max-width:520px;opacity:0;transform:translateY(40px);transition:opacity 1s ease,transform 1s cubic-bezier(.2,.7,.2,1)}
+.vu .bloc{opacity:1;transform:none}
+.kicker{font:600 12px/1 "JetBrains Mono",monospace;letter-spacing:.3em;color:var(--accent);text-transform:uppercase;margin-bottom:18px;
+  display:flex;align-items:center;gap:12px}
+.kicker::before{content:"";width:28px;height:1px;background:var(--accent)}
+.centre .kicker{justify-content:center}
+h1{font-size:clamp(46px,8.5vw,118px);line-height:.95;letter-spacing:.05em;font-weight:700;white-space:nowrap;
+  background:linear-gradient(180deg,#fff 0%,var(--accent2) 55%,var(--accent) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 60px rgba(61,245,208,.25)}
+h2{font-size:clamp(34px,5.4vw,64px);line-height:1.02;font-weight:700;margin-bottom:20px;letter-spacing:-.01em}
+p.corps{color:#bfe8e0;font-size:clamp(16px,1.6vw,19px)}
+.slogan{font-size:clamp(17px,2vw,22px);color:#cdf3ec;margin:22px auto 34px;max-width:620px}
+.actions{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:15px 26px;border-radius:999px;font:600 15px "Chakra Petch",sans-serif;
+  letter-spacing:.04em;text-decoration:none;transition:transform .2s,box-shadow .2s,background .2s}
+.btn.plein{background:var(--accent);color:#012420;box-shadow:0 0 40px rgba(61,245,208,.35)}
+.btn.plein:hover{transform:translateY(-2px);box-shadow:0 0 60px rgba(61,245,208,.55)}
+.btn.vide{border:1px solid var(--ligne);color:var(--texte);background:var(--verre);backdrop-filter:blur(8px)}
+.btn.vide:hover{border-color:var(--accent)}
+.note{margin-top:18px;font:12px "JetBrains Mono",monospace;color:var(--doux);letter-spacing:.06em}
+.chiffre{font:700 clamp(70px,12vw,140px)/1 "Chakra Petch";color:var(--accent);text-shadow:0 0 40px rgba(61,245,208,.4)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.chips span{border:1px solid var(--ligne);border-radius:999px;padding:6px 12px;font:12px "JetBrains Mono",monospace;color:var(--accent2);background:var(--verre)}
+.defile{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);font:11px "JetBrains Mono",monospace;letter-spacing:.3em;color:var(--doux);
+  animation:flotte 2.4s ease-in-out infinite}
+@keyframes flotte{50%{transform:translate(-50%,8px)}}
+.photos{display:grid;grid-template-columns:1fr;gap:16px;margin-top:28px}
+.photos img{width:100%;border-radius:14px;border:1px solid var(--ligne);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.section-photos{flex-direction:column;justify-content:center}
+.section-photos .bloc{max-width:1100px;text-align:center}
+.section-photos .kicker{justify-content:center}
+.grille-photos{display:grid;grid-template-columns:3fr 1fr;gap:18px;margin-top:34px;align-items:end}
+.grille-photos img{width:100%;border-radius:14px;border:1px solid var(--ligne);box-shadow:0 30px 90px rgba(0,0,0,.65);display:block}
+footer{position:relative;z-index:2;padding:60px clamp(16px,6vw,96px) 40px;border-top:1px solid var(--ligne);
+  font:12px/1.8 "JetBrains Mono",monospace;color:var(--doux);background:linear-gradient(transparent,rgba(0,0,0,.6))}
+footer a{color:var(--accent2)}
+.barre-prog{position:fixed;left:0;top:0;height:2px;background:var(--accent);z-index:6;box-shadow:0 0 12px var(--accent);width:0}
+@media (max-width:760px){
+  section{padding:90px 16px}
+  section.droite{justify-content:flex-start}
+  .bloc{background:linear-gradient(180deg,rgba(2,19,17,.0),rgba(2,19,17,.75) 30%);padding:18px 0;border-radius:18px}
+  .grille-photos{grid-template-columns:1fr}
+  .grille-photos img.tel{max-width:240px;margin:0 auto}
+  .marque{letter-spacing:.2em}
 }
-
-a { color: inherit; }
-button { font-family: inherit; }
-
-::selection { background: var(--accent); color: var(--bg); }
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--line); border: 2px solid var(--bg); }
-::-webkit-scrollbar-thumb:hover { background: var(--accent); }
-
-.tnum { font-variant-numeric: tabular-nums; }
-
-.scanlines {
-  position: fixed; inset: 0; pointer-events: none; z-index: 60;
-  background: repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(255,255,255,.012) 3px, rgba(255,255,255,.012) 4px);
-}
-
-.grid-bg {
-  background-image:
-    linear-gradient(rgba(74,143,212,.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74,143,212,.04) 1px, transparent 1px);
-  background-size: 56px 56px;
-}
-
-@keyframes marquee-x { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-.marquee-track { animation: marquee-x 46s linear infinite; will-change: transform; display: flex; white-space: nowrap; }
-
-@keyframes blink-caret { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
-.caret { animation: blink-caret 1.1s steps(1) infinite; color: var(--accent); margin-left: 4px; }
-
-@keyframes pulse-dot {
-  0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(74,143,212,.5); }
-  50% { opacity: .6; box-shadow: 0 0 0 5px rgba(74,143,212,0); }
-}
-.pulse-dot { animation: pulse-dot 2.2s ease-in-out infinite; }
-
-@media (prefers-reduced-motion: reduce) {
-  .marquee-track, .caret, .pulse-dot { animation: none !important; }
-}
-
-.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
-
-/* ── Header ─────────────────────────────────────────── */
-header.hdr {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
-  border-bottom: 1px solid var(--line);
-  background: rgba(7,9,14,.9); backdrop-filter: blur(8px);
-}
-header.hdr .row { max-width: 1080px; margin: 0 auto; padding: 0 24px; height: 48px; display: flex; align-items: center; gap: 16px; }
-.logo { display: flex; align-items: center; gap: 12px; min-width: 0; text-decoration: none; }
-.logo .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-.logo span { font-size: 14px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.logo .sep { color: #475569; }
-.logo .accent { color: var(--accent); }
-nav.commitnav { display: none; align-items: center; gap: 16px; font-size: 12px; color: var(--ink-3); }
-nav.commitnav a { text-decoration: none; transition: color .15s; }
-nav.commitnav a:hover { color: var(--accent); }
-.hdr-meta { font-size: 11px; color: var(--ink-3); margin-left: auto; display: none; }
-@media (min-width: 768px) { nav.commitnav { display: flex; } .hdr-meta { display: block; } }
-
-/* ── Hero ───────────────────────────────────────────── */
-.hero { position: relative; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; overflow: hidden; padding-top: 48px; }
-.hero-bg { position: absolute; inset: 0; pointer-events: none; user-select: none; display: flex; flex-direction: column; justify-content: center; gap: 40px; will-change: transform; }
-.hero-bg div {
-  font-size: 16vw; line-height: 1; font-weight: 800; letter-spacing: -.04em;
-  color: var(--accent); white-space: nowrap; opacity: .05;
-}
-.hero-bg div:nth-child(odd) { margin-left: -4vw; }
-.hero-bg div:nth-child(even) { margin-left: 22vw; }
-
-.hero-inner { position: relative; max-width: 1080px; margin: 0 auto; padding: 0 24px; width: 100%; }
-.mask { overflow: hidden; }
-.mask > * { transform: translateY(110%); opacity: 0; transition: transform .9s cubic-bezier(.16,1,.3,1), opacity .5s ease; }
-.mask.in > * { transform: translateY(0); opacity: 1; }
-
-.hero-cmd { font-size: 13px; color: var(--ink-3); }
-.hero-cmd .p { color: var(--accent); }
-
-h1.hero-title { margin: 32px 0 0; font-size: clamp(2rem, 7vw, 4.4rem); font-weight: 800; letter-spacing: -.04em; line-height: .95; }
-h1.hero-title .line { color: #f1f5f9; display: block; }
-h1.hero-title .accent { color: var(--accent); }
-
-p.hero-sub { margin: 32px 0 0; max-width: 640px; font-size: 14px; line-height: 1.7; color: var(--ink-2); }
-p.hero-sub b { color: var(--ink); font-weight: 500; }
-
-dl.hero-stats { margin: 40px 0 0; display: flex; flex-wrap: wrap; gap: 16px 40px; font-size: 13px; }
-dl.hero-stats > div { border-left: 1px solid var(--line); padding-left: 12px; }
-dl.hero-stats dt { color: #475569; text-transform: uppercase; letter-spacing: .1em; font-size: 10px; margin: 0; }
-dl.hero-stats dd { color: var(--ink); margin: 4px 0 0; }
-
-.hero-statusbar {
-  position: relative; max-width: 1080px; margin: 64px auto 0; padding: 0 24px; width: 100%;
-  opacity: 0; transition: opacity .8s ease;
-}
-.hero-statusbar.in { opacity: 1; }
-.hero-statusbar .bar {
-  border: 1px solid var(--line); background: rgba(13,17,26,.8); padding: 10px 16px;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; font-size: 11px; color: var(--ink-3);
-}
-.hero-statusbar .bar b { color: #cbd5e1; font-weight: 400; }
-.hero-statusbar .bar .ac { color: var(--accent); }
-.hero-statusbar .bar .last { margin-left: auto; display: none; }
-@media (min-width: 640px) { .hero-statusbar .bar .last { display: inline; } }
-
-/* ── Marquee ────────────────────────────────────────── */
-.marquee { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface); overflow: hidden; padding: 12px 0; }
-.marquee span { padding-right: 16px; font-size: 12px; color: #475569; }
-
-/* ── Commit sections ────────────────────────────────── */
-main.feed { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
-article.commit {
-  scroll-margin-top: 80px; border-top: 1px solid var(--line); padding: 64px 0;
-  opacity: 0; transform: translateY(40px); transition: opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1);
-}
-article.commit.in { opacity: 1; transform: none; }
-@media (min-width: 640px) { article.commit { padding: 96px 0; } }
-
-.commit-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; font-size: 12px; }
-.commit-meta .idx { color: #475569; }
-.commit-meta .hashbtn {
-  background: none; border: none; color: var(--accent); font-family: inherit; font-size: 12px;
-  padding: 1px 4px; margin: 0 -4px; cursor: pointer; transition: background .15s;
-}
-.commit-meta .hashbtn:hover { background: rgba(74,143,212,.1); }
-.commit-meta .date { color: var(--ink-3); }
-.commit-meta .author { color: var(--ink-3); }
-
-h2.commit-title { margin: 16px 0 0; max-width: 720px; font-size: clamp(1.15rem, 3vw, 1.6rem); font-weight: 700; letter-spacing: -.015em; line-height: 1.3; color: #f1f5f9; }
-
-.commit-body { margin: 24px 0 0; max-width: 720px; display: flex; flex-direction: column; gap: 16px; font-size: 14px; line-height: 1.7; color: var(--ink-2); }
-.commit-body b { color: var(--ink); font-weight: 500; }
-
-.box { margin: 24px 0 0; border: 1px solid var(--line); background: var(--surface); max-width: 720px; }
-.box-head { padding: 8px 16px; border-bottom: 1px solid var(--line); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: #475569; }
-
-table.mtable { width: 100%; border-collapse: collapse; font-size: 12px; }
-table.mtable td { padding: 10px 16px; border-bottom: 1px solid rgba(30,38,56,.6); }
-table.mtable tr:last-child td { border-bottom: 0; }
-table.mtable .q { color: #cbd5e1; }
-table.mtable .ms { text-align: right; color: var(--slow); white-space: nowrap; }
-table.mtable .ans { color: var(--ink-3); display: none; }
-@media (min-width: 768px) { table.mtable .ans { display: table-cell; } }
-
-/* diffstat */
-.diffstat { margin-top: 24px; max-width: 720px; }
-.diffstat ul { list-style: none; margin: 0; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
-.diffstat li { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 16px; align-items: center; font-size: 12px; }
-.diffstat .file { color: #cbd5e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.diffstat .cnt { text-align: right; white-space: nowrap; }
-.diffstat .cnt .a { color: var(--fast); }
-.diffstat .cnt .d { color: var(--slow); margin-left: 8px; }
-.diffstat .bar { grid-column: 1 / -1; height: 8px; display: none; gap: 1px; }
-@media (min-width: 640px) { .diffstat .bar { display: flex; } }
-.diffstat .bar i { display: block; height: 100%; }
-.diffstat .bar .ba { background: var(--fast); }
-.diffstat .bar .bd { background: var(--slow); }
-
-/* ── Interactive modules (shared) ─────────────────────── */
-.tool { margin-top: 32px; max-width: 720px; border: 1px solid var(--line); background: var(--surface); }
-.tool-head { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.tool-head .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: #475569; }
-.tool-body { padding: 16px; }
-.tool-foot { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; font-size: 11px; color: #475569; flex-wrap: wrap; }
-
-.seg { display: flex; border: 1px solid var(--line); }
-.seg button { padding: 4px 12px; font-size: 12px; background: none; border: none; color: var(--ink-2); cursor: pointer; transition: background .15s, color .15s; }
-.seg button + button { border-left: 1px solid var(--line); }
-.seg button[aria-selected="true"] { background: var(--accent); color: var(--bg); font-weight: 600; }
-.seg button:not([aria-selected="true"]):hover { color: var(--ink); }
-
-.outline-btn {
-  padding: 4px 12px; font-size: 12px; border: 1px solid var(--accent); color: var(--accent);
-  background: none; cursor: pointer; transition: background .15s, color .15s;
-}
-.outline-btn:hover:not(:disabled) { background: var(--accent); color: var(--bg); }
-.outline-btn:disabled { opacity: .4; cursor: not-allowed; }
-
-/* course de latence */
-.race-row { margin-bottom: 12px; }
-.race-row .top { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; font-size: 12px; margin-bottom: 4px; }
-.race-row .q { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.race-row .ms { white-space: nowrap; }
-.race-row .ms.slowc { color: var(--slow); }
-.race-row .ms.fastc { color: var(--fast); }
-.race-track { height: 16px; background: var(--bg); border: 1px solid var(--line); position: relative; overflow: hidden; }
-.race-track .fill { height: 100%; width: 0%; }
-.race-track .fill.slowc { background: var(--slow); }
-.race-track .fill.fastc { background: var(--fast); }
-
-/* bombe */
-.bomb-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.bomb-expr { font-size: 12px; color: #cbd5e1; background: var(--bg); border: 1px solid var(--line); padding: 2px 8px; }
-.bomb-head .outline-btn { margin-left: auto; }
-.bomb-grid { display: grid; grid-template-columns: 1fr; }
-@media (min-width: 768px) { .bomb-grid { grid-template-columns: 1fr 1fr; } }
-.bomb-panel { padding: 24px 16px; border-bottom: 1px solid var(--line); }
-@media (min-width: 768px) { .bomb-panel:first-child { border-right: 1px solid var(--line); border-bottom: 0; } }
-.bomb-panel .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: #475569; margin-bottom: 12px; }
-.bomb-counter { font-size: clamp(1.6rem, 5vw, 2.2rem); font-weight: 700; }
-.bomb-counter.slowc { color: #e2e8f0; }
-.bomb-counter.slowc.killed { color: var(--slow); }
-.bomb-counter.fastc { color: var(--fast); }
-.bomb-status { margin-top: 12px; font-size: 12px; line-height: 1.6; color: #64748b; min-height: 2.4em; }
-.bomb-bar { margin-top: 16px; height: 6px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
-.bomb-bar .fill { height: 100%; width: 0%; }
-.bomb-bar .fill.slowc { background: var(--slow); }
-.bomb-bar .fill.fastc { background: var(--fast); transition: width .3s; }
-
-/* résolveur */
-.ha-form { display: flex; gap: 8px; }
-.ha-inputwrap { flex: 1; display: flex; align-items: center; border: 1px solid var(--line); background: var(--bg); transition: border-color .15s; }
-.ha-inputwrap:focus-within { border-color: var(--accent); }
-.ha-inputwrap .chevron { padding-left: 12px; color: var(--accent); font-size: 14px; user-select: none; }
-.ha-inputwrap input { flex: 1; background: transparent; border: none; outline: none; padding: 10px 12px; font-size: 13px; color: var(--ink); font-family: inherit; }
-.ha-inputwrap input::placeholder { color: #475569; }
-.ha-form .outline-btn { padding: 0 16px; }
-.chips { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { font-size: 11px; color: var(--ink-3); border: 1px solid var(--line); padding: 4px 8px; background: none; cursor: pointer; transition: color .15s, border-color .15s; font-family: inherit; }
-.chip:hover { color: var(--ink); border-color: #64748b; }
-.ha-result { margin-top: 16px; border: 1px solid var(--line); background: var(--bg); padding: 12px 16px; font-size: 13px; display: none; }
-.ha-result.show { display: block; }
-.ha-result .tag { font-size: 11px; color: #64748b; }
-.ha-result .tag.ambig { color: #cbd5e1; }
-.ha-result .line { margin-top: 6px; }
-.ha-result .eid { color: var(--accent); font-weight: 600; }
-.ha-result .ename { color: #64748b; margin-left: 12px; font-size: 12px; }
-.ha-result ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.ha-result ul li { font-size: 12px; }
-.ha-result .note { margin-top: 8px; font-size: 11px; color: #475569; }
-.ha-result .unknown { color: var(--ink-2); }
-
-/* ── Footer ─────────────────────────────────────────── */
-footer.ftr { border-top: 1px solid var(--line); }
-footer.ftr .inner { max-width: 1080px; margin: 0 auto; padding: 64px 24px; }
-@media (min-width: 640px) { footer.ftr .inner { padding: 96px 24px; } }
-
-blockquote.creed {
-  max-width: 640px; margin: 0; opacity: 0; transform: translateY(30px);
-  transition: opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1);
-}
-blockquote.creed.in { opacity: 1; transform: none; }
-blockquote.creed p { margin: 0; font-size: clamp(1.05rem, 2.6vw, 1.4rem); font-weight: 600; line-height: 1.5; color: #e2e8f0; letter-spacing: -.01em; }
-blockquote.creed cite { display: block; margin-top: 16px; font-size: 11px; color: #475569; font-style: normal; }
-
-.ftr-grid { margin-top: 56px; display: grid; grid-template-columns: 1fr; gap: 40px; }
-@media (min-width: 768px) { .ftr-grid { grid-template-columns: 1fr 1fr; } }
-
-.pmatrix { border: 1px solid var(--line); background: var(--surface); }
-.pmatrix ul { list-style: none; margin: 0; padding: 0; }
-.pmatrix li { padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(30,38,56,.6); font-size: 13px; }
-.pmatrix li:last-child { border-bottom: 0; }
-.pmatrix .dot2 { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.pmatrix .dot2.ok { background: var(--fast); }
-.pmatrix .dot2.no { background: #475569; }
-.pmatrix .status { margin-left: auto; font-size: 12px; }
-.pmatrix .status.ok { color: var(--fast); }
-.pmatrix .status.no { color: #64748b; }
-
-.ftr-side { display: flex; flex-direction: column; justify-content: space-between; gap: 32px; }
-.ftr-side .note { font-size: 12px; color: #64748b; line-height: 1.7; }
-.ftr-side .note p { margin: 0 0 8px; }
-.ftr-side .note p:last-child { margin-bottom: 0; }
-a.ghlink {
-  display: inline-flex; align-items: center; gap: 12px; width: fit-content;
-  border: 1px solid var(--line); padding: 12px 16px; font-size: 13px; color: #cbd5e1;
-  text-decoration: none; transition: border-color .2s, color .2s;
-}
-a.ghlink:hover { border-color: var(--accent); color: var(--accent); }
-a.ghlink .arrow { transition: transform .2s; }
-a.ghlink:hover .arrow { transform: translateX(4px); }
-
-.ftr-bottom { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 11px; color: #475569; }
-
-@media (prefers-reduced-motion: reduce) {
-  .mask > *, .hero-statusbar, article.commit, blockquote.creed { transition: none !important; opacity: 1 !important; transform: none !important; }
-}
+@media (prefers-reduced-motion:reduce){ .bloc{transition:none} .defile{animation:none} }
+[dir=rtl] .kicker::before{display:none}
+/* l'espacement des lettres casse les ligatures de l'hindi et alourdit le chinois */
+:lang(hi) .kicker,:lang(hi) .defile,:lang(zh-CN) .kicker,:lang(zh-CN) .defile{letter-spacing:.04em}
 </style>
+</head>
+<body>
+<div class="barre-prog" id="prog"></div>
+<canvas id="scene" aria-hidden="true"></canvas>
 
-<div class="scanlines" aria-hidden="true"></div>
-
-<header class="hdr">
-  <div class="row">
-    <a href="#top" class="logo">
-      <span class="dot pulse-dot" aria-hidden="true"></span>
-      <span>jarvis <span class="sep">/</span> <span class="accent">git log</span></span>
-    </a>
-    <nav class="commitnav" aria-label="commits">
-      <a href="#commit-1">01</a><a href="#commit-2">02</a><a href="#commit-3">03</a><a href="#commit-4">04</a><a href="#commit-5">05</a>
-    </nav>
-    <div class="hdr-meta tnum">12–13 août 2026 · 5 commits · 2049 lignes</div>
+<header>
+  <div class="marque">J·A·R·V·I·S</div>
+  <div class="outils">
+    <a class="btn-mini" href="https://github.com/lorenzoromabramanti-bot/jarvis" data-i18n="github">GitHub</a>
+    <select id="langue" aria-label="Language">
+      <option value="en">English</option><option value="fr">Français</option><option value="es">Español</option>
+      <option value="zh">中文</option><option value="hi">हिन्दी</option><option value="pt">Português</option>
+    </select>
   </div>
 </header>
 
-<section class="hero grid-bg" id="top">
-  <div class="hero-bg" id="heroBg" aria-hidden="true">
-    <div>549012a</div><div>d963a14</div><div>03a3e73</div><div>76e30d9</div><div>6e7f32d</div>
-  </div>
-
-  <div class="hero-inner">
-    <div class="mask" data-delay="100">
-      <p class="hero-cmd"><span class="p">$</span> git log --author="JARVIS &lt;jarvis@local&gt;" --oneline<span class="caret">▌</span></p>
-    </div>
-
-    <h1 class="hero-title">
-      <div class="mask" data-delay="250"><span class="line">git log</span></div>
-      <div class="mask" data-delay="400"><span class="line">— écrit par <span class="accent">la machine</span></span></div>
-    </h1>
-
-    <div class="mask" data-delay="600">
-      <p class="hero-sub">Ce qui suit est le vrai journal git de ce dépôt — cinq commits, texte non retouché, auteur <b>JARVIS &lt;jarvis@local&gt;</b>. Ceci n'est pas une page à son sujet ; c'est une lecture de ce qu'il a déjà écrit.</p>
-    </div>
-
-    <div class="mask" data-delay="750">
-      <dl class="hero-stats">
-        <div><dt>période</dt><dd>12–13 août 2026</dd></div>
-        <div><dt>durée</dt><dd>deux journées</dd></div>
-        <div><dt>commits</dt><dd>5</dd></div>
-        <div><dt>lignes changées</dt><dd>2049</dd></div>
-      </dl>
-    </div>
-  </div>
-
-  <div class="hero-statusbar" id="heroStatus">
-    <div class="bar tnum">
-      <span>branche : <b>main</b></span>
-      <span>HEAD → <span class="ac">6e7f32d</span></span>
-      <span>auteur : <b>JARVIS &lt;jarvis@local&gt;</b></span>
-      <span class="last">▼ lire le journal</span>
-    </div>
-  </div>
-</section>
-
-<div class="marquee" aria-hidden="true">
-  <div class="marquee-track" id="marqueeTrack"></div>
-</div>
-
-<main class="feed">
-
-  <!-- COMMIT 1 -->
-  <article class="commit" id="commit-1">
-    <div class="commit-meta">
-      <span class="idx tnum">commit 01/05</span>
-      <button class="hashbtn" data-hash="549012a">549012a</button>
-      <span class="date tnum">2026-08-12 20:51</span>
-      <span class="author">JARVIS &lt;jarvis@local&gt;</span>
-    </div>
-    <h2 class="commit-title">Domotique : résoudre les noms depuis Home Assistant, au lieu d'une table morte</h2>
-    <div class="commit-body">
-      <p>ha_config.py déclarait 64 entités home assistant codées en dur, toutes absentes de l'installation réelle. Home Assistant connaît déjà le nom de chaque appareil (« Climatiseur Chambre », « TV Salon », « Lumière Cuisine ») — ce sont déjà les mots qu'on emploie à voix haute. ha_resolution.py les lit en direct au lieu d'une table.</p>
-      <p>Principe : « NE JAMAIS DEVINER » — se tromper d'appareil est pire que ne rien faire ; deux candidats proches renvoient une ambiguïté, l'appelant doit préciser.</p>
-      <p>Résultat mesuré : 9 phrases sur 10 résolues correctement, la dixième ambiguë à juste titre (trois amplificateurs distincts dans la maison).</p>
-    </div>
-
-    <div class="tool" id="haTool">
-      <div class="tool-head">
-        <span class="lbl">annexe interactive — résolveur d'entités</span>
-        <span class="lbl" style="margin-left:auto">principe : NE JAMAIS DEVINER</span>
+<main>
+  <section class="centre heros" data-etape="0" style="position:relative">
+    <div class="bloc">
+      <div class="kicker" data-i18n="hero_kicker">Desktop voice assistant</div>
+      <h1>J.A.R.V.I.S</h1>
+      <p class="slogan" data-i18n="hero_slogan">It listens, answers, and acts on your computer. And when it doesn't know, it says so.</p>
+      <div class="actions">
+        <a class="btn plein" href="https://github.com/lorenzoromabramanti-bot/jarvis/releases/latest" data-i18n="download">Download for Windows</a>
+        <a class="btn vide" href="https://github.com/lorenzoromabramanti-bot/jarvis" data-i18n="source">Read the code</a>
       </div>
-      <div class="tool-body">
-        <form class="ha-form" id="haForm">
-          <div class="ha-inputwrap">
-            <span class="chevron">›</span>
-            <input id="haInput" type="text" placeholder="une phrase, ex. Allume le climatiseur de la chambre" autocomplete="off">
-          </div>
-          <button type="submit" class="outline-btn">résoudre</button>
-        </form>
-        <div class="chips" id="haChips"></div>
-        <div class="ha-result" id="haResult"></div>
+      <div class="note" data-i18n="hero_note">Windows 10/11 · Linux · macOS (untested)</div>
+    </div>
+    <div class="defile mono" data-i18n="scroll">SCROLL</div>
+  </section>
+
+  <section data-etape="1">
+    <div class="bloc">
+      <div class="kicker" data-i18n="s1_k">01 — Answer</div>
+      <div class="chiffre">2–6 ms</div>
+      <h2 data-i18n="s1_t">Before any model wakes up.</h2>
+      <p class="corps" data-i18n="s1_p">Time, calculations, conversions, the state of your machine: a chain of local tools answers first, without calling any model. Everything else goes to Gemini — or to a local Ollama model if Gemini goes quiet.</p>
+    </div>
+  </section>
+
+  <section class="droite" data-etape="2">
+    <div class="bloc">
+      <div class="kicker" data-i18n="s2_k">02 — Act</div>
+      <h2 data-i18n="s2_t">It doesn't just talk.</h2>
+      <p class="corps" data-i18n="s2_p">Home Assistant lights and plugs, email sorted and replies drafted, winget updates, VPN, Spotify and Deezer. Tabs, windows and apps are driven directly, without going through the model.</p>
+    </div>
+  </section>
+
+  <section data-etape="3">
+    <div class="bloc">
+      <div class="kicker" data-i18n="s3_k">03 — Honesty</div>
+      <h2 data-i18n="s3_t">It stays quiet when it doesn't know.</h2>
+      <p class="corps" data-i18n="s3_p">An assistant that says “done” without doing anything is worse than one that refuses. When Home Assistant refuses an action, JARVIS reports a failure — not a success.</p>
+    </div>
+  </section>
+
+  <section class="droite" data-etape="4">
+    <div class="bloc">
+      <div class="kicker" data-i18n="s4_k">04 — Code</div>
+      <h2 data-i18n="s4_t">It works with your coding agents.</h2>
+      <p class="corps" data-i18n="s4_p">It hands tasks to the agent of your choice, in a project you declared. Without one, its own file agent reads, searches and edits the project — locked inside its folder.</p>
+      <div class="chips"><span>Claude Code</span><span>Codex</span><span>OpenCode</span><span>Cursor Agent</span><span>OpenClaw</span></div>
+    </div>
+  </section>
+
+  <section class="section-photos" data-etape="5">
+    <div class="bloc">
+      <div class="kicker" data-i18n="s5_k">05 — Interface</div>
+      <h2 data-i18n="s5_t">An interface you actually live in.</h2>
+      <p class="corps" data-i18n="s5_p">A 3D orb that reacts to its voice, the chat, the machine's vitals, and a tabbed data center — down to an Agents tab that maps every AI tool on your computer. On your desktop and on your phone.</p>
+      <div class="grille-photos">
+        <img src="images/hud-agents.jpg" alt="" loading="lazy" width="2000" height="1250">
+        <img class="tel" src="images/hud-mobile.jpg" alt="" loading="lazy" width="780" height="1688">
       </div>
     </div>
+  </section>
 
-    <div class="box diffstat">
-      <div class="box-head">diffstat</div>
-      <ul>
-        <li><span class="file">ha_resolution.py</span><span class="cnt"><span class="a">+321</span></span><span class="bar"><i class="ba" style="width:100%"></i></span></li>
-        <li><span class="file">_test_ha_resolution.py</span><span class="cnt"><span class="a">+98</span></span><span class="bar"><i class="ba" style="width:30.5%"></i></span></li>
-      </ul>
+  <section class="droite" data-etape="6">
+    <div class="bloc">
+      <div class="kicker" data-i18n="s6_k">06 — Privacy</div>
+      <h2 data-i18n="s6_t">Your machine. Your data.</h2>
+      <p class="corps" data-i18n="s6_p">Conversations, settings and email stay local. Irreversible actions show exactly what will be sent and wait for your yes. Every optional feature ships switched off.</p>
     </div>
-  </article>
+  </section>
 
-  <!-- COMMIT 2 -->
-  <article class="commit" id="commit-2">
-    <div class="commit-meta">
-      <span class="idx tnum">commit 02/05</span>
-      <button class="hashbtn" data-hash="d963a14">d963a14</button>
-      <span class="date tnum">2026-08-12 23:49</span>
-      <span class="author">JARVIS &lt;jarvis@local&gt;</span>
-    </div>
-    <h2 class="commit-title">Latence : JARVIS refusait de répondre sur la machine où il tourne</h2>
-    <div class="commit-body">
-      <p>JARVIS mettait jusqu'à 15 secondes à répondre « je ne sais pas » à des questions simples sur sa propre machine, pendant que le HUD affichait déjà le CPU/RAM en direct via psutil.</p>
-      <p>APRÈS correctif : les mêmes 16 questions répondent toutes en moins de 90 ms, la plupart sous 3 ms.</p>
-      <p>Cause racine trouvée : la fonction de correspondance comparait le texte accentué (« mémoire vive ») à un texte non accentué (saisi ou transcrit vocalement) — donc jamais de correspondance, systématiquement le fallback lent vers le modèle IA. La fonction tools.contient() normalise désormais les deux côtés (accents retirés avant comparaison).</p>
-    </div>
-
-    <div class="box">
-      <div class="box-head">mesures AVANT — vrais chiffres</div>
-      <table class="mtable">
-        <tbody>
-          <tr><td class="q">« quelle est ma version de windows »</td><td class="ms tnum">14 988 ms</td><td class="ans">→ « mes capteurs ne me permettent pas »</td></tr>
-          <tr><td class="q">« quelle est mon adresse ip »</td><td class="ms tnum">13 412 ms</td><td class="ans">→ « je ne peux pas lire directement »</td></tr>
-          <tr><td class="q">« combien de place libre sur le disque »</td><td class="ms tnum">7 974 ms</td><td class="ans">→ « pas d'accès direct »</td></tr>
-          <tr><td class="q">« combien de mémoire vive utilisée »</td><td class="ms tnum">6 355 ms</td><td class="ans">→ « pas d'accès direct »</td></tr>
-          <tr><td class="q">« suis-je connecté à internet »</td><td class="ms tnum">3 183 ms</td><td class="ans">→ « puisque nous conversons... »</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="tool" id="raceTool">
-      <div class="tool-head">
-        <span class="lbl">annexe interactive — course de latence</span>
-        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-          <div class="seg" role="tablist" aria-label="mode">
-            <button role="tab" aria-selected="true" data-mode="avant">avant</button>
-            <button role="tab" aria-selected="false" data-mode="apres">après</button>
-          </div>
-          <button class="outline-btn" id="raceRerun">relancer la course</button>
-        </div>
-      </div>
-      <div class="tool-body" id="raceRows"></div>
-      <div class="tool-foot">
-        <span>échelle partagée 0 – 15 000 ms · temps réel</span>
-        <span class="tnum" id="raceStatus">en cours…</span>
+  <section class="centre heros" data-etape="7">
+    <div class="bloc">
+      <div class="kicker" data-i18n="s7_k">Install</div>
+      <h2 data-i18n="s7_t">Give your computer a voice.</h2>
+      <p class="corps" data-i18n="s7_p">Free, with its code public on GitHub. The 11 MB installer downloads JARVIS instead of bundling it, so you can read everything first. Python 3.10–3.13, and Node.js for the interface.</p>
+      <div class="actions" style="margin-top:30px">
+        <a class="btn plein" href="https://github.com/lorenzoromabramanti-bot/jarvis/releases/latest" data-i18n="download">Download for Windows</a>
+        <a class="btn vide" href="https://github.com/lorenzoromabramanti-bot/jarvis#readme" data-i18n="readme">Installation guide</a>
       </div>
     </div>
-
-    <div class="box diffstat">
-      <div class="box-head">diffstat</div>
-      <ul>
-        <li><span class="file">tools/machine.py</span><span class="cnt"><span class="a">+246</span></span><span class="bar"><i class="ba" style="width:100%"></i></span></li>
-        <li><span class="file">tools/__init__.py</span><span class="cnt"><span class="a">+27</span></span><span class="bar"><i class="ba" style="width:11%"></i></span></li>
-        <li><span class="file">tools/infos_systeme.py</span><span class="cnt"><span class="a">+15</span><span class="d">−11</span></span><span class="bar"><i class="ba" style="width:6.1%"></i><i class="bd" style="width:4.5%"></i></span></li>
-      </ul>
-    </div>
-  </article>
-
-  <!-- COMMIT 3 -->
-  <article class="commit" id="commit-3">
-    <div class="commit-meta">
-      <span class="idx tnum">commit 03/05</span>
-      <button class="hashbtn" data-hash="03a3e73">03a3e73</button>
-      <span class="date tnum">2026-08-13 13:22</span>
-      <span class="author">JARVIS &lt;jarvis@local&gt;</span>
-    </div>
-    <h2 class="commit-title">Une phrase pouvait figer JARVIS définitivement</h2>
-    <div class="commit-body">
-      <p>La phrase « neuf puissance neuf puissance neuf puissance neuf » se traduisait en l'expression Python 9**9**9**9, que Python calcule sans jamais rendre la main (nombre à des milliards de chiffres) — blocage total après 15 secondes, processus tué.</p>
-      <p>Le code utilisait eval() avec un dictionnaire de fonctions autorisées (sqrt, pow, pi, e), documenté comme « dette technique : risque d'exécution de code arbitraire » — mais le vrai bug n'était PAS l'exécution de code arbitraire (le filtre en amont ne laissait passer que des chiffres et opérateurs mathématiques), c'était l'épuisement de ressources par un calcul légal mais absurdement grand.</p>
-      <p>Correctif : nouveau module calcul_sur.py qui parse l'expression en arbre syntaxique (AST Python) et borne la puissance AVANT de calculer, pas après. Mesures : calcul normal avant = 4 ms, la bombe = 9014 ms (part au modèle qui doit alors expliquer), calcul normal après = 3 ms. 37 contrôles de test dont 5 variantes de « bombe » toutes refusées en moins d'une milliseconde.</p>
-    </div>
-
-    <div class="tool" id="bombTool">
-      <div class="tool-head bomb-head">
-        <span class="lbl">annexe interactive — la bombe</span>
-        <code class="bomb-expr">9**9**9**9</code>
-        <button class="outline-btn" id="bombBtn">lancer la bombe</button>
-      </div>
-      <div class="bomb-grid">
-        <div class="bomb-panel">
-          <div class="lbl">avant — eval() direct</div>
-          <div class="bomb-counter slowc tnum" id="bombSlow">0 ms</div>
-          <p class="bomb-status" id="bombSlowStatus">en attente — le calcul n'a pas encore commencé</p>
-          <div class="bomb-bar"><div class="fill slowc" id="bombSlowBar"></div></div>
-        </div>
-        <div class="bomb-panel">
-          <div class="lbl">après — calcul_sur.py (AST borné)</div>
-          <div class="bomb-counter fastc tnum" id="bombFast">— ms</div>
-          <p class="bomb-status" id="bombFastStatus">en attente du déclencheur</p>
-          <div class="bomb-bar"><div class="fill fastc" id="bombFastBar"></div></div>
-        </div>
-      </div>
-      <div class="tool-foot"><span>compteur en temps réel — mesure réelle du commit : 9 014 ms avant interception par le modèle</span></div>
-    </div>
-
-    <div class="box diffstat">
-      <div class="box-head">diffstat</div>
-      <ul>
-        <li><span class="file">calcul_sur.py</span><span class="cnt"><span class="a">+157</span></span><span class="bar"><i class="ba" style="width:100%"></i></span></li>
-        <li><span class="file">_test_calcul_sur.py</span><span class="cnt"><span class="a">+103</span></span><span class="bar"><i class="ba" style="width:65.6%"></i></span></li>
-        <li><span class="file">main2.py</span><span class="cnt"><span class="a">+19</span><span class="d">−9</span></span><span class="bar"><i class="ba" style="width:12.1%"></i><i class="bd" style="width:5.7%"></i></span></li>
-      </ul>
-    </div>
-  </article>
-
-  <!-- COMMIT 4 -->
-  <article class="commit" id="commit-4">
-    <div class="commit-meta">
-      <span class="idx tnum">commit 04/05</span>
-      <button class="hashbtn" data-hash="76e30d9">76e30d9</button>
-      <span class="date tnum">2026-08-13 17:12</span>
-      <span class="author">JARVIS &lt;jarvis@local&gt;</span>
-    </div>
-    <h2 class="commit-title">Catalogue des capacités : 16 entrées, adossées aux 142 points d'entrée réels</h2>
-    <div class="commit-body">
-      <p>Besoin d'un catalogue des fonctionnalités de JARVIS consultable par deux systèmes différents (deux modes d'installation) sans divergence entre eux. Une liste écrite à la main diverge dès qu'une fonction est ajoutée sans que personne ne s'en aperçoive.</p>
-      <p>Solution : chaque capacité déclare les points d'entrée code qu'elle couvre, et une fonction verifier_coherence() compare cette déclaration au code réel — résultat : 142 points déclarés, 142 points réels dans le code, correspondance exacte.</p>
-      <p>Le contrôle a été éprouvé en retirant délibérément une capacité (vpn_connect) du catalogue : elle est ressortie comme « orpheline » dans le contrôle, prouvant que le test détecte vraiment les incohérences.</p>
-    </div>
-    <div class="box diffstat">
-      <div class="box-head">diffstat</div>
-      <ul>
-        <li><span class="file">catalogue.py</span><span class="cnt"><span class="a">+394</span></span><span class="bar"><i class="ba" style="width:100%"></i></span></li>
-        <li><span class="file">_test_catalogue.py</span><span class="cnt"><span class="a">+140</span></span><span class="bar"><i class="ba" style="width:35.5%"></i></span></li>
-        <li><span class="file">main2.py</span><span class="cnt"><span class="a">+37</span></span><span class="bar"><i class="ba" style="width:9.4%"></i></span></li>
-      </ul>
-    </div>
-  </article>
-
-  <!-- COMMIT 5 -->
-  <article class="commit" id="commit-5">
-    <div class="commit-meta">
-      <span class="idx tnum">commit 05/05</span>
-      <button class="hashbtn" data-hash="6e7f32d">6e7f32d</button>
-      <span class="date tnum">2026-08-13 19:51</span>
-      <span class="author">JARVIS &lt;jarvis@local&gt;</span>
-    </div>
-    <h2 class="commit-title">Linux : JARVIS s'installe et se charge sur Ubuntu 26.04</h2>
-    <div class="commit-body">
-      <p>Première installation complète testée sur Linux nu (WSL2 Ubuntu 26.04) : 121 paquets installés, le fichier principal main2.py s'importe entièrement, 10 outils auto-découverts, 6 capacités sur 14 disponibles (les 7 absentes annoncent chacune pourquoi).</p>
-      <p>Quatre blocages trouvés en testant réellement : (1) des paquets Windows-only (pywin32, comtypes, pycaw) déclarés sans condition faisaient échouer pip entièrement ; (2) ensurepip est absent par défaut sur Debian/Ubuntu, l'installeur doit créer l'environnement virtuel puis s'amorcer lui-même ; (3) pygame sans version compilée pour Python 3.14 faisait échouer 48 autres paquets alors que tous ses imports étaient déjà protégés ; (4) le pire bug : sur Linux sans tkinter, « import pyautogui » lève SystemExit — qui n'hérite PAS de la classe Exception en Python — donc les blocs try/except Exception existants ne l'attrapaient pas du tout, le processus principal mourait silencieusement sans aucun message d'erreur ni trace.</p>
-      <p>Correctif : les fonctions d'import protégé attrapent désormais BaseException (en laissant explicitement passer KeyboardInterrupt).</p>
-    </div>
-    <div class="box diffstat">
-      <div class="box-head">diffstat</div>
-      <ul>
-        <li><span class="file">amorceur/amorceur.py</span><span class="cnt"><span class="a">+157</span><span class="d">−26</span></span><span class="bar"><i class="ba" style="width:100%"></i><i class="bd" style="width:16.6%"></i></span></li>
-        <li><span class="file">docs/macos.md</span><span class="cnt"><span class="a">+100</span></span><span class="bar"><i class="ba" style="width:63.7%"></i></span></li>
-        <li><span class="file">config.py</span><span class="cnt"><span class="a">+25</span><span class="d">−3</span></span><span class="bar"><i class="ba" style="width:15.9%"></i><i class="bd" style="width:1.9%"></i></span></li>
-        <li><span class="file">_test_amorceur.py</span><span class="cnt"><span class="a">+15</span><span class="d">−4</span></span><span class="bar"><i class="ba" style="width:9.6%"></i><i class="bd" style="width:2.5%"></i></span></li>
-        <li><span class="file">requirements.txt</span><span class="cnt"><span class="a">+4</span><span class="d">−5</span></span><span class="bar"><i class="ba" style="width:2.5%"></i><i class="bd" style="width:3.2%"></i></span></li>
-        <li><span class="file">main2.py</span><span class="cnt"><span class="a">+6</span><span class="d">−1</span></span><span class="bar"><i class="ba" style="width:3.8%"></i><i class="bd" style="width:0.6%"></i></span></li>
-        <li><span class="file">deezer_controller.py, file_manager.py, spotify_controller.py, vision_module.py</span><span class="cnt"><span class="a">+1</span><span class="d">−1</span> chacun</span></li>
-      </ul>
-      <div class="box-head" style="border-top:1px solid var(--line);border-bottom:0">10 fichiers modifiés, 311 insertions(+), 43 suppressions(−)</div>
-    </div>
-  </article>
-
-  <!-- VERSION 1.2.0 -->
-  <article class="commit" id="version-1-2-0">
-    <div class="commit-meta">
-      <span class="idx tnum">version 1.2.0</span>
-      <button class="hashbtn" data-hash="v1.2.0">v1.2.0</button>
-      <span class="date tnum">2026-10-01</span>
-      <span class="author">résumé de version, pas un commit</span>
-    </div>
-    <h2 class="commit-title">1.2.0 : plus de choses à distance, et tout ce qui est personnel devient une option éteinte</h2>
-    <div class="commit-body">
-      <p>Le gros de la version : JARVIS se pilote depuis Discord (texte et vocal), prévient quand une tâche de fond se termine, met des tâches de côté pour la nuit, découpe une demande qui compare plusieurs choses, et confie une tâche de code à Claude Code, Codex, OpenCode, Cursor Agent ou OpenClaw — ou la fait lui-même dans un bac à sable limité au projet.</p>
-      <p>Deux corrections comptent plus que le reste. Lancé avec Windows par pythonw, JARVIS s'arrêtait en silence : pythonw n'a pas de sortie standard, et la première écriture le tuait. Et quand Gemini ne répond pas, il bascule sur un modèle Ollama local au lieu de se taire ; la liste des modèles est lue sur le serveur réel, pas devinée.</p>
-      <p>Domotique : il ne dit plus « c'est fait » quand Home Assistant a refusé l'action. C'est la règle du projet, enfreinte une fois de plus et corrigée.</p>
-      <p>Tout ce qui dépend d'une installation particulière (emploi du temps scolaire, révisions, détection de présence par webcam, carte OSINT) est livré <b>désactivé</b>, sans valeur par défaut tirée d'une vraie maison. On l'active dans l'installeur, rubrique Capacités.</p>
-    </div>
-    <div class="box diffstat">
-      <div class="box-head">options livrées désactivées</div>
-      <ul>
-        <li><span class="file">emploi du temps scolaire (Pronote via Home Assistant)</span><span class="cnt"><span class="d">off</span></span></li>
-        <li><span class="file">quiz de révision la veille d'une évaluation</span><span class="cnt"><span class="d">off</span></span></li>
-        <li><span class="file">détection de présence par webcam</span><span class="cnt"><span class="d">off</span></span></li>
-        <li><span class="file">carte OSINT 3D (God's Eye View + ShadowBroker)</span><span class="cnt"><span class="d">off</span></span></li>
-        <li><span class="file">bot et vocal Discord, notes Notion</span><span class="cnt"><span class="d">off sans jeton</span></span></li>
-      </ul>
-    </div>
-  </article>
-
+  </section>
 </main>
 
-<footer class="ftr">
-  <div class="inner">
-    <blockquote class="creed" id="creedQuote">
-      <p>« Une fonction indisponible le dit. Elle ne renvoie pas une liste vide, ne répond pas "c'est fait", n'invente pas de valeur par défaut. »</p>
-      <cite>— principe transversal, commits 01–05</cite>
-    </blockquote>
-
-    <div class="ftr-grid">
-      <div class="pmatrix">
-        <div class="box-head">statuts plateforme</div>
-        <ul>
-          <li><span class="dot2 ok"></span><span>Windows</span><span class="status ok">éprouvé</span></li>
-          <li><span class="dot2 ok"></span><span>Linux — Ubuntu 26.04</span><span class="status ok">éprouvé</span></li>
-          <li><span class="dot2 no"></span><span>macOS</span><span class="status no">jamais essayé sur une vraie machine</span></li>
-        </ul>
-      </div>
-      <div class="ftr-side">
-        <div class="note">
-          <p>Cette page est une lecture du journal. Aucun texte de commit n'a été retouché, sauf les noms d'appareils de la maison, remplacés par des noms génériques.</p>
-          <p>La version 1.2.0 n'est pas un commit : c'est un résumé de version, écrit après coup.</p>
-          <p class="tnum">5 commits · 12–13 août 2026 · 2049 lignes changées · auteur : JARVIS &lt;jarvis@local&gt;</p>
-        </div>
-        <a class="ghlink" href="https://github.com/lorenzoromabramanti-bot/jarvis" target="_blank" rel="noopener noreferrer">
-          <span>code source — github.com/lorenzoromabramanti-bot/jarvis</span>
-          <span class="arrow">→</span>
-        </a>
-      </div>
-    </div>
-
-    <div class="ftr-bottom tnum">
-      <span>git log — écrit par la machine</span>
-      <span>HEAD → 6e7f32d · fin du journal</span>
-    </div>
-  </div>
+<footer>
+  <div data-i18n-html="credits">Interface based on <a href="https://github.com/jincocodev/openclaw-jarvis-ui">openclaw-jarvis-ui</a> by JincocoDev (ISC) and the <a href="https://codepen.io/filipz/pen/yyyRgry">Three.js Orb Visualizer</a> by Filip Zrnzevic.</div>
+  <div><a href="journal.html" data-i18n="journal">Project history</a> · <a href="https://github.com/lorenzoromabramanti-bot/jarvis">GitHub</a></div>
 </footer>
 
 <script>
-(function () {
-  "use strict";
-  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  function fmt(n) { return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
-
-  /* ── reveal on load: hero mask lines + status bar ─────── */
-  document.querySelectorAll(".mask").forEach(function (el) {
-    var delay = reduced ? 0 : (parseInt(el.getAttribute("data-delay"), 10) || 0);
-    setTimeout(function () { el.classList.add("in"); }, delay);
-  });
-  setTimeout(function () {
-    document.getElementById("heroStatus").classList.add("in");
-  }, reduced ? 0 : 1200);
-
-  /* ── hero parallax on scroll (giant hash watermarks) ──── */
-  var heroBg = document.getElementById("heroBg");
-  var hero = document.querySelector(".hero");
-  if (!reduced) {
-    var ticking = false;
-    function onScroll() {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(function () {
-        var h = hero.offsetHeight || 1;
-        var p = Math.min(Math.max(window.scrollY / h, 0), 1);
-        heroBg.style.transform = "translateY(" + (p * 180) + "px)";
-        heroBg.style.opacity = 1 - p * 0.8;
-        ticking = false;
-      });
-    }
-    window.addEventListener("scroll", onScroll, { passive: true });
+// Textes : anglais (principal) + 5 langues. Clé absente = anglais.
+const TEXTES = {
+  en: {},
+  fr: {
+    github:"GitHub", hero_kicker:"Assistant vocal de bureau",
+    hero_slogan:"Il écoute, répond et agit sur votre ordinateur. Et quand il ne sait pas, il le dit.",
+    download:"Télécharger pour Windows", source:"Lire le code", hero_note:"Windows 10/11 · Linux · macOS (non testé)", scroll:"DÉFILER",
+    s1_k:"01 — Répondre", s1_t:"Avant même qu'un modèle se réveille.",
+    s1_p:"Heure, calculs, conversions, état de la machine : une chaîne d'outils locaux répond d'abord, sans appeler de modèle. Le reste part à Gemini — ou à un modèle Ollama local si Gemini se tait.",
+    s2_k:"02 — Agir", s2_t:"Il ne fait pas que parler.",
+    s2_p:"Lumières et prises Home Assistant, courrier trié et réponses rédigées, mises à jour winget, VPN, Spotify et Deezer. Onglets, fenêtres et applications se pilotent directement, sans passer par le modèle.",
+    s3_k:"03 — Honnêteté", s3_t:"Il se tait quand il ne sait pas.",
+    s3_p:"Un assistant qui répond « c'est fait » sans avoir rien fait est pire qu'un assistant qui refuse. Quand Home Assistant refuse une action, JARVIS annonce un échec — pas une réussite.",
+    s4_k:"04 — Coder", s4_t:"Il travaille avec vos agents de code.",
+    s4_p:"Il confie les tâches à l'agent de votre choix, dans un projet que vous avez déclaré. Sans agent, le sien lit, cherche et modifie le projet — enfermé dans son dossier.",
+    s5_k:"05 — Interface", s5_t:"Une interface où l'on vit vraiment.",
+    s5_p:"Une orbe 3D qui réagit à sa voix, le chat, l'état de la machine et un data center à onglets — jusqu'à un onglet Agents qui recense chaque outil d'IA de votre ordinateur. Sur le bureau comme sur le téléphone.",
+    s6_k:"06 — Vie privée", s6_t:"Votre machine. Vos données.",
+    s6_p:"Les conversations, les réglages et le courrier restent en local. Les actions irréversibles montrent exactement ce qui va partir et attendent votre oui. Chaque option facultative est livrée éteinte.",
+    s7_k:"Installer", s7_t:"Donnez une voix à votre ordinateur.",
+    s7_p:"Gratuit, code public sur GitHub. L'installeur de 11 Mo télécharge JARVIS au lieu de l'embarquer : vous pouvez tout lire avant. Python 3.10 à 3.13, et Node.js pour l'interface.",
+    readme:"Guide d'installation", journal:"Historique du projet",
+    credits:'Interface basée sur <a href="https://github.com/jincocodev/openclaw-jarvis-ui">openclaw-jarvis-ui</a> de JincocoDev (ISC) et le <a href="https://codepen.io/filipz/pen/yyyRgry">Three.js Orb Visualizer</a> de Filip Zrnzevic.'
+  },
+  es: {
+    hero_kicker:"Asistente de voz para el escritorio",
+    hero_slogan:"Escucha, responde y actúa en tu ordenador. Y cuando no sabe, lo dice.",
+    download:"Descargar para Windows", source:"Leer el código", hero_note:"Windows 10/11 · Linux · macOS (sin probar)", scroll:"DESLIZA",
+    s1_k:"01 — Responder", s1_t:"Antes de que despierte ningún modelo.",
+    s1_p:"Hora, cálculos, conversiones, el estado de tu equipo: una cadena de herramientas locales responde primero, sin llamar a ningún modelo. El resto va a Gemini — o a un modelo local de Ollama si Gemini se calla.",
+    s2_k:"02 — Actuar", s2_t:"No se limita a hablar.",
+    s2_p:"Luces y enchufes de Home Assistant, correo ordenado y respuestas redactadas, actualizaciones con winget, VPN, Spotify y Deezer. Pestañas, ventanas y aplicaciones se manejan directamente, sin pasar por el modelo.",
+    s3_k:"03 — Honestidad", s3_t:"Se calla cuando no sabe.",
+    s3_p:"Un asistente que dice “hecho” sin haber hecho nada es peor que uno que se niega. Cuando Home Assistant rechaza una acción, JARVIS anuncia un fallo — no un éxito.",
+    s4_k:"04 — Programar", s4_t:"Trabaja con tus agentes de código.",
+    s4_p:"Encarga las tareas al agente que elijas, en un proyecto que hayas declarado. Sin ninguno, su propio agente lee, busca y modifica el proyecto — encerrado en su carpeta.",
+    s5_k:"05 — Interfaz", s5_t:"Una interfaz en la que se vive de verdad.",
+    s5_p:"Una esfera 3D que reacciona a su voz, el chat, las constantes del equipo y un data center con pestañas — hasta una pestaña Agents que recoge cada herramienta de IA de tu ordenador. En el escritorio y en el teléfono.",
+    s6_k:"06 — Privacidad", s6_t:"Tu equipo. Tus datos.",
+    s6_p:"Las conversaciones, los ajustes y el correo se quedan en local. Las acciones irreversibles muestran exactamente lo que va a salir y esperan tu sí. Cada opción viene apagada.",
+    s7_k:"Instalar", s7_t:"Dale voz a tu ordenador.",
+    s7_p:"Gratis, con el código público en GitHub. El instalador de 11 MB descarga JARVIS en lugar de incluirlo, así puedes leerlo todo antes. Python 3.10–3.13, y Node.js para la interfaz.",
+    readme:"Guía de instalación", journal:"Historia del proyecto",
+    credits:'Interfaz basada en <a href="https://github.com/jincocodev/openclaw-jarvis-ui">openclaw-jarvis-ui</a> de JincocoDev (ISC) y en el <a href="https://codepen.io/filipz/pen/yyyRgry">Three.js Orb Visualizer</a> de Filip Zrnzevic.'
+  },
+  zh: {
+    hero_kicker:"桌面语音助手",
+    hero_slogan:"它会倾听、回答，并直接操作你的电脑。不知道的时候，它会直说。",
+    download:"下载 Windows 版", source:"阅读源代码", hero_note:"Windows 10/11 · Linux · macOS（未测试）", scroll:"向下滚动",
+    s1_k:"01 — 回答", s1_t:"在任何模型醒来之前。",
+    s1_p:"时间、计算、单位换算、本机状态：一组本地工具先给出答案，不调用任何模型。其余的交给 Gemini——如果 Gemini 没有响应，就交给本地的 Ollama 模型。",
+    s2_k:"02 — 执行", s2_t:"它不只是说话。",
+    s2_p:"Home Assistant 的灯和插座、整理邮件并起草回复、winget 更新、VPN、Spotify 和 Deezer。标签页、窗口和应用都直接控制，不经过模型。",
+    s3_k:"03 — 诚实", s3_t:"不知道就不说。",
+    s3_p:"什么都没做却说“已完成”的助手，比拒绝的助手更糟。当 Home Assistant 拒绝一个操作时，JARVIS 报告的是失败，而不是成功。",
+    s4_k:"04 — 写代码", s4_t:"它与你的编程代理协作。",
+    s4_p:"它把任务交给你选择的代理，在你声明过的项目中执行。没有代理时，它自己的代理会读取、搜索和修改项目——并被限制在项目文件夹内。",
+    s5_k:"05 — 界面", s5_t:"一个真正能住进去的界面。",
+    s5_p:"一个随声音变化的 3D 球体、聊天、本机状态，以及带标签页的数据中心——还有一个 Agents 标签页，列出你电脑上的每一个 AI 工具。电脑和手机都能用。",
+    s6_k:"06 — 隐私", s6_t:"你的电脑，你的数据。",
+    s6_p:"对话、设置和邮件都保存在本地。不可撤销的操作会准确显示将要发出的内容，并等待你的同意。每个可选功能默认都是关闭的。",
+    s7_k:"安装", s7_t:"让你的电脑开口说话。",
+    s7_p:"免费，源代码在 GitHub 上公开。11 MB 的安装程序会下载 JARVIS，而不是把它打包在内，所以你可以先读完所有代码。需要 Python 3.10–3.13，界面需要 Node.js。",
+    readme:"安装指南", journal:"项目历史",
+    credits:'界面基于 JincocoDev 的 <a href="https://github.com/jincocodev/openclaw-jarvis-ui">openclaw-jarvis-ui</a>（ISC）和 Filip Zrnzevic 的 <a href="https://codepen.io/filipz/pen/yyyRgry">Three.js Orb Visualizer</a>。'
+  },
+  hi: {
+    hero_kicker:"डेस्कटॉप वॉइस असिस्टेंट",
+    hero_slogan:"यह सुनता है, जवाब देता है और आपके कंप्यूटर पर काम करता है। और जब इसे पता नहीं होता, तो यह बता देता है।",
+    download:"Windows के लिए डाउनलोड करें", source:"कोड पढ़ें", hero_note:"Windows 10/11 · Linux · macOS (परखा नहीं गया)", scroll:"नीचे स्क्रॉल करें",
+    s1_k:"01 — जवाब", s1_t:"किसी मॉडल के जागने से पहले।",
+    s1_p:"समय, गणना, यूनिट बदलना, मशीन की स्थिति: लोकल टूल्स की एक श्रृंखला पहले जवाब देती है, किसी मॉडल को बुलाए बिना। बाकी Gemini के पास जाता है — या Gemini चुप हो तो लोकल Ollama मॉडल के पास।",
+    s2_k:"02 — काम", s2_t:"यह सिर्फ़ बात नहीं करता।",
+    s2_p:"Home Assistant की लाइटें और प्लग, छँटा हुआ ईमेल और जवाबों के मसौदे, winget अपडेट, VPN, Spotify और Deezer। टैब, विंडो और ऐप सीधे चलाए जाते हैं, मॉडल से होकर नहीं।",
+    s3_k:"03 — ईमानदारी", s3_t:"जब पता न हो, तो यह चुप रहता है।",
+    s3_p:"जो असिस्टेंट कुछ किए बिना “हो गया” कहता है, वह मना करने वाले से बदतर है। जब Home Assistant कोई कार्रवाई ठुकराता है, तो JARVIS विफलता बताता है — सफलता नहीं।",
+    s4_k:"04 — कोड", s4_t:"यह आपके कोडिंग एजेंटों के साथ काम करता है।",
+    s4_p:"यह काम आपकी पसंद के एजेंट को सौंपता है, उस प्रोजेक्ट में जिसे आपने घोषित किया है। किसी एजेंट के बिना, इसका अपना एजेंट प्रोजेक्ट को पढ़ता, खोजता और बदलता है — उसके फ़ोल्डर के अंदर ही।",
+    s5_k:"05 — इंटरफ़ेस", s5_t:"एक इंटरफ़ेस जिसमें आप सच में रहते हैं।",
+    s5_p:"आवाज़ पर प्रतिक्रिया देने वाला 3D गोला, चैट, मशीन की स्थिति और टैब वाला डेटा सेंटर — जिसमें Agents टैब आपके कंप्यूटर के हर AI टूल को दिखाता है। डेस्कटॉप पर भी, फ़ोन पर भी।",
+    s6_k:"06 — निजता", s6_t:"आपकी मशीन। आपका डेटा।",
+    s6_p:"बातचीत, सेटिंग्स और ईमेल लोकल रहते हैं। अपरिवर्तनीय काम ठीक-ठीक दिखाते हैं कि क्या जाने वाला है और आपकी हाँ का इंतज़ार करते हैं। हर वैकल्पिक सुविधा बंद करके दी जाती है।",
+    s7_k:"इंस्टॉल", s7_t:"अपने कंप्यूटर को आवाज़ दें।",
+    s7_p:"मुफ़्त, कोड GitHub पर सार्वजनिक। 11 MB का इंस्टॉलर JARVIS को साथ रखने के बजाय डाउनलोड करता है, ताकि आप पहले सब कुछ पढ़ सकें। Python 3.10–3.13, और इंटरफ़ेस के लिए Node.js।",
+    readme:"इंस्टॉलेशन गाइड", journal:"प्रोजेक्ट का इतिहास",
+    credits:'इंटरफ़ेस JincocoDev के <a href="https://github.com/jincocodev/openclaw-jarvis-ui">openclaw-jarvis-ui</a> (ISC) और Filip Zrnzevic के <a href="https://codepen.io/filipz/pen/yyyRgry">Three.js Orb Visualizer</a> पर आधारित है।'
+  },
+  pt: {
+    hero_kicker:"Assistente de voz para o computador",
+    hero_slogan:"Ele escuta, responde e age no seu computador. E quando não sabe, ele diz.",
+    download:"Baixar para Windows", source:"Ler o código", hero_note:"Windows 10/11 · Linux · macOS (não testado)", scroll:"ROLE",
+    s1_k:"01 — Responder", s1_t:"Antes que qualquer modelo acorde.",
+    s1_p:"Hora, cálculos, conversões, o estado da máquina: uma cadeia de ferramentas locais responde primeiro, sem chamar nenhum modelo. O resto vai para o Gemini — ou para um modelo local do Ollama se o Gemini ficar em silêncio.",
+    s2_k:"02 — Agir", s2_t:"Ele não só fala.",
+    s2_p:"Luzes e tomadas do Home Assistant, e-mail organizado e respostas redigidas, atualizações com winget, VPN, Spotify e Deezer. Abas, janelas e aplicativos são controlados diretamente, sem passar pelo modelo.",
+    s3_k:"03 — Honestidade", s3_t:"Ele fica quieto quando não sabe.",
+    s3_p:"Um assistente que diz “feito” sem ter feito nada é pior do que um que se recusa. Quando o Home Assistant recusa uma ação, o JARVIS anuncia uma falha — não um sucesso.",
+    s4_k:"04 — Código", s4_t:"Ele trabalha com seus agentes de código.",
+    s4_p:"Ele entrega as tarefas ao agente que você escolher, em um projeto que você declarou. Sem nenhum, o próprio agente lê, busca e altera o projeto — preso dentro da pasta.",
+    s5_k:"05 — Interface", s5_t:"Uma interface feita para usar de verdade.",
+    s5_p:"Uma esfera 3D que reage à voz, o chat, os sinais vitais da máquina e um data center com abas — até uma aba Agents que mapeia cada ferramenta de IA do seu computador. No computador e no celular.",
+    s6_k:"06 — Privacidade", s6_t:"Sua máquina. Seus dados.",
+    s6_p:"Conversas, configurações e e-mail ficam no seu computador. Ações irreversíveis mostram exatamente o que vai sair e esperam o seu sim. Cada recurso opcional vem desligado.",
+    s7_k:"Instalar", s7_t:"Dê uma voz ao seu computador.",
+    s7_p:"Gratuito, com o código público no GitHub. O instalador de 11 MB baixa o JARVIS em vez de embuti-lo, então você pode ler tudo antes. Python 3.10–3.13, e Node.js para a interface.",
+    readme:"Guia de instalação", journal:"Histórico do projeto",
+    credits:'Interface baseada no <a href="https://github.com/jincocodev/openclaw-jarvis-ui">openclaw-jarvis-ui</a> de JincocoDev (ISC) e no <a href="https://codepen.io/filipz/pen/yyyRgry">Three.js Orb Visualizer</a> de Filip Zrnzevic.'
   }
+};
+const ANGLAIS = {};
+document.querySelectorAll("[data-i18n]").forEach(e => ANGLAIS[e.dataset.i18n] = e.textContent);
+document.querySelectorAll("[data-i18n-html]").forEach(e => ANGLAIS[e.dataset.i18nHtml] = e.innerHTML);
 
-  /* ── reveal commit sections + footer quote on view ────── */
-  var revealObs = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) {
-      if (e.isIntersecting) { e.target.classList.add("in"); revealObs.unobserve(e.target); }
-    });
-  }, { rootMargin: "-80px 0px -80px 0px" });
-  document.querySelectorAll("article.commit, #creedQuote").forEach(function (el) { revealObs.observe(el); });
-
-  /* ── marquee ticker ────────────────────────────────────── */
-  var ITEMS = [
-    "549012a — domotique : résolution par Home Assistant",
-    "d963a14 — latence : 15 000 ms → < 90 ms",
-    "03a3e73 — 9**9**9**9 refusé en 0,4 ms",
-    "76e30d9 — 142 points d'entrée, correspondance exacte",
-    "6e7f32d — ubuntu 26.04 : BaseException, pas Exception",
-    "v1.2.0 — options désactivées par défaut",
-    "NE JAMAIS DEVINER"
-  ];
-  var line = ITEMS.map(function (t) { return t + "  ·  "; }).join("");
-  var track = document.getElementById("marqueeTrack");
-  track.innerHTML = "<span>" + line + "</span><span>" + line + "</span>";
-
-  /* ── copyable commit hash ──────────────────────────────── */
-  document.querySelectorAll(".hashbtn").forEach(function (btn) {
-    var original = btn.textContent;
-    btn.addEventListener("click", function () {
-      var hash = btn.getAttribute("data-hash");
-      (navigator.clipboard ? navigator.clipboard.writeText(hash) : Promise.reject()).then(function () {
-        btn.textContent = "copié ✓";
-        setTimeout(function () { btn.textContent = original; }, 1200);
-      }).catch(function () {});
-    });
-  });
-
-  /* ── course de latence ─────────────────────────────────── */
-  var RACE = {
-    avant: [
-      { q: "quelle est ma version de windows", ms: 14988 },
-      { q: "quelle est mon adresse ip", ms: 13412 },
-      { q: "combien de place libre sur le disque", ms: 7974 },
-      { q: "combien de mémoire vive utilisée", ms: 6355 },
-      { q: "suis-je connecté à internet", ms: 3183 }
-    ],
-    apres: [
-      { q: "quelle est ma version de windows", ms: 2.4 },
-      { q: "quelle est mon adresse ip", ms: 1.8 },
-      { q: "combien de place libre sur le disque", ms: 41 },
-      { q: "combien de mémoire vive utilisée", ms: 2.9 },
-      { q: "suis-je connecté à internet", ms: 63 }
-    ]
-  };
-  var SCALE = 15000;
-  var raceRows = document.getElementById("raceRows");
-  var raceStatus = document.getElementById("raceStatus");
-  var raceMode = "avant";
-  var raceRaf = null;
-
-  function buildRaceRows() {
-    raceRows.innerHTML = "";
-    RACE[raceMode].forEach(function (r, i) {
-      var row = document.createElement("div");
-      row.className = "race-row";
-      row.innerHTML =
-        '<div class="top"><span class="q">« ' + r.q + ' »</span>' +
-        '<span class="ms tnum ' + (raceMode === "avant" ? "slowc" : "fastc") + '" data-i="' + i + '">0 ms</span></div>' +
-        '<div class="race-track"><div class="fill ' + (raceMode === "avant" ? "slowc" : "fastc") + '" data-i="' + i + '"></div></div>';
-      raceRows.appendChild(row);
-    });
+function langueVoulue(){
+  const q = new URLSearchParams(location.search).get("lang");
+  if (q && TEXTES[q]) return q;
+  try { const m = localStorage.getItem("jarvis-langue"); if (m && TEXTES[m]) return m; } catch (e) {}
+  for (const l of navigator.languages || [navigator.language || "en"]) {
+    const c = (l || "").slice(0, 2).toLowerCase();
+    if (TEXTES[c]) return c;
   }
+  return "en";
+}
+function appliquerLangue(l){
+  const t = TEXTES[l] || {};
+  document.documentElement.lang = {zh:"zh-CN", pt:"pt-BR"}[l] || l;
+  document.querySelectorAll("[data-i18n]").forEach(e => e.textContent = t[e.dataset.i18n] ?? ANGLAIS[e.dataset.i18n]);
+  document.querySelectorAll("[data-i18n-html]").forEach(e => e.innerHTML = t[e.dataset.i18nHtml] ?? ANGLAIS[e.dataset.i18nHtml]);
+  document.getElementById("langue").value = l;
+  try { localStorage.setItem("jarvis-langue", l); } catch (e) {}
+}
+const choixLangue = document.getElementById("langue");
+choixLangue.addEventListener("change", () => appliquerLangue(choixLangue.value));
+appliquerLangue(langueVoulue());
 
-  function runRace() {
-    if (raceRaf) cancelAnimationFrame(raceRaf);
-    buildRaceRows();
-    var rows = RACE[raceMode];
-    var maxMs = Math.max.apply(null, rows.map(function (r) { return r.ms; }));
-    var start = null;
-    raceStatus.textContent = "en cours…";
-    function tick(t) {
-      if (start === null) start = t;
-      var elapsed = t - start;
-      rows.forEach(function (r, i) {
-        var cur = Math.min(elapsed, r.ms);
-        var pct = (cur / SCALE) * 100;
-        var msEl = raceRows.querySelector('.ms[data-i="' + i + '"]');
-        var fillEl = raceRows.querySelector('.fill[data-i="' + i + '"]');
-        fillEl.style.width = pct + "%";
-        msEl.textContent = (raceMode === "avant" ? fmt(cur) : cur.toFixed(1)) + " ms";
-      });
-      if (elapsed < maxMs && !reduced) {
-        raceRaf = requestAnimationFrame(tick);
-      } else {
-        rows.forEach(function (r, i) {
-          var msEl = raceRows.querySelector('.ms[data-i="' + i + '"]');
-          var fillEl = raceRows.querySelector('.fill[data-i="' + i + '"]');
-          fillEl.style.width = ((r.ms / SCALE) * 100) + "%";
-          msEl.textContent = (raceMode === "avant" ? fmt(r.ms) : r.ms.toFixed(1)) + " ms";
-        });
-        raceStatus.textContent = raceMode === "avant" ? "terminé — fallback modèle IA partout" : "terminé — tout répond < 90 ms";
-      }
-    }
-    raceRaf = requestAnimationFrame(tick);
-  }
-
-  document.querySelectorAll('#raceTool .seg button').forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      raceMode = btn.getAttribute("data-mode");
-      document.querySelectorAll('#raceTool .seg button').forEach(function (b) { b.setAttribute("aria-selected", String(b === btn)); });
-      runRace();
-    });
-  });
-  document.getElementById("raceRerun").addEventListener("click", runRace);
-
-  var raceObs = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) { if (e.isIntersecting) { runRace(); raceObs.unobserve(e.target); } });
-  }, { rootMargin: "0px 0px -20% 0px" });
-  raceObs.observe(document.getElementById("raceTool"));
-
-  /* ── la bombe ───────────────────────────────────────────── */
-  var KILL_AT = 15000;
-  var bombBtn = document.getElementById("bombBtn");
-  var bombSlow = document.getElementById("bombSlow"), bombSlowStatus = document.getElementById("bombSlowStatus"), bombSlowBar = document.getElementById("bombSlowBar");
-  var bombFast = document.getElementById("bombFast"), bombFastStatus = document.getElementById("bombFastStatus"), bombFastBar = document.getElementById("bombFastBar");
-  var bombRaf = null;
-
-  bombBtn.addEventListener("click", function () {
-    if (bombRaf) cancelAnimationFrame(bombRaf);
-    bombBtn.disabled = true;
-    bombBtn.textContent = "en cours…";
-    bombSlow.classList.remove("killed");
-    bombSlow.textContent = "0 ms";
-    bombSlowStatus.textContent = "python calcule sans jamais rendre la main — nombre à des milliards de chiffres…";
-    bombSlowBar.style.width = "0%";
-    bombFast.textContent = "— ms";
-    bombFastStatus.textContent = "en attente du déclencheur";
-    bombFastBar.style.width = "0%";
-
-    setTimeout(function () {
-      bombFast.textContent = "0,4 ms";
-      bombFastStatus.textContent = "refusé — la puissance est bornée dans l'arbre syntaxique, avant tout calcul";
-      bombFastBar.style.width = "2px";
-    }, reduced ? 0 : 400);
-
-    var start = null;
-    function tick(t) {
-      if (start === null) start = t;
-      var e = t - start;
-      if (e >= KILL_AT || reduced) {
-        bombSlow.textContent = fmt(KILL_AT) + " ms";
-        bombSlow.classList.add("killed");
-        bombSlowStatus.textContent = "toujours bloqué — processus tué à 15 000 ms";
-        bombSlowBar.style.width = "100%";
-        bombBtn.disabled = false;
-        bombBtn.textContent = "relancer";
-        return;
-      }
-      bombSlow.textContent = fmt(e) + " ms";
-      bombSlowBar.style.width = ((e / KILL_AT) * 100) + "%";
-      bombRaf = requestAnimationFrame(tick);
-    }
-    bombRaf = requestAnimationFrame(tick);
-  });
-
-  /* ── résolveur d'entités ────────────────────────────────── */
-  var ENTITIES = [
-    { id: "climate.chambre", name: "Climatiseur Chambre", keys: ["climatiseur", "clim", "chambre"] },
-    { id: "media_player.tv_salon", name: "TV Salon", keys: ["tv", "tele", "salon"] },
-    { id: "light.cuisine", name: "Lumière Cuisine", keys: ["lumiere", "lampe", "cuisine"] },
-    { id: "media_player.ampli", name: "Ampli", keys: ["ampli"] },
-    { id: "media_player.ampli_bureau", name: "Ampli Bureau", keys: ["ampli", "bureau"] },
-    { id: "media_player.ampli_terrasse", name: "Ampli Terrasse", keys: ["ampli", "terrasse"] }
-  ];
-  var AMPS = ENTITIES.slice(3);
-
-  function normalize(s) {
-    return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9\s]/g, " ");
-  }
-
-  function resolve(input) {
-    var text = normalize(input);
-    if (!text.trim()) return null;
-    var tokens = text.split(/\s+/);
-    function has(k) { return tokens.indexOf(k) !== -1 || text.indexOf(k) !== -1; }
-
-    if (has("ampli")) {
-      if (has("bureau")) return { type: "resolved", entity: ENTITIES[4] };
-      if (has("terrasse")) return { type: "resolved", entity: ENTITIES[5] };
-      return { type: "ambiguous", candidates: AMPS };
-    }
-
-    var scored = ENTITIES.slice(0, 3)
-      .map(function (e) { return { e: e, score: e.keys.filter(has).length }; })
-      .filter(function (s) { return s.score > 0; })
-      .sort(function (a, b) { return b.score - a.score; });
-
-    if (scored.length === 0) return { type: "unknown" };
-    if (scored.length > 1 && scored[0].score === scored[1].score) return { type: "ambiguous", candidates: scored.map(function (s) { return s.e; }) };
-    return { type: "resolved", entity: scored[0].e };
-  }
-
-  var PRESETS = [
-    "Allume le climatiseur de la chambre",
-    "Monte le son de l'ampli",
-    "Allume la lumière de la cuisine",
-    "Allume la télé du salon",
-    "Éteins le grille-pain"
-  ];
-  var haInput = document.getElementById("haInput");
-  var haResult = document.getElementById("haResult");
-  var haChips = document.getElementById("haChips");
-
-  PRESETS.forEach(function (p) {
-    var b = document.createElement("button");
-    b.type = "button"; b.className = "chip"; b.textContent = p;
-    b.addEventListener("click", function () { haInput.value = p; render(resolve(p)); });
-    haChips.appendChild(b);
-  });
-
-  function render(result) {
-    if (!result) { haResult.classList.remove("show"); return; }
-    haResult.classList.add("show");
-    if (result.type === "resolved") {
-      haResult.innerHTML =
-        '<span class="tag">résolu — correspondance unique</span>' +
-        '<div class="line"><span class="eid">' + result.entity.id + '</span><span class="ename">« ' + result.entity.name + ' »</span></div>';
-    } else if (result.type === "ambiguous") {
-      haResult.innerHTML =
-        '<span class="tag ambig">ambiguïté — ' + result.candidates.length + ' candidats, précisez lequel :</span>' +
-        '<ul>' + result.candidates.map(function (c) { return '<li><span class="eid">' + c.id + '</span><span class="ename">« ' + c.name + ' »</span></li>'; }).join('') + '</ul>' +
-        '<p class="note">se tromper d\'appareil est pire que ne rien faire.</p>';
-    } else {
-      haResult.innerHTML = '<span class="unknown">appareil inconnu — aucune entité de l\'installation ne correspond. JARVIS ne devine pas : il ne fait rien.</span>';
-    }
-  }
-
-  document.getElementById("haForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    render(resolve(haInput.value));
-  });
-})();
+// Apparition des blocs de texte
+const obs = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && e.target.classList.add("vu")), {threshold: .25});
+document.querySelectorAll("section").forEach(s => obs.observe(s));
 </script>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+
+const canvas = document.getElementById("scene");
+const petit = matchMedia("(max-width: 760px)").matches;
+const calme = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const TEAL = new THREE.Color("#3df5d0");
+
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: !petit, alpha: true, powerPreference: "high-performance" }); }
+catch (e) { canvas.remove(); throw e; }                       // sans WebGL : la page reste lisible, sans scène
+renderer.setPixelRatio(Math.min(devicePixelRatio, petit ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x021311, 0.045);
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+
+// ── L'orbe : cœur lumineux (fresnel), coque en fil de fer qui ondule, anneaux, halo ──────────────
+const orbe = new THREE.Group();
+scene.add(orbe);
+const coeur = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), new THREE.ShaderMaterial({
+  uniforms: { uTemps: { value: 0 }, uForce: { value: 1 }, uCouleur: { value: TEAL } },
+  vertexShader: `varying vec3 vN; varying vec3 vV;
+    void main(){ vN = normalize(normalMatrix * normal); vec4 p = modelViewMatrix * vec4(position,1.);
+      vV = normalize(-p.xyz); gl_Position = projectionMatrix * p; }`,
+  fragmentShader: `uniform float uTemps; uniform float uForce; uniform vec3 uCouleur; varying vec3 vN; varying vec3 vV;
+    void main(){ float f = pow(1. - max(dot(vN, vV), 0.), 2.2);
+      float c = .12 + .75 * f + .05 * sin(uTemps * 2.);
+      vec3 col = mix(vec3(.75,1.,.96), uCouleur, f) * c * uForce;
+      gl_FragColor = vec4(col, .22 + .6 * f); }`,
+  transparent: true, depthWrite: false
+}));
+orbe.add(coeur);
+
+const icoGeo = new THREE.IcosahedronGeometry(1.18, 3);
+const icoBase = icoGeo.attributes.position.array.slice();
+const coque = new THREE.LineSegments(new THREE.WireframeGeometry(icoGeo),
+  new THREE.LineBasicMaterial({ color: 0xbffcf0, transparent: true, opacity: .55 }));
+orbe.add(coque);
+function onduler(t, amp){                                     // déforme la coque comme une voix
+  const pos = icoGeo.attributes.position.array;
+  for (let i = 0; i < pos.length; i += 3) {
+    const x = icoBase[i], y = icoBase[i + 1], z = icoBase[i + 2];
+    const n = 1 + amp * (Math.sin(x * 3.1 + t * 2.3) * Math.cos(y * 2.7 + t * 1.7) + .5 * Math.sin(z * 4.3 + t * 3.1));
+    pos[i] = x * n; pos[i + 1] = y * n; pos[i + 2] = z * n;
+  }
+  icoGeo.attributes.position.needsUpdate = true;
+  coque.geometry.dispose(); coque.geometry = new THREE.WireframeGeometry(icoGeo);
+}
+
+function anneau(r, epais, op){
+  const m = new THREE.Mesh(new THREE.TorusGeometry(r, epais, 8, 200),
+    new THREE.MeshBasicMaterial({ color: TEAL, transparent: true, opacity: op }));
+  orbe.add(m); return m;
+}
+const anneaux = [anneau(1.42, .012, .9), anneau(1.62, .006, .5), anneau(1.95, .004, .35)];
+anneaux[1].rotation.x = 1.2; anneaux[2].rotation.y = .9;
+
+// graduations autour de l'orbe (comme le HUD)
+const graduations = (() => {
+  const n = 120, pos = new Float32Array(n * 6);
+  for (let i = 0; i < n; i++) {
+    const a = i / n * Math.PI * 2, r1 = 2.15, r2 = i % 10 === 0 ? 2.32 : 2.22;
+    pos.set([Math.cos(a) * r1, Math.sin(a) * r1, 0, Math.cos(a) * r2, Math.sin(a) * r2, 0], i * 6);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: TEAL, transparent: true, opacity: .45 }));
+  orbe.add(l); return l;
+})();
+
+const halo = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 256;
+  const x = c.getContext("2d"), g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+  g.addColorStop(0, "rgba(160,255,235,.28)"); g.addColorStop(.35, "rgba(61,245,208,.08)"); g.addColorStop(1, "rgba(61,245,208,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false,
+    blending: THREE.AdditiveBlending }));
+  s.scale.set(6, 6, 1); orbe.add(s); return s;
+})();
+
+// ── Poussière : particules qui convergent vers l'orbe à l'étape « Répondre » ──────────────────
+const NB = petit ? 1400 : 3600;
+const loin = new Float32Array(NB * 3), pres = new Float32Array(NB * 3), cur = new Float32Array(NB * 3);
+for (let i = 0; i < NB; i++) {
+  const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u);
+  const r = 3 + Math.random() * 10, r2 = 1.25 + Math.random() * .35;
+  loin.set([s * Math.cos(a) * r, u * r * .6, s * Math.sin(a) * r * .55 - 2.5], i * 3);
+  pres.set([s * Math.cos(a) * r2, u * r2, s * Math.sin(a) * r2], i * 3);
+}
+cur.set(loin);
+const poussiereGeo = new THREE.BufferGeometry(); poussiereGeo.setAttribute("position", new THREE.BufferAttribute(cur, 3));
+const rond = (() => { const c = document.createElement("canvas"); c.width = c.height = 64;
+  const x = c.getContext("2d"), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(.4, "rgba(255,255,255,.5)"); g.addColorStop(1, "rgba(255,255,255,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+const poussiere = new THREE.Points(poussiereGeo, new THREE.PointsMaterial({ color: 0x9ffbe8, size: petit ? .07 : .05, map: rond,
+  transparent: true, opacity: .55, depthWrite: false, blending: THREE.AdditiveBlending }));
+scene.add(poussiere);
+
+// ── Océan numérique : grille de points qui ondule sous l'orbe ─────────────────────────────────
+const ocean = (() => {
+  const g = new THREE.PlaneGeometry(80, 80, petit ? 90 : 160, petit ? 90 : 160); g.rotateX(-Math.PI / 2);
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uTemps: { value: 0 }, uCouleur: { value: TEAL } },
+    vertexShader: `uniform float uTemps; varying float vH; varying float vD;
+      void main(){ vec3 p = position;
+        float h = sin(p.x * .25 + uTemps * .6) * .45 + cos(p.z * .3 + uTemps * .45) * .35 + sin((p.x + p.z) * .12 + uTemps) * .5;
+        p.y += h; vH = h; vec4 mv = modelViewMatrix * vec4(p, 1.); vD = -mv.z;
+        gl_PointSize = 2.2 * (18. / vD); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform vec3 uCouleur; varying float vH; varying float vD;
+      void main(){ float a = smoothstep(60., 6., vD) * (.35 + .4 * (vH + 1.));
+        gl_FragColor = vec4(uCouleur * (.6 + .5 * vH), a * .45); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  const o = new THREE.Points(g, m); o.position.y = -4.2; scene.add(o); return o;
+})();
+
+// ── Maison : une grille de petites lumières qui s'allument (étape « Agir ») ──────────────────
+const maison = new THREE.Group(); scene.add(maison);
+const lampes = [];
+for (let x = -4; x <= 4; x++) for (let z = -4; z <= 4; z++) {
+  const b = new THREE.Mesh(new THREE.BoxGeometry(.2, .2, .2),
+    new THREE.MeshBasicMaterial({ color: TEAL, transparent: true, opacity: 0, depthWrite: false }));
+  b.position.set(x * .5, -2.2, z * .5); b.userData.d = Math.hypot(x, z); maison.add(b); lampes.push(b);
+}
+
+// ── Agents : cinq satellites en orbite (étape « Coder ») ─────────────────────────────────────
+const agents = [];
+for (let i = 0; i < 5; i++) {
+  const s = new THREE.Mesh(new THREE.SphereGeometry(.09, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }));
+  s.userData = { r: 2.6 + i * .28, v: .5 + i * .12, p: i * 1.3, inc: (i - 2) * .35 };
+  scene.add(s); agents.push(s);
+}
+
+// ── Rendu avec halo lumineux (bloom) ─────────────────────────────────────────────────────────
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const FORCE_BLOOM = petit ? .45 : .6;
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), FORCE_BLOOM, .5, .22);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+// ── Étapes : position de caméra et état de la scène pour chaque section ───────────────────────
+// [camX, camY, camZ, regardX, regardY, orbeX, échelle, convergence, maison, sombre, agents]
+const ETAPES = [
+  [0, -.6, 8,    0, -1.1,  0,    .9,   0,  0, 0, 0],   // héros : orbe au-dessus du titre
+  [0, .4, 7.2,   .9, 0,    2.0,  .95,  1,  0, 0, 0],   // répondre (texte à gauche) : la poussière converge
+  [0, 2.3, 8.8,  -.7, -.8, -2.0, .75,  .2, 1, 0, 0],   // agir (texte à droite) : la maison s'allume
+  [0, .1, 10,    .5, 0,    2.3,  .5,   0,  0, 1, 0],   // honnêteté (texte à gauche) : tout s'éteint
+  [0, 1.0, 8.2,  -.7, 0,   -2.0, .8,   0,  0, 0, 1],   // coder (texte à droite) : satellites
+  [0, .6, 11,    0, 1.6,   0,    .45,  0,  0, 0, 0],   // interface : l'orbe s'efface derrière les photos
+  [0, .9, 7.6,   -.7, 0,   -1.9, .95,  .5, 0, 0, 0],   // vie privée (texte à droite)
+  [0, -.6, 7.5,  0, -1.1,  0,    .95,  .3, 0, 0, 0],   // installer : comme le héros
+];
+const sections = [...document.querySelectorAll("section[data-etape]")];
+let cible = 0, lisse = 0;
+function avancement(){
+  const milieu = innerHeight / 2;
+  for (let i = 0; i < sections.length; i++) {
+    const r = sections[i].getBoundingClientRect();
+    if (r.top <= milieu && r.bottom > milieu) return i + Math.min(1, Math.max(0, (milieu - r.top) / r.height - .5) * 2) * (i < sections.length - 1 ? 1 : 0);
+  }
+  return scrollY < 10 ? 0 : sections.length - 1;
+}
+addEventListener("scroll", () => {
+  cible = avancement();
+  const h = document.documentElement.scrollHeight - innerHeight;
+  document.getElementById("prog").style.width = (h > 0 ? scrollY / h * 100 : 0) + "%";
+}, { passive: true });
+cible = avancement();
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const doux = t => t * t * (3 - 2 * t);
+function etat(v){
+  const i = Math.min(ETAPES.length - 1, Math.floor(v)), j = Math.min(ETAPES.length - 1, i + 1), f = doux(v - i);
+  return ETAPES[i].map((a, k) => lerp(a, ETAPES[j][k], f));
+}
+
+const regard = new THREE.Vector3();
+const horloge = new THREE.Clock();
+let derniereOnde = 0;
+function image(){
+  const t = horloge.getElapsedTime();
+  lisse = lerp(lisse, cible, calme ? 1 : .06);
+  const [cx, cy, cz, rx, ry, oxBrut, ech, conv, mais, sombre, ag] = etat(lisse);
+  const ox = petit ? oxBrut * .3 : oxBrut;                 // téléphone : l'orbe reste dans l'écran
+  const souris = calme ? 0 : 1;
+  camera.position.set(cx + pointeur.x * .35 * souris, cy + pointeur.y * .25 * souris, cz);
+  regard.set(rx, ry, 0); camera.lookAt(regard);
+
+  orbe.position.x = ox;
+  orbe.scale.setScalar(ech * (1 + .025 * Math.sin(t * 1.6)));
+  orbe.rotation.y = t * .12; coque.rotation.x = t * .07;
+  anneaux[0].rotation.z = t * .3; anneaux[1].rotation.z = -t * .22; anneaux[2].rotation.x = t * .15;
+  graduations.rotation.z = -t * .05;
+  const lum = 1 - .82 * sombre;
+  coeur.material.uniforms.uTemps.value = t; coeur.material.uniforms.uForce.value = lum;
+  coque.material.opacity = .55 * lum + .1; halo.material.opacity = .8 * lum;
+  bloom.strength = FORCE_BLOOM * (1 - .6 * sombre);
+  if (!calme && t - derniereOnde > 1 / 30) { onduler(t, .045 + .05 * conv); derniereOnde = t; }
+
+  for (let i = 0; i < NB * 3; i++) cur[i] = lerp(cur[i], lerp(loin[i], pres[i] + (i % 3 === 0 ? ox : 0), conv), .05);
+  poussiereGeo.attributes.position.needsUpdate = true;
+  poussiere.rotation.y = t * .02; poussiere.material.opacity = .55 * lum;
+
+  ocean.material.uniforms.uTemps.value = t;
+  maison.position.x = ox;
+  for (const b of lampes) {
+    const on = mais > 0 && (Math.sin(t * 2 - b.userData.d * .9) > .2 - mais * .9);
+    b.material.opacity = lerp(b.material.opacity, on ? .85 * mais : .06 * mais, .1);
+    b.visible = b.material.opacity > .01;
+  }
+  agents.forEach(s => {
+    const a = t * s.userData.v + s.userData.p, r = s.userData.r;
+    s.position.set(ox + Math.cos(a) * r, Math.sin(a) * r * Math.sin(s.userData.inc), Math.sin(a) * r * Math.cos(s.userData.inc));
+    s.material.opacity = ag; s.visible = ag > .01;
+  });
+
+  composer.render();
+  requestAnimationFrame(image);
+}
+const pointeur = { x: 0, y: 0 };
+addEventListener("pointermove", e => { pointeur.x = e.clientX / innerWidth * 2 - 1; pointeur.y = -(e.clientY / innerHeight * 2 - 1); }, { passive: true });
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+});
+image();
+</script>
+</body>
+</html>
