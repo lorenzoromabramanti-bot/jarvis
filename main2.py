@@ -3128,7 +3128,8 @@ async def boucle_micro_coupe():
     deja = False
     while True:
         try:
-            coupe, nom = await asyncio.to_thread(micro_etat.etat, _charger_config().get("mic_device_index"))
+            # Processus à part : la lecture COM dans JARVIS l'a fait planter (0xc0000005, 1.4.0 ; micro_etat.py).
+            coupe, nom = await asyncio.to_thread(micro_etat.etat_isole, _charger_config().get("mic_device_index"))
             if coupe and not deja:
                 await parler(f"{nom_utilisateur()}, ton micro « {nom} » est coupé dans Windows : je ne peux "
                              "pas t'entendre. Réactive-le dans Paramètres, Système, Son, Entrée.", urgent=True)
