@@ -70,16 +70,16 @@ _MORSE = {
 _MORSE_INV = {v: k for k, v in _MORSE.items()}
 
 _FAITS = [
-    "Le saviez-vous ? Le miel ne périme jamais : on a retrouvé du miel comestible dans des tombes égyptiennes de plus de 3000 ans.",
-    "Le saviez-vous ? Un éclair est environ cinq fois plus chaud que la surface du Soleil.",
-    "Le saviez-vous ? Les poulpes possèdent trois cœurs et un sang bleu.",
-    "Le saviez-vous ? La Tour Eiffel peut mesurer 15 cm de plus en été à cause de la dilatation du métal.",
-    "Le saviez-vous ? Il y a plus d'étoiles dans l'univers observable que de grains de sable sur toutes les plages de la Terre.",
-    "Le saviez-vous ? Le cœur humain bat environ 100 000 fois par jour.",
-    "Le saviez-vous ? Les bananes sont légèrement radioactives à cause du potassium 40 qu'elles contiennent.",
-    "Le saviez-vous ? Un jour sur Vénus dure plus longtemps qu'une année vénusienne.",
-    "Le saviez-vous ? Le mot « robot » vient du tchèque « robota » qui signifie « travail forcé ».",
-    f"Le saviez-vous ? Les octets de ce programme voyagent à près de 300 000 km/s dans vos circuits. Presque aussi vite que mon esprit, {nom_utilisateur()}.",
+    "Tu savais ? Le miel ne périme jamais : on a retrouvé du miel comestible dans des tombes égyptiennes de plus de 3000 ans.",
+    "Tu savais ? Un éclair est environ cinq fois plus chaud que la surface du Soleil.",
+    "Tu savais ? Les poulpes possèdent trois cœurs et un sang bleu.",
+    "Tu savais ? La Tour Eiffel peut mesurer 15 cm de plus en été à cause de la dilatation du métal.",
+    "Tu savais ? Il y a plus d'étoiles dans l'univers observable que de grains de sable sur toutes les plages de la Terre.",
+    "Tu savais ? Le cœur humain bat environ 100 000 fois par jour.",
+    "Tu savais ? Les bananes sont légèrement radioactives à cause du potassium 40 qu'elles contiennent.",
+    "Tu savais ? Un jour sur Vénus dure plus longtemps qu'une année vénusienne.",
+    "Tu savais ? Le mot « robot » vient du tchèque « robota » qui signifie « travail forcé ».",
+    "Tu savais ? Les signaux de ce programme voyagent à près de 300 000 km/s dans tes circuits. Presque aussi vite que moi.",
 ]
 
 _JOURS_FR = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
@@ -144,7 +144,7 @@ def resoudre_extras_avancees(texte: str):
             "• Texte : compter les mots, inverser, majuscules/minuscules, code Morse, Base64.\n"
             "• Dates : jour d'une date, numéro de semaine, décompte jusqu'à une date.\n"
             "• Divers : décision au hasard, couleur aléatoire, lancer de dés multiples, anecdotes.\n"
-            "Dites par exemple : « calcule mon IMC, 72 kg pour 1m78 » ou « convertis 2026 en chiffres romains »."
+            "Dis par exemple : « calcule mon IMC, 45 kg pour 1m55 » ou « convertis 2026 en chiffres romains »."
         )
 
     # ── IMC ─────────────────────────────────────────────────────────────────
@@ -174,7 +174,7 @@ def resoudre_extras_avancees(texte: str):
             else:
                 cat = "obésité"
             return f"Votre IMC est de {imc:.1f}, ce qui correspond à une {cat}, {nom}."
-        return f"Précisez votre poids et votre taille, {nom}. Exemple : « IMC pour 72 kg et 1m78 »."
+        return "Donne-moi ton poids et ta taille, genre « IMC pour 45 kg et 1m55 »."
 
     # ── POURBOIRE ───────────────────────────────────────────────────────────
     if "pourboire" in t or re.search(r"\btip\b", t):
@@ -409,7 +409,7 @@ def resoudre_extras_avancees(texte: str):
         options = [o.strip(" ?.!") for o in re.split(r"\bou\b", segment, flags=re.I) if o.strip(" ?.!")]
         if len(options) >= 2:
             choix = random.choice(options)
-            return f"À votre place, je choisirais : {choix}, {nom}."
+            return f"À ta place, je prendrais : {choix}."
 
     # ── COULEUR ALÉATOIRE ───────────────────────────────────────────────────
     if any(k in t for k in ["couleur aleatoire", "genere une couleur", "une couleur au hasard",

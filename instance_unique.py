@@ -169,6 +169,61 @@ def terminer_anciennes(racine=None, delai=DELAI_ARRET_DOUX):
             "recalcitrantes": [p.pid for p in restants]}
 
 
+# Programmes lancés par « npm run dev » dans le HUD, chemins normalisés. Pas « npm » seul : Claude Code
+# (…\npm\node_modules\…\cli.js) ouvert dans ce dossier serait fermé.
+_HUD_MOTS = ("vite", "server\\index.js", "concurrently", "npm run", "npm-cli.js", "esbuild")
+
+
+def est_compagnon(cmdline, cwd, racine=None, dossier_hud=None):
+    """
+    Est-ce l'oreille ou le HUD d'un JARVIS de ce dossier ?
+
+    Les deux survivent à leur JARVIS : relancé plusieurs fois le 06/11, il laissait une oreille et un
+    HUD de plus à chaque fois (quatre oreilles sur le même port). L'oreille : `oreille.py` en dernier
+    argument, lancée depuis ce dossier. Le HUD : son dossier (dans la ligne ou comme répertoire de
+    travail) ET un de ses programmes ; un simple terminal ouvert dans ce dossier n'est pas visé.
+    """
+    racine = os.path.normcase(racine or _racine())
+    if not cmdline:
+        return False
+    dernier = os.path.basename(str(cmdline[-1]).strip().strip('"')).lower()
+    if dernier == "oreille.py" and cwd and os.path.normcase(os.path.abspath(cwd)) == racine:
+        return True
+    if not dossier_hud:
+        return False
+    hud = os.path.normcase(os.path.abspath(dossier_hud))
+    ligne = os.path.normcase(" ".join(str(c) for c in cmdline))
+    dans_hud = hud in ligne or bool(cwd and os.path.normcase(os.path.abspath(cwd)) == hud)
+    return dans_hud and any(m in ligne for m in _HUD_MOTS)
+
+
+def terminer_compagnons(dossier_hud=None, racine=None, delai=3.0):
+    """Ferme l'oreille et le HUD laissés par un JARVIS précédent, avant que celui-ci lance les siens.
+    Renvoie les pid fermés. Jamais soi-même ni un ancêtre."""
+    if psutil is None:
+        return []
+    moi = os.getpid()
+    interdits = {moi} | _ancetres(moi)
+    objets = []
+    for p in psutil.process_iter(["pid", "name"]):
+        if p.pid in interdits:
+            continue
+        try:
+            if est_compagnon(p.cmdline(), p.cwd(), racine, dossier_hud):
+                journaliser("demarrage : fermeture d'un compagnon reste pid=%d (%s)" % (p.pid, p.name()))
+                p.terminate()
+                objets.append(p)
+        except Exception:
+            continue          # process disparu ou hors de portée
+    _partis, restants = psutil.wait_procs(objets, timeout=delai)
+    for p in restants:
+        try:
+            p.kill()
+        except Exception:
+            pass
+    return [p.pid for p in objets]
+
+
 def armer_traces():
     """
     Fait en sorte qu'un arrêt laisse une trace, quelle qu'en soit la cause.

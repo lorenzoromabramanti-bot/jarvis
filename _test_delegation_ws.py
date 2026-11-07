@@ -199,10 +199,14 @@ async def scenario(projet):
 projet = tempfile.mkdtemp(prefix="jarvis_test_ws_")
 try:
     _git = ["git", "-c", "user.name=t", "-c", "user.email=t@t.t", "-C", projet]
-    subprocess.run(["git", "init", "-q", projet], capture_output=True)
+    # Identité forcee dans le sous-processus : un harnais qui vide
+    # GIT_AUTHOR_NAME (Paperclip) rendrait ce commit impossible.
+    _env_git = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t.t",
+                "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t.t"}
+    subprocess.run(["git", "init", "-q", projet], capture_output=True, env=_env_git)
     io.open(os.path.join(projet, "a.txt"), "w").write("un\n")
-    subprocess.run(_git + ["add", "-A"], capture_output=True)
-    subprocess.run(_git + ["commit", "-q", "-m", "base"], capture_output=True)
+    subprocess.run(_git + ["add", "-A"], capture_output=True, env=_env_git)
+    subprocess.run(_git + ["commit", "-q", "-m", "base"], capture_output=True, env=_env_git)
     dc._ecrire_registre({"demo": projet})
 
     main2._authentifier_ws = _auth

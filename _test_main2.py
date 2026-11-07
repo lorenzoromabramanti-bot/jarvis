@@ -6,12 +6,14 @@ reseau, sans Home Assistant, sans toucher au clavier :
   - le WebSocket refuse les pages web etrangeres (en-tete Origin) ;
   - main2 lance en script s'enregistre sous son nom (pas de seconde copie) ;
   - desarmer l'alarme, deverrouiller une porte attendent un « oui » ;
-  - depuis le telephone ou Discord, taper au clavier attend un « oui ».
+  - depuis le telephone ou Discord, taper au clavier attend un « oui » ;
+  - une panne du handler WebSocket est affichee ([WEB]), pas avalee (LOR-4).
 
     venv\\Scripts\\python.exe _test_main2.py
 """
 
 import asyncio
+import contextlib
 import io
 import os
 import sys
@@ -115,8 +117,46 @@ async def scenario():
     verifier("telephone : frappe apres « oui »", frappes == [("taper", "bonjour")], frappes)
 
 
+# ── LOR-4 : les erreurs du handler WebSocket sont loggees, pas avalees ──
+async def scenario_ws():
+    class FauxWs:
+        request_headers = {"Origin": "http://localhost:5173"}
+
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            raise ConnectionError("panne simulee")
+
+        async def send(self, *args, **kwargs):
+            pass
+
+        async def close(self, *args, **kwargs):
+            pass
+
+    async def auth_ok(_ws):
+        return True
+
+    async def briefing_nulle(_ws):
+        await asyncio.sleep(0)
+
+    vrai_auth, vrai_brief = main2._authentifier_ws, main2._briefing_demarrage
+    main2._authentifier_ws, main2._briefing_demarrage = auth_ok, briefing_nulle
+    tampon = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(tampon):
+            await main2.ws_handler(FauxWs())
+    finally:
+        main2._authentifier_ws, main2._briefing_demarrage = vrai_auth, vrai_brief
+    sortie = tampon.getvalue()
+    verifier("ws_handler : une panne imprime [WEB] Erreur WebSocket",
+             "[WEB] Erreur WebSocket" in sortie and "panne simulee" in sortie,
+             sortie)
+
+
 try:
     asyncio.run(scenario())
+    asyncio.run(scenario_ws())
 finally:
     (main2.parler, main2.demander_ia, main2.ha_appeler_service,
      catalogue.action_autorisee, pc_controle.executer) = vrais

@@ -85,8 +85,13 @@ try:
     # Bug réel trouvé en testant en direct : shutil.which("codex") seul
     # renvoie parfois le shim SANS extension (posé par npm pour bash/WSL),
     # que Windows refuse d'exécuter. _resoudre() doit préférer .cmd/.exe/.bat.
+    # Un outil non installé sur la machine n'est PAS un échec : _resoudre
+    # renvoie alors le nom brut (comportement documenté juste en dessous).
     for outil in ("claude", "codex", "opencode", "openclaw", "cursor-agent"):
         chemin = dc._resoudre(outil)
+        if chemin == outil or not os.path.isfile(chemin):
+            print("  ..  %s absent d'ici : exigence .cmd/.exe/.bat non verifiable" % outil)
+            continue
         verifier("%s résolu vers un .cmd/.exe/.bat (pas le shim nu)" % outil,
                   chemin.lower().endswith((".cmd", ".exe", ".bat")))
 
@@ -136,10 +141,14 @@ try:
         if _git_ok:
             _repo = tempfile.mkdtemp(prefix="jarvis_test_repo_")
             _git = ["git", "-c", "user.name=t", "-c", "user.email=t@t.t", "-C", _repo]
-            _sp.run(["git", "init", "-q", _repo], capture_output=True)
+            # Identité forcee dans le sous-processus : un harnais qui vide
+            # GIT_AUTHOR_NAME (Paperclip) rendrait ce commit impossible.
+            _env_git = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t.t",
+                        "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t.t"}
+            _sp.run(["git", "init", "-q", _repo], capture_output=True, env=_env_git)
             io.open(os.path.join(_repo, "a.txt"), "w").write("un\n")
-            _sp.run(_git + ["add", "-A"], capture_output=True)
-            _sp.run(_git + ["commit", "-q", "-m", "base"], capture_output=True)
+            _sp.run(_git + ["add", "-A"], capture_output=True, env=_env_git)
+            _sp.run(_git + ["commit", "-q", "-m", "base"], capture_output=True, env=_env_git)
             peut_p, bloq_p, _ = dc.preparer_execution(_repo)
             verifier("depot propre -> on peut lancer", peut_p and not bloq_p)
 
@@ -280,10 +289,12 @@ try:
         _repo2 = tempfile.mkdtemp(prefix="jarvis_test_e2e_")
         try:
             _g = ["git", "-c", "user.name=t", "-c", "user.email=t@t.t", "-C", _repo2]
-            _sp.run(["git", "init", "-q", _repo2], capture_output=True)
+            _env_git2 = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t.t",
+                         "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t.t"}
+            _sp.run(["git", "init", "-q", _repo2], capture_output=True, env=_env_git2)
             io.open(os.path.join(_repo2, "f.py"), "w").write("def f():\n    return 1\n")
-            _sp.run(_g + ["add", "-A"], capture_output=True)
-            _sp.run(_g + ["commit", "-q", "-m", "base"], capture_output=True)
+            _sp.run(_g + ["add", "-A"], capture_output=True, env=_env_git2)
+            _sp.run(_g + ["commit", "-q", "-m", "base"], capture_output=True, env=_env_git2)
             _etapes = iter([
                 {"texte": "", "appels": [{"id": "1", "nom": "lire", "args": {"chemin": "f.py"}}], "brut": None},
                 {"texte": "", "appels": [{"id": "2", "nom": "remplacer",

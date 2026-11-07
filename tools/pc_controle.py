@@ -233,7 +233,7 @@ def _url_de(cible):
 A_CONFIRMER_A_DISTANCE = {
     "taper": "taper ce texte dans la fenêtre active du PC",
     "touche": "appuyer sur cette touche dans la fenêtre active du PC",
-    "presse_papier_lire": "vous envoyer le contenu du presse-papiers du PC",
+    "presse_papier_lire": "t'envoyer le contenu du presse-papiers du PC",
 }
 
 

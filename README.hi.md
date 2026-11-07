@@ -9,6 +9,8 @@ Home Assistant, ईमेल, सॉफ़्टवेयर अपडेट, VP
 
 [**वेबसाइट**](https://lorenzoromabramanti-bot.github.io/jarvis/) · [**डाउनलोड**](../../releases/latest)
 
+<sub><a href="https://techenclair.fr">TechEnClair</a> के <b>J.A.R.V.I.S.</b> v9 पर आधारित — <a href="#श्रेय">श्रेय</a> देखें।</sub>
+
 ![JARVIS का इंटरफ़ेस](docs/images/hud-desktop.jpg)
 
 </div>
@@ -236,6 +238,15 @@ venv\Scripts\python.exe _test_machine.py
 
 ये यह नहीं जाँचतीं कि कोड वही करता है जो करता है, बल्कि यह कि वह पहले की गलतियाँ नहीं दोहराता — प्रोग्राम को
 जाम करने वाला एक वाक्य, कोड में लिखा हुआ एक नाम, वर्णक्रम में की गई संस्करणों की तुलना।
+
+## श्रेय
+
+- **TechEnClair** ([techenclair.fr](https://techenclair.fr), TikTok पर [@techenclair](https://www.tiktok.com/@techenclair)) ने मूल
+  **J.A.R.V.I.S.** बनाया, जो मुफ़्त है और जिसे दोबारा बेचना मना है। यह प्रोजेक्ट उसके संस्करण 9 (जुलाई 2026) से शुरू
+  हुआ और तब से दोबारा लिखा और बढ़ाया गया है। 1.4 का शिक्षक मोड (क्विज़, मेमोरी कार्ड, पाठ) उनके संस्करण 10.6 से
+  प्रेरित है।
+- **JincocoDev** ने इंटरफ़ेस का आधार [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui) बनाया (ISC लाइसेंस, देखें
+  [`frontend/LICENSE`](frontend/LICENSE))।
 
 ## लाइसेंस
 

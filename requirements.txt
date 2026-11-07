@@ -87,7 +87,7 @@ tkinterweb>=3.22.0
 # Ces paquets etaient importes par le code mais absents d'ici : une
 # installation neuve suivant le README aurait echoue. edge-tts est le plus
 # grave, son import dans main2.py n'est pas protege.
-edge-tts>=7.2.0          # synthese vocale — import INCONDITIONNEL dans main2
+edge-tts>=7.3.1          # synthese vocale (7.2.x : refus 403 de Microsoft depuis oct. 2026) — import INCONDITIONNEL dans main2
 pystray>=0.19.0          # icone pres de l'horloge, sans elle fermer = quitter
 distro>=1.9.0            # nom de la distribution Linux (tools/machine.py)
 

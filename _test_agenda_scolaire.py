@@ -377,8 +377,7 @@ def lecteur_plan_ok(entite, attribut=None):
     return None
 
 
-plan_reel, raisons_plan = ag.plan_revision(lecteur_plan_ok, minutes_par_soir=75,
-                                           aujourdhui=AUJOURDHUI)
+plan_reel, raisons_plan = ag.plan_revision(lecteur_plan_ok, minutes_par_soir=75, aujourdhui=AUJOURDHUI)
 verifier("plan_revision() enchaine lecture HA + construction sans reimplementer",
          plan_reel["hors_fenetre"] == 1 and plan_reel["en_surcharge"] > 0)
 verifier("plan_revision() remonte les raisons des sources muettes",
@@ -389,7 +388,7 @@ def lecteur_plan_muet(entite, attribut=None):
     return "inconnu"
 
 
-plan_muet, raisons_muet = ag.plan_revision(lecteur_plan_muet, minutes_par_soir=75)
+plan_muet, raisons_muet = ag.plan_revision(lecteur_plan_muet, minutes_par_soir=75, aujourdhui=AUJOURDHUI)
 verifier("Pronote muet -> plan vide et raisons explicites, jamais une exception",
          plan_muet["en_surcharge"] == 0 and len(raisons_muet) == 8)
 

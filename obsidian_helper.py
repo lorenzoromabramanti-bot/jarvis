@@ -34,7 +34,7 @@ def creer_ou_modifier_note(titre, contenu):
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(contenu)
         print(f"[OBSIDIAN] Note créée/modifiée : {filepath}")
-        return True, f"Note '{titre}' créée dans votre coffre Obsidian, {nom_utilisateur()}."
+        return True, f"Note « {titre} » créée dans ton coffre Obsidian."
     except Exception as e:
         print(f"[OBSIDIAN] Erreur création note : {e}")
         return False, f"Impossible de créer la note : {e}"
@@ -71,7 +71,7 @@ def supprimer_note(titre):
     try:
         os.remove(filepath)
         print(f"[OBSIDIAN] Note supprimée : {filepath}")
-        return True, f"La note '{titre}' a été supprimée de votre coffre Obsidian, {nom_utilisateur()}."
+        return True, f"J'ai supprimé la note « {titre} » de ton coffre Obsidian."
     except Exception as e:
         return False, f"Erreur lors de la suppression de la note : {e}"
 

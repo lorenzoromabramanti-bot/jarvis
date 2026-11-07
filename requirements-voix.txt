@@ -23,3 +23,5 @@
 torch>=2.0.0
 nemo_toolkit[asr]>=2.0.0
 pyarrow>=14.0.0
+huggingface_hub>=0.20.0  # oreille.py : retrouve Parakeet (nvidia/parakeet-tdt-0.6b-v3) dans le cache, ou le télécharge (2,5 Go)
+silero_vad>=6.0          # oreille.py : découpe les phrases au micro (MIT, ~11 Mo, s'appuie sur torch)

@@ -36,6 +36,7 @@ import { initSecurite } from './components/securite.js';
 import { initDomotique } from './components/domotique.js';
 import { initQuotidien } from './components/quotidien.js';
 import { initMedia } from './components/media.js';
+import { initCreation } from './components/creation.js';
 import { initAutoAmelioration } from './components/auto-amelioration.js';
 import { initAgents } from './components/agents.js';
 import { initCapture } from './components/capture.js';
@@ -82,6 +83,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   initDomotique();
   initQuotidien();
   initMedia();
+  initCreation();
   initAutoAmelioration();
   initAgents();
   initCapture();

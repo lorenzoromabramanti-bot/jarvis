@@ -9,6 +9,8 @@ Assistant, e-mail, atualizações de software, VPN, abrir aplicativos, ler a tel
 
 [**Site**](https://lorenzoromabramanti-bot.github.io/jarvis/) · [**Baixar**](../../releases/latest)
 
+<sub>Baseado no <b>J.A.R.V.I.S.</b> v9 de <a href="https://techenclair.fr">TechEnClair</a> — veja os <a href="#créditos">créditos</a>.</sub>
+
 ![A interface do JARVIS](docs/images/hud-desktop.jpg)
 
 </div>
@@ -256,6 +258,15 @@ venv\Scripts\python.exe _test_machine.py
 Eles não verificam que o código faz o que faz, e sim que ele não repete erros já cometidos — uma
 frase que travava o programa, um nome escrito direto no código, uma comparação de versões em
 ordem alfabética.
+
+## Créditos
+
+- **TechEnClair** ([techenclair.fr](https://techenclair.fr), [@techenclair](https://www.tiktok.com/@techenclair) no TikTok) criou o
+  **J.A.R.V.I.S.** original, gratuito e proibido para revenda. Este projeto partiu da versão 9 dele (julho de 2026)
+  e foi reescrito e ampliado desde então. O Modo Professor da 1.4 (quizzes, cartões de memória, aulas) se inspira
+  no da versão 10.6 dele.
+- **JincocoDev** fez o [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui), a base da interface (licença ISC, veja
+  [`frontend/LICENSE`](frontend/LICENSE)).
 
 ## Licença
 

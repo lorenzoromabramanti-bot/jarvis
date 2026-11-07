@@ -466,7 +466,7 @@ async def mode_boulot():
     except ImportError:
         return "pywin32 manquant — installez-le pour la disposition des fenêtres."
 
-    await parler("Bien, je prépare votre espace de travail.")
+    await parler("OK, je prépare ton espace de travail.")
 
     # ── 1. Spotify en fond (PRIORITE — lancé en premier) ────
     spotify_lancer_playlist(SPOTIFY_MUSIQUE_URI)
@@ -509,7 +509,7 @@ async def mode_boulot():
     )
     time.sleep(0.3)
 
-    await parler("Applications lancées, j'arrange votre espace dans quelques secondes.")
+    await parler("Applis lancées, je range tout ça dans quelques secondes.")
     time.sleep(7)
 
     # ── 5. Disposition en 4 quadrants ────────────────────────

@@ -65,6 +65,30 @@ verifier("sans repertoire de travail connu, on s'abstient",
 verifier("la casse du chemin ne change rien (Windows)",
          iu.est_jarvis(["python.exe", "main2.py"], RACINE.upper()))
 
+# ── Oreille et HUD laissés par un ancien JARVIS ──────────────────────────
+HUD = os.path.abspath(os.path.join(RACINE, "..", "interface-hud"))
+verifier("l'oreille de ce dossier est un compagnon",
+         iu.est_compagnon([r".\venv\Scripts\pythonw.exe", os.path.join(RACINE, "oreille.py")], RACINE))
+verifier("l'oreille d'un autre dossier n'est pas notre affaire",
+         not iu.est_compagnon(["pythonw.exe", "oreille.py"], AILLEURS))
+verifier("vite du HUD reconnu à son chemin",
+         iu.est_compagnon(["node", os.path.join(HUD, "node_modules", "vite", "bin", "vite.js"), "--port", "8001"],
+                          r"C:\Windows", dossier_hud=HUD))
+verifier("le serveur du HUD reconnu à son dossier de travail",
+         iu.est_compagnon(["node", "--env-file=.env", "server/index.js"], HUD, dossier_hud=HUD))
+verifier("un terminal ouvert dans le dossier du HUD n'est PAS visé",
+         not iu.est_compagnon(["cmd.exe"], HUD, dossier_hud=HUD))
+verifier("Claude Code ouvert dans le dossier du HUD n'est PAS visé",
+         not iu.est_compagnon(["node", r"C:\Users\Alex\AppData\Roaming\npm\node_modules\@anthropic-ai\claude-code\cli.js"],
+                              HUD, dossier_hud=HUD))
+verifier("le « npm run dev » du HUD est visé",
+         iu.est_compagnon([r"C:\Windows\system32\cmd.exe", "/c", "npm", "run", "dev"], HUD, dossier_hud=HUD))
+verifier("le vite d'un autre projet (God's Eye View) n'est PAS visé",
+         not iu.est_compagnon(["node", r"C:\Users\Alex\gods-eye-view\node_modules\vite\bin\vite.js", "preview"],
+                              r"C:\Users\Alex\gods-eye-view", dossier_hud=HUD))
+verifier("main2.py n'est pas un compagnon (c'est terminer_anciennes qui s'en charge)",
+         not iu.est_compagnon(["python.exe", "main2.py"], RACINE, dossier_hud=HUD))
+
 # ── Ancetres : jamais touches ────────────────────────────────────────────
 if iu.psutil is not None:
     ancetres = iu._ancetres(os.getpid())

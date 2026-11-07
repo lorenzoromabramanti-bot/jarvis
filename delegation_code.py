@@ -365,19 +365,28 @@ def _assurer_baseline_git(chemin_projet):
     gitignore = os.path.join(chemin_projet, ".gitignore")
     if not os.path.exists(gitignore):
         io.open(gitignore, "w", encoding="utf-8", newline="\n").write(_GITIGNORE_DEFAUT)
-    identite = []
-    for cle, defaut in (("user.name", "JARVIS"), ("user.email", "jarvis@localhost")):
+    identite, env = [], dict(os.environ)
+    for cle, variable, defaut in (
+            ("user.name", "GIT_AUTHOR_NAME", "JARVIS"),
+            ("user.email", "GIT_AUTHOR_EMAIL", "jarvis@localhost")):
         lu = subprocess.run(["git", "-C", chemin_projet, "config", cle],
                             capture_output=True, text=True, timeout=15)
-        if lu.returncode != 0 or not lu.stdout.strip():
+        valeur = lu.stdout.strip() if lu.returncode == 0 else ""
+        if not valeur:
             identite += ["-c", "%s=%s" % (cle, defaut)]
+            valeur = defaut
+        # Un environnement qui VIDe GIT_AUTHOR_NAME (harnais Paperclip) écrase
+        # même `git -c user.name=` : `fatal: empty ident name (for <>) not
+        # allowed`. On force donc les quatre variables dans le sous-processus.
+        env[variable] = valeur
+        env[variable.replace("AUTHOR", "COMMITTER")] = valeur
     for etape, cmd, delai in (
             ("git init", ["init", "-q"], 15),
             ("git add", ["add", "-A"], 60),
             ("git commit", identite + ["commit", "-q", "--allow-empty",
                                        "-m", "Baseline avant délégation JARVIS"], 30)):
         r = subprocess.run(["git", "-C", chemin_projet] + cmd,
-                           capture_output=True, text=True, timeout=delai)
+                           capture_output=True, text=True, timeout=delai, env=env)
         if r.returncode != 0:
             return False, "baseline impossible (%s) : %s" % (
                 etape, (r.stderr or r.stdout).strip()[:200] or "code %d" % r.returncode)

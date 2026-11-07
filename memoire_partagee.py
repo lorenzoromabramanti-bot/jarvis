@@ -58,7 +58,7 @@ DOSSIERS = {
     "brouillons":  "en cours, rien de fiable",
 }
 
-SOURCES = ("jarvis", "claude-code", "opencode", "codex", "humain")
+SOURCES = ("jarvis", "claude-code", "opencode", "codex", "hermes", "humain")
 
 
 def _ardoise(texte):

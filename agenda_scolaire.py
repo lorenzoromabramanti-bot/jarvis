@@ -635,8 +635,7 @@ def plan_revision(lecteur=None, minutes_par_soir=75, aujourdhui=None):
     aurait duplique la lecture des capteurs HA pour rien.
     """
     donnees, raisons = devoirs_evaluations_notes(lecteur)
-    plan = construire_plan(donnees["devoirs"], donnees["evaluations"], minutes_par_soir,
-                           aujourdhui=aujourdhui)
+    plan = construire_plan(donnees["devoirs"], donnees["evaluations"], minutes_par_soir, aujourdhui=aujourdhui)
     return plan, raisons
 
 

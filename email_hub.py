@@ -287,14 +287,14 @@ def resume_vocal():
     """Résumé parlé de la boîte unifiée pour JARVIS."""
     data = boite_unifiee(limit_par_compte=5)
     if not data["configured"]:
-        return ("Aucune boîte mail n'est encore connectée. Ajoutez vos comptes dans "
-                "la configuration de la messagerie, puis je pourrai relever vos e-mails.")
+        return ("Aucune boîte mail n'est connectée. Ajoute tes comptes dans "
+                "la configuration de la messagerie, et je pourrai relever tes mails.")
     if data["total"] == 0:
         actifs = [a for a in data["accounts"] if a["ok"]]
         if not actifs:
             details = " ; ".join(f"{a['name']} : {a['error']}" for a in data["accounts"])
-            return f"Je n'ai pas pu relever vos boîtes. {details}."
-        return "Aucun nouvel e-mail dans vos boîtes, tout est calme."
+            return f"J'ai pas réussi à relever tes boîtes. {details}."
+        return "Aucun nouveau mail, c'est calme."
     sujets = [f"« {m['sujet']} » de {m['de'].split('<')[0].strip()}" for m in data["messages"][:4]]
     n = data["total"]
     return (f"Vous avez {n} e-mail{'s' if n > 1 else ''} au total sur {len(data['accounts'])} "

@@ -78,14 +78,26 @@ def lire_reponse(rep):
     return {"texte": texte, "appels": appels, "brut": contenu}
 
 
+def est_quota(erreur):
+    """Quota épuisé (429) : le seul cas où changer de modèle peut aider."""
+    texte = str(erreur)
+    return "429" in texte or "RESOURCE_EXHAUSTED" in texte
+
+
 def creer_modele(client, types, nom_modele, *, suivi=None, sur_erreur=None, delai_ms=90_000):
     """
-    Fabrique le `modele` de agent_fichiers.executer_agent.
+    Fabrique le `modele` de agent_fichiers.boucle (agent de fichiers, agent des tâches).
 
+    nom_modele       : un nom, ou une liste à essayer dans l'ordre. Sur un quota épuisé, on
+                       passe au suivant et on y reste : sur l'offre gratuite, le quota est
+                       compté par modèle (une tâche s'est arrêtée au 7e tour le 22/10/2026).
     suivi(reponse)   : appelé après chaque réponse (coût/tokens) ; ses erreurs sont ignorées.
-    sur_erreur(exc)  : appelé avant de relever une erreur du SDK (ex. marquer un quota atteint).
+    sur_erreur(exc)  : appelé à chaque erreur du SDK (ex. marquer un quota atteint).
     delai_ms         : délai HTTP par appel — sans lui, un appel bloqué figerait le thread.
     """
+    noms = [nom_modele] if isinstance(nom_modele, str) else list(dict.fromkeys(n for n in nom_modele if n))
+    courant = [0]
+
     def modele(systeme, historique, declarations):
         config = types.GenerateContentConfig(
             system_instruction=systeme,
@@ -98,16 +110,21 @@ def creer_modele(client, types, nom_modele, *, suivi=None, sur_erreur=None, dela
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
             http_options=types.HttpOptions(timeout=delai_ms),
         )
-        try:
-            rep = client.models.generate_content(
-                model=nom_modele, contents=contenus_gemini(types, historique), config=config)
-        except Exception as e:
-            if sur_erreur:
-                try:
-                    sur_erreur(e)
-                except Exception:
-                    pass
-            raise
+        contenus = contenus_gemini(types, historique)
+        while True:
+            try:
+                rep = client.models.generate_content(model=noms[courant[0]], contents=contenus, config=config)
+                break
+            except Exception as e:
+                if sur_erreur:
+                    try:
+                        sur_erreur(e)
+                    except Exception:
+                        pass
+                if est_quota(e) and courant[0] + 1 < len(noms):
+                    courant[0] += 1
+                    continue
+                raise
         if suivi:
             try:
                 suivi(rep)

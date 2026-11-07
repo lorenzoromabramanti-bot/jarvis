@@ -75,10 +75,10 @@ CAPACITES = {
     "domotique": dict(
         titre="Maison connectée",
         description="Lumières, prises, chauffage, alarme et capteurs, "
-                    "via Home Assistant.",
+                    "via Home Assistant ; LED RGB du PC via Prisme.",
         reglages=["HA_URL", "HA_TOKEN"], capacites=[], niveau=5,
         avance=False, defaut=False,
-        actions=["ha_alarme", "ha_anniversaires", "ha_aspirateur", "ha_batterie",
+        actions=["prisme_rgb", "ha_alarme", "ha_anniversaires", "ha_aspirateur", "ha_batterie",
                  "ha_consommation", "ha_energie", "ha_humidite", "ha_lumiere",
                  "ha_oeufs", "ha_prise", "ha_scene", "ha_simulation",
                  "ha_temperature", "ha_thermostat", "ha_tiktok", "ha_verrou",
@@ -135,9 +135,9 @@ CAPACITES = {
     ),
     "navigateur": dict(
         titre="Navigation web",
-        description="Ouvrir des pages, chercher, remplir des formulaires.",
+        description="Ouvrir des pages, chercher, remplir des formulaires, démonter un site (REA).",
         reglages=[], capacites=[], niveau=6, avance=False, defaut=False,
-        actions=["open_browser", "close_browser", "dock_browser",
+        actions=["demontage_site", "open_browser", "close_browser", "dock_browser",
                  "undock_browser", "recherche_web", "restaurant_search"],
     ),
     "vpn": dict(
@@ -179,6 +179,22 @@ CAPACITES = {
                     "n'est prise sans validation explicite.",
         reglages=[], capacites=[], niveau=5, avance=True, defaut=False,
         actions=["tache_nocturne"],
+    ),
+    "juge": dict(
+        titre="Le juge (webcam)",
+        description="Si vous le demandez (« juge-moi »), JARVIS regarde votre webcam et votre écran toutes "
+                    "les 3 minutes et vous fait une remarque quand vous ne faites rien. Les images vont au "
+                    "modèle local et ne sont jamais enregistrées.",
+        reglages=[], capacites=["webcam", "ollama_installe"], niveau=6, avance=False, defaut=False,
+        actions=["juge"],
+    ),
+    "taches_agent": dict(
+        titre="Tâches en plusieurs étapes",
+        description="Un agent enchaîne les étapes seul (Pronote, agenda, mails en "
+                    "lecture, web, notes) et annonce le résultat. Il n'envoie rien "
+                    "à personne.",
+        reglages=["GEMINI_API_KEY"], capacites=[], niveau=5, avance=False, defaut=True,
+        actions=["tache_agent"],
     ),
     "orchestration": dict(
         titre="Sous-tâches en parallèle",

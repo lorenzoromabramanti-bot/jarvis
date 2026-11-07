@@ -10,6 +10,8 @@ l'écran.
 
 [**Site**](https://lorenzoromabramanti-bot.github.io/jarvis/) · [**Télécharger**](../../releases/latest)
 
+<sub>Parti du <b>J.A.R.V.I.S.</b> v9 de <a href="https://techenclair.fr">TechEnClair</a> — voir les <a href="#crédits">crédits</a>.</sub>
+
 ![L'interface de JARVIS](docs/images/hud-desktop.jpg)
 
 </div>
@@ -262,6 +264,15 @@ venv\Scripts\python.exe _test_machine.py
 Ils ne vérifient pas que le code fait ce qu'il fait, mais qu'il ne refait pas les erreurs
 déjà commises — une phrase qui figeait le programme, un prénom codé en dur, une comparaison
 de versions par ordre alphabétique.
+
+## Crédits
+
+- **TechEnClair** ([techenclair.fr](https://techenclair.fr), [@techenclair](https://www.tiktok.com/@techenclair) sur TikTok) a créé le
+  **J.A.R.V.I.S.** d'origine, gratuit et interdit à la revente. Ce projet est parti de sa version 9 (juillet 2026),
+  réécrite et étendue depuis. Le Mode Professeur de la 1.4 (quiz, cartes mémoire, cours) s'inspire de celui de sa
+  version 10.6.
+- **JincocoDev** a fait [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui), la base de l'interface (licence ISC, voir
+  [`frontend/LICENSE`](frontend/LICENSE)).
 
 ## Licence
 

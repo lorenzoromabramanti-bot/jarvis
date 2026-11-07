@@ -29,6 +29,7 @@ webmail-desktop/dist/
 # exige un depot propre). Les fichiers restent sur disque, seul le suivi git
 # est retire.
 jarvis_conversations.json
+jarvis_phrases.jsonl
 jarvis_config.json
 ObsidianVault/
 
@@ -53,6 +54,9 @@ webmail-desktop/installer/
 # configuration d'outillage (ruflo, Claude Code), pas JARVIS
 .claude/
 .agents/
+
+# Resultat du dernier passage de banc.py : reecrit a chaque lancement.
+banc-dernier.json
 
 # Outil de mainteneur, pas du produit. Quelqu'un qui clone le depot ne peut
 # rien publier dessus. Et surtout : sa liste de motifs interdits contient les

@@ -20,6 +20,7 @@ import json
 import os
 import shutil
 import sys
+import tempfile
 
 import catalogue as cat
 import config
@@ -86,12 +87,10 @@ def verifier():
           % (len(reservees), ", ".join(sorted(reservees))))
 
     # ── L'interdiction ne tient pas qu'a l'affichage ────────────────────
-    # Sauvegarder le vrai choix : ce test ecrit dans le fichier reel.
-    chemin = str(cat._chemin_choix())
-    secours = chemin + ".test-bak"
-    existait = os.path.exists(chemin)
-    if existait:
-        shutil.copy(chemin, secours)
+    # Fichier de choix temporaire : le vrai (AppData\JARVIS) est relu et reecrit par JARVIS en marche et
+    # par _test_installeur ; le partager faisait echouer ce test par moments (08/10/2026).
+    chemin = os.path.join(tempfile.mkdtemp(prefix="jarvis_choix_"), "capacites.json")
+    vrai_chemin, cat._chemin_choix = cat._chemin_choix, lambda: chemin
     try:
         retenues, refusees = cat.definir_activees(["agents", "courrier"], mode="simple")
         assert "agents" not in retenues, \
@@ -159,10 +158,8 @@ def verifier():
         assert "courrier" in cles and not conf, "une capacite deja active redemande la phrase"
         print("  OK  set_capacites distant : mode fige, niveau eleve sous confirmation")
     finally:
-        if existait:
-            shutil.move(secours, chemin)
-        elif os.path.exists(chemin):
-            os.remove(chemin)
+        cat._chemin_choix = vrai_chemin
+        shutil.rmtree(os.path.dirname(chemin), ignore_errors=True)
 
     # ── Disponibilite : une raison, pas un silence ──────────────────────
     for c in cat.catalogue():

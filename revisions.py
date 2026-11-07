@@ -140,8 +140,8 @@ def _ollama(messages):
     return r.json()["message"]["content"]
 
 
-def valider(brut):
-    """Le JSON du modèle -> questions propres. ValueError si inexploitable."""
+def valider(brut, mini=MIN_QUESTIONS, maxi=NB_QUESTIONS):
+    """Le JSON du modèle -> questions propres (au plus `maxi`). ValueError si moins de `mini` exploitables."""
     donnees = json.loads(brut) if isinstance(brut, str) else brut
     questions = donnees
     if isinstance(donnees, dict):
@@ -171,9 +171,9 @@ def valider(brut):
             fiche = {"q": fiche["q"], "choix": choix, "reponse": fiche["reponse"],
                      "explication": fiche["explication"]}
         propres.append(fiche)
-    if len(propres) < MIN_QUESTIONS:
+    if len(propres) < mini:
         raise ValueError("%d question(s) exploitable(s) sur %d" % (len(propres), len(questions)))
-    return propres[:NB_QUESTIONS]
+    return propres[:maxi]
 
 
 def generer(ev, donnees, appel_modele=None):
@@ -313,13 +313,87 @@ def quiz_pour(texte, lecteur=None, appel_modele=None, aujourdhui=None):
 MODELE_JUGE = os.getenv("JARVIS_REVISIONS_JUGE", "").strip() or MODELE
 _JE_NE_SAIS_PAS = re.compile(r"\b(je (ne )?sais pas|j ?sais pas|aucune idee|joker)\b")
 _ETAT = {"quiz": None, "repondues": 0, "score": 0, "vu": 0.0}
+# Pendant le quiz, ces demandes ne comptent pas comme une réponse (texte passé par _consigne).
+_REPETE = re.compile(r"^(?:tu peux |peux[- ]tu |vous pouvez )?(?:repete|repeter|redis|redire|relis|relire)\w*"
+                     r"(?:[- ]?la)?(?: question)?$")
+_INDICE = re.compile(r"^(?:(?:donne|file)[- ]moi |j'ai besoin d'|tu as |t'as )?(?:un |une )?(?:petit |petite )?"
+                     r"(?:indice|aide)$|^aide[- ]moi$")
+_REDIS_COURS = re.compile(r"^(?:tu peux )?(?:repete|repeter|redis|redire|relis|relire)\w*[- ]?(?:moi )?le cours$")
 
 
-def demarrer(quiz):
+def _consigne(texte):
+    """« Jarvis, tu peux répéter s'il te plaît ? » -> « tu peux repeter » : la demande, sans politesse."""
+    t = re.sub(r"\b(jarvis|s.il (te|vous) plait|stp|merci)\b", " ", _sans_accents(texte))
+    return " ".join(re.sub(r"[^\w' -]", " ", t).split())
+
+
+def _titre(matiere):
+    return matiere.capitalize() if matiere.isupper() else matiere[:1].upper() + matiere[1:]
+
+
+# Le quiz en cours est gardé sur disque : « reprends la révision » le relance après un « stop »,
+# une extinction de JARVIS ou 1 h 30 sans réponse. Effacé quand le quiz va jusqu'au bout.
+def _chemin_en_cours():
+    return os.path.join(DOSSIER, "en_cours.json")
+
+
+def _sauver():
+    try:
+        os.makedirs(DOSSIER, exist_ok=True)
+        with io.open(_chemin_en_cours() + ".tmp", "w", encoding="utf-8") as f:
+            json.dump({k: _ETAT[k] for k in ("quiz", "repondues", "score")}, f, ensure_ascii=False)
+        os.replace(_chemin_en_cours() + ".tmp", _chemin_en_cours())
+    except OSError as e:
+        print("[REVISIONS] quiz en cours non sauvegardé : %r" % (e,))
+
+
+def en_pause():
+    """(quiz, question à poser, score) du quiz interrompu, ou None."""
+    try:
+        etat = lire(_chemin_en_cours())
+        quiz, i = etat["quiz"], int(etat["repondues"])
+        if 0 <= i < len(quiz["questions"]):
+            return quiz, i, int(etat.get("score") or 0)
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return None
+
+
+def reprendre():
+    """Relance le quiz interrompu à sa question. None s'il n'y en a pas."""
+    pause = en_pause()
+    if not pause:
+        return None
+    quiz, i, score = pause
+    _ETAT.update(quiz=quiz, repondues=i, score=score, vu=time.time())
+    return "On reprend : %s, question %d sur %d%s.\n%s" % (
+        _titre(quiz["matiere"]), i + 1, len(quiz["questions"]),
+        ", score %d sur %d" % (score, i) if i else "", _question(i))
+
+
+def indice(q):
+    """Un coup de pouce sans donner la réponse : deux mauvais choix écartés, ou le début d'un mot attendu."""
+    if q.get("choix"):
+        mauvaises = [chr(65 + j) for j, c in enumerate(q["choix"]) if _norm(c) != _norm(q["reponse"])]
+        if len(mauvaises) >= 2:
+            return "Indice : ce n'est ni %s, ni %s." % (mauvaises[0], mauvaises[-1])
+    chiffres = re.sub(r"\D", "", q["reponse"])
+    if re.fullmatch(r"[\s\d,.+-]+", q["reponse"]):   # un nombre : en dire le début le donnerait
+        return "Indice : c'est un nombre %sà %d chiffre%s." % (
+            "négatif " if q["reponse"].strip().startswith("-") else "", len(chiffres), "s" if len(chiffres) > 1 else "")
+    mots = [m for m in re.findall(r"[\w'-]+", q["reponse"]) if len(m) > 3] or q["reponse"].split()
+    return "Indice : un mot de la réponse commence par « %s… »." % mots[0][:3]
+
+
+def demarrer(quiz, intro=None):
+    """Passe en mode quiz. `intro` remplace l'annonce du quiz Pronote (Mode Professeur)."""
     _ETAT.update(quiz=quiz, repondues=0, score=0, vu=time.time())
-    return ("Mode révision : %s, %s du %s, %d questions. Dis « stop révision » pour arrêter.\n%s"
-            % (quiz["matiere"].capitalize(), quiz["evaluation"],
-               "/".join(reversed(quiz["date"].split("-"))), len(quiz["questions"]), _question(0)))
+    _sauver()
+    if intro is None:
+        intro = ("Mode révision : %s, %s du %s, %d questions. Dis « stop révision » pour arrêter."
+                 % (quiz["matiere"].capitalize(), quiz["evaluation"],
+                    "/".join(reversed(quiz["date"].split("-"))), len(quiz["questions"])))
+    return intro + "\n" + _question(0)
 
 
 def arreter():
@@ -381,19 +455,40 @@ def est_juste(q, reponse, juge=None):
 
 
 def repondre(reponse, juge=None):
-    """La réponse de l'élève -> correction, score, puis question suivante ou bilan."""
+    """La réponse de l'élève -> correction, score, puis question suivante ou bilan.
+    « répète », « indice » et « redis le cours » ne comptent pas comme une réponse."""
     quiz, i = _ETAT["quiz"], _ETAT["repondues"]
     q, total = quiz["questions"][i], len(quiz["questions"])
+    demande = _consigne(reponse)
+    if quiz.get("cours") and _REDIS_COURS.search(demande):
+        _ETAT["vu"] = time.time()
+        return quiz["cours"] + "\n" + _question(i)
+    if _REPETE.search(demande) or _INDICE.search(demande):
+        _ETAT["vu"] = time.time()
+        return _question(i) if _REPETE.search(demande) else indice(q)
     juste = est_juste(q, reponse, juge)
+    try:
+        import professeur
+        professeur.noter(q, juste, quiz)    # une question ratée revient plus tard en carte mémoire
+    except Exception as e:                  # les cartes ne doivent jamais casser le quiz
+        print("[REVISIONS] cartes mémoire : %r" % (e,))
     _ETAT.update(repondues=i + 1, score=_ETAT["score"] + juste, vu=time.time())
     texte = ("Juste ! " if juste else "Faux. La réponse était : %s. " % q["reponse"]) + q["explication"]
     texte += " Score : %d sur %d." % (_ETAT["score"], i + 1)
     if i + 1 < total:
+        _sauver()
         return texte + "\n" + _question(i + 1)
     note = _ETAT["score"]
     arreter()
-    return texte + ("\nRévision terminée : %d sur %d. %s" % (note, total,
-                    "Tu es prêt." if note >= total * 0.8 else "Relis la leçon sur les questions ratées."))
+    try:
+        os.remove(_chemin_en_cours())       # fini : plus rien à reprendre
+    except OSError:
+        pass
+    texte += ("\nRévision terminée : %d sur %d. %s" % (note, total,
+              "Tu es prêt." if note >= total * 0.8 else "Relis la leçon sur les questions ratées."))
+    if note < total:
+        texte += " Tes erreurs sont gardées : dis « révise mes erreurs » pour les refaire."
+    return texte
 
 
 if __name__ == "__main__":

@@ -276,9 +276,9 @@ def verifier_action_web(url, nature="lecture"):
     if cat is None:
         return True, ""
     libelles = {"banque": "bancaire", "impots": "administratif",
-                "sante": "de santé", "ajoute": "que vous avez protégé"}
+                "sante": "de santé", "ajoute": "que tu as protégé"}
     return False, ("Je peux afficher cette page, mais pas agir dessus : "
-                   "c'est un site %s. Faites-le vous-même."
+                   "c'est un site %s. Fais-le toi-même."
                    % libelles.get(cat, "sensible"))
 
 

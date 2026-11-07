@@ -438,30 +438,44 @@ def _bilan(succes, resume, session, tours, erreur=None):
 def executer_agent(racine, tache, modele, *, max_tours=MAX_TOURS, delai_total=DELAI_TOTAL_S,
                    horloge=time.monotonic, pause=time.sleep, journal=None):
     """
-    Boucle agentique : le modèle appelle des outils jusqu'à `terminer`.
+    Agent de fichiers : la boucle ci-dessous avec les outils de Session(racine).
 
-    modele(systeme, historique, declarations) -> {"texte": str, "appels":
-        [{"id", "nom", "args"}], "brut": <libre>}.  Doit lever en cas d'échec.
     Renvoie {"succes", "resume", "erreur", "tours", "ecrits", "actions"}.
     Ne lève jamais.
     """
-    journal = journal or (lambda ligne: None)
     try:
         session = Session(racine)
     except ValueError as e:
         return _bilan(False, "", None, 0, str(e))
     if not isinstance(tache, str) or not tache.strip():
         return _bilan(False, "", session, 0, "tâche vide")
+    succes, resume, tours, erreur = boucle(session, SYSTEME, DECLARATIONS, tache, modele,
+                                           max_tours=max_tours, delai_total=delai_total,
+                                           horloge=horloge, pause=pause, journal=journal)
+    return _bilan(succes, resume, session, tours, erreur)
 
+
+def boucle(session, systeme, declarations, tache, modele, *, max_tours=MAX_TOURS,
+           delai_total=DELAI_TOTAL_S, horloge=time.monotonic, pause=time.sleep, journal=None):
+    """
+    Boucle agentique générique : le modèle appelle les outils de `session` jusqu'à `terminer`.
+    Sert aussi à agent_taches.py (tâches en plusieurs étapes, autres outils).
+
+    session : .appeler(nom, args) -> str, et .termine (None tant que l'agent n'a pas fini).
+    modele(systeme, historique, declarations) -> {"texte": str, "appels":
+        [{"id", "nom", "args"}], "brut": <libre>}.  Doit lever en cas d'échec.
+    Renvoie (succes, resume, tours, erreur). Ne lève jamais.
+    """
+    journal = journal or (lambda ligne: None)
     historique = [{"role": "user", "texte": "TÂCHE : " + tache.strip()}]
     debut = horloge()
     for tour in range(1, max_tours + 1):
         if horloge() - debut > delai_total:
-            return _bilan(False, "", session, tour - 1, "délai dépassé (%d s)" % delai_total)
+            return False, "", tour - 1, "délai dépassé (%d s)" % delai_total
         reponse, derniere = None, None
         for essai in (1, 2):           # un seul nouvel essai : une panne réseau passagère ne doit pas tout perdre
             try:
-                reponse = modele(SYSTEME, historique, DECLARATIONS)
+                reponse = modele(systeme, historique, declarations)
                 derniere = None
                 break
             except Exception as e:
@@ -469,18 +483,17 @@ def executer_agent(racine, tache, modele, *, max_tours=MAX_TOURS, delai_total=DE
                 if essai == 1:
                     pause(2)
         if derniere is not None:
-            return _bilan(False, "", session, tour - 1,
-                          "le modèle a échoué au tour %d : %s" % (tour, _borner(derniere, 300)))
+            return False, "", tour - 1, "le modèle a échoué au tour %d : %s" % (tour, _borner(derniere, 300))
         if not isinstance(reponse, dict):
-            return _bilan(False, "", session, tour - 1, "réponse invalide du modèle (un dict était attendu)")
+            return False, "", tour - 1, "réponse invalide du modèle (un dict était attendu)"
         texte = str(reponse.get("texte") or "").strip()
         appels = [a for a in (reponse.get("appels") or []) if isinstance(a, dict)]
         historique.append({"role": "assistant", "texte": texte, "appels": appels,
                            "brut": reponse.get("brut")})
         if not appels:
             if texte:
-                return _bilan(True, texte, session, tour)
-            return _bilan(False, "", session, tour, "réponse vide du modèle")
+                return True, texte, tour, None
+            return False, "", tour, "réponse vide du modèle"
         for a in appels:
             resultat = session.appeler(a.get("nom"), a.get("args"))
             journal("[AGENT] tour %d : %s(%s) -> %s" % (
@@ -488,6 +501,6 @@ def executer_agent(racine, tache, modele, *, max_tours=MAX_TOURS, delai_total=DE
             historique.append({"role": "outil", "id": a.get("id"), "nom": a.get("nom"),
                                "resultat": resultat})
         if session.termine is not None:
-            return _bilan(True, session.termine, session, tour)
+            return True, session.termine, tour, None
         _elaguer(historique)
-    return _bilan(False, "", session, max_tours, "pas terminé après %d tours" % max_tours)
+    return False, "", max_tours, "pas terminé après %d tours" % max_tours

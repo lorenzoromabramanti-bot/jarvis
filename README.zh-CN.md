@@ -9,6 +9,8 @@
 
 [**官网**](https://lorenzoromabramanti-bot.github.io/jarvis/) · [**下载**](../../releases/latest)
 
+<sub>基于 <a href="https://techenclair.fr">TechEnClair</a> 的 <b>J.A.R.V.I.S.</b> v9 —— 见<a href="#致谢">致谢</a>。</sub>
+
 ![JARVIS 界面](docs/images/hud-desktop.jpg)
 
 </div>
@@ -227,6 +229,14 @@ venv\Scripts\python.exe _test_machine.py
 
 它们不是检查代码在做它正在做的事，而是检查它不会重犯已经犯过的错误——一句让程序卡死的话、写死在
 代码里的名字、按字母顺序比较版本号。
+
+## 致谢
+
+- **TechEnClair**（[techenclair.fr](https://techenclair.fr)，TikTok 上的 [@techenclair](https://www.tiktok.com/@techenclair)）创作了最初的
+  **J.A.R.V.I.S.**，免费且禁止转售。本项目从它的第 9 版（2026 年 7 月）出发，此后经过重写和扩展。1.4 版的教师模式
+  （测验、记忆卡、课程）参考了他的 10.6 版。
+- **JincocoDev** 制作了界面的基础 [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui)（ISC 许可证，见
+  [`frontend/LICENSE`](frontend/LICENSE)）。
 
 ## 许可证
 

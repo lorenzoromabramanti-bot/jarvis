@@ -1,0 +1,18 @@
+J.A.R.V.I.S — third-party credits / crédits
+
+Origin / Origine
+  This project started from J.A.R.V.I.S. version 9 (July 2026) by TechEnClair
+  (https://techenclair.fr, @techenclair on TikTok), distributed free of charge and not for resale.
+  It has been rewritten and extended since. The Teacher Mode of version 1.4 is inspired by the one
+  in TechEnClair's version 10.6 (no code taken: that version is distributed compiled).
+  Ce projet est parti de la version 9 (juillet 2026) du J.A.R.V.I.S. de TechEnClair, gratuit et
+  interdit à la revente, réécrite et étendue depuis.
+
+Interface (frontend/)
+  openclaw-jarvis-ui by JincocoDev — ISC License, see frontend/LICENSE.
+  https://github.com/jincocodev/openclaw-jarvis-ui
+  Based on the Three.js Orb Visualizer by Filip Zrnzevic — https://codepen.io/filipz/pen/yyyRgry
+
+Speech / Parole (oreille.py, optional / facultatif)
+  Silero VAD — MIT License — https://github.com/snakers4/silero-vad
+  NVIDIA Parakeet TDT 0.6B v3 — CC BY 4.0 — https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3

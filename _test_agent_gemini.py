@@ -123,6 +123,26 @@ client2 = FauxClient([reponse(types.Part(text="ok"))])
 res = ag.creer_modele(client2, types, "m", suivi=suivi_qui_plante)(af.SYSTEME, [{"role": "user", "texte": "t"}], af.DECLARATIONS)
 verifier("un suivi qui plante n'empeche pas la reponse", res["texte"] == "ok")
 
+# Quota epuise sur un modele : on passe au suivant et on y reste ; une autre erreur remonte.
+client4 = FauxClient([RuntimeError("429 RESOURCE_EXHAUSTED"), reponse(types.Part(text="a")),
+                      reponse(types.Part(text="b")), RuntimeError("429 RESOURCE_EXHAUSTED"),
+                      ConnectionError("reseau")])
+m4 = ag.creer_modele(client4, types, ["m1", "m1", "m2", None])
+histo = [{"role": "user", "texte": "t"}]
+verifier("quota epuise : le modele suivant repond", m4(af.SYSTEME, histo, af.DECLARATIONS)["texte"] == "a")
+verifier("on reste sur le modele de secours", m4(af.SYSTEME, histo, af.DECLARATIONS)["texte"] == "b"
+         and [k["model"] for k in client4.appels] == ["m1", "m2", "m2"], [k["model"] for k in client4.appels])
+try:
+    m4(af.SYSTEME, histo, af.DECLARATIONS)
+    verifier("plus de modele de secours : le 429 remonte", False)
+except RuntimeError:
+    verifier("plus de modele de secours : le 429 remonte", True)
+try:
+    ag.creer_modele(FauxClient([ConnectionError("x")]), types, ["a", "b"])(af.SYSTEME, histo, af.DECLARATIONS)
+    verifier("une erreur reseau ne change pas de modele", False)
+except ConnectionError:
+    verifier("une erreur reseau ne change pas de modele", True)
+
 # ── De bout en bout : la vraie boucle + les vraies classes, faux reseau ──
 import os, shutil, tempfile
 racine = tempfile.mkdtemp(prefix="jarvis_test_gem_")

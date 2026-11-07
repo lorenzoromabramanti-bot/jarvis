@@ -172,52 +172,11 @@ def appeler_outil(nom: str, texte: str, confirme: bool = False) -> dict:
 # La source est imposée par l'appelant et non devinée : un agent doit signer
 # ses notes de son nom, pour qu'on sache toujours qui a écrit quoi.
 
-@mcp.tool()
-def memoire_lister(dossier: str = "") -> list:
-    """Liste les notes de la mémoire partagée, avec leur source et leur date.
-    `dossier` filtre parmi : decisions, pannes, conventions, etat, brouillons."""
-    import memoire_partagee as mp
-    return mp.lister(dossier or None)
+# Memes outils que le serveur « memoire » seul (memoire_mcp.py) : une seule definition.
+import memoire_mcp
 
-
-@mcp.tool()
-def memoire_chercher(motif: str) -> dict:
-    """Cherche un mot ou une expression régulière dans toutes les notes.
-    Renvoie un extrait autour de chaque correspondance."""
-    import memoire_partagee as mp
-    return mp.chercher(motif)
-
-
-@mcp.tool()
-def memoire_lire(dossier: str, id_note: str, source: str) -> dict:
-    """Lit une note précise. `source` fait partie de son identité : deux
-    auteurs peuvent avoir écrit sur le même sujet, ce sont deux notes."""
-    import memoire_partagee as mp
-    n = mp.lire(dossier, id_note, source)
-    return n or {"erreur": "note introuvable"}
-
-
-@mcp.tool()
-def memoire_ecrire(dossier: str, id_note: str, corps: str,
-                   source: str, titre: str = "", sujet: str = "") -> dict:
-    """Écrit une note dans la mémoire partagée.
-
-    `source` DOIT être ton propre nom (claude-code, opencode, codex...), pas
-    'jarvis' : chaque auteur n'écrit que ses propres fichiers, ce qui évite
-    tout conflit sans verrou. Écrire sous le nom d'un autre écraserait son
-    travail.
-
-    `dossier` : decisions | pannes | conventions | etat | brouillons"""
-    import memoire_partagee as mp
-    try:
-        chemin = mp.ecrire(dossier, id_note, corps, source=source,
-                           titre=titre or None,
-                           sujet=[s.strip() for s in sujet.split(",") if s.strip()] or None)
-        mp.regenerer_index()
-        return {"ok": True, "chemin": str(chemin)}
-    except ValueError as e:
-        return {"ok": False, "erreur": str(e)}
-
+for _f in memoire_mcp.OUTILS:
+    mcp.tool()(_f)
 
 if __name__ == "__main__":
     mcp.run()

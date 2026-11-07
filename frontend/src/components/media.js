@@ -16,6 +16,7 @@
 
 import { showNotification } from './notifications.js';
 import { appelerJarvis } from './appel-jarvis.js';
+import { initCreations } from './creation.js';
 
 function ech(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => (
@@ -155,7 +156,7 @@ function initIptv(zone) {
 
 // ── Assemblage ───────────────────────────────────────────────────────────
 
-const VUES = [['images', 'IMAGES', initImages], ['iptv', 'IPTV', initIptv]];
+const VUES = [['images', 'IMAGES', initImages], ['creations', 'CREATIONS', initCreations], ['iptv', 'IPTV', initIptv]];
 
 export function initMedia() {
   const conteneur = document.getElementById('rtab-media');
@@ -191,8 +192,9 @@ export function initMedia() {
     });
   });
 
-  // Les deux vues sont montees d'emblee : le panneau images doit recevoir
-  // ce que JARVIS pousse meme si l'utilisateur ne l'a jamais ouvert.
+  // Toutes les vues sont montees d'emblee : images et creations doivent
+  // recevoir ce que JARVIS pousse meme si l'utilisateur ne les a jamais ouvertes.
+  afficher('creations');
   afficher('iptv');
   afficher('images');
 }

@@ -134,8 +134,8 @@ _MOIS = ["", "janvier", "février", "mars", "avril", "mai", "juin", "juillet",
          "août", "septembre", "octobre", "novembre", "décembre"]
 _MAGIC = ["Oui, sans aucun doute.", "C'est certain.", "Très probablement.",
           "Mes circuits penchent pour oui.", "Peut-être, l'avenir est flou.",
-          "Rien n'est moins sûr.", "Ne comptez pas dessus.", "Ma réponse est non.",
-          "Il vaut mieux ne pas vous le dire maintenant.", "Concentrez-vous et redemandez."]
+          "Rien n'est moins sûr.", "Compte pas dessus.", "Ma réponse est non.",
+          "Vaut mieux pas te le dire maintenant.", "Concentre-toi et redemande."]
 _ADJ = ["Cosmic", "Neon", "Cyber", "Quantum", "Shadow", "Iron", "Turbo", "Nova", "Hyper", "Ghost"]
 _NOM = ["Falcon", "Wolf", "Reactor", "Phoenix", "Circuit", "Raven", "Titan", "Vortex", "Blade", "Pixel"]
 _LEET = {"a": "4", "e": "3", "i": "1", "o": "0", "s": "5", "t": "7", "l": "1", "b": "8"}
@@ -492,7 +492,7 @@ def resoudre_outils(texte: str):
 
     # — Emoji aléatoire
     if "emoji" in t and ("hasard" in t or "aleatoire" in t or "donne" in t or "un emoji" in t):
-        return f"Voici votre emoji : {random.choice(_EMOJIS)}"
+        return f"Ton emoji : {random.choice(_EMOJIS)}"
 
     # — Dés notation NdM+K (ex: 2d20+3)
     m = re.search(r"(\d*)d(\d+)([+-]\d+)?", t)

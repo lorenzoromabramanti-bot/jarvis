@@ -9,6 +9,23 @@ import json
 import asyncio
 from config import nom_utilisateur
 
+# Un DOSSIER du chemin doit s'appeler ainsi, pas seulement contenir ces lettres.
+DOSSIERS_TEMP = {"temp", "tmp"}
+
+
+def lance_depuis_temp(nom, chemin):
+    """
+    Vrai si l'exécutable vit DANS un dossier temporaire (un composant du chemin vaut « temp » ou « tmp »).
+
+    Avant le 16/10, une sous-chaîne suffisait : « tmp » dans
+    …\\uv\\cache\\builds-v0\\.tmpHRMK5Y\\Scripts\\python.exe a fait tuer un python d'uv (environnements
+    de construction, serveurs MCP compris), et « temp » aurait aussi visé un dossier « Templates ».
+    Règle partagée par le scan et la surveillance en direct (main2.py).
+    """
+    if not (nom or "").lower().endswith((".exe", ".bat")):
+        return False
+    return any(partie in DOSSIERS_TEMP for partie in (chemin or "").lower().replace("/", "\\").split("\\"))
+
 def get_exclusions():
     """Charge les exclusions antivirus depuis jarvis_config.json."""
     try:
@@ -232,7 +249,7 @@ async def executer_scan_antivirus(ws_broadcast_callback, parler_callback):
             if "mimikatz" in name_lower or "miner.exe" in name_lower or "keylogger" in name_lower:
                 detected = True
                 desc = "Processus lié à un outil malveillant connu"
-            elif ("temp" in path_lower or "tmp" in path_lower) and name_lower.endswith((".exe", ".bat")):
+            elif lance_depuis_temp(proc["name"], proc["path"]):
                 detected = True
                 desc = "Processus actif lancé depuis le dossier temporaire"
                 
@@ -322,7 +339,7 @@ async def executer_scan_antivirus(ws_broadcast_callback, parler_callback):
         })
         
         if status == "infected":
-            await parler_callback(f"Analyse terminée, {nom_utilisateur()}. Attention, j'ai détecté {len(threats_detected)} menace(s) de sécurité sur votre système. Consultez la console pour plus de détails.")
+            await parler_callback(f"Analyse finie. Attention : j'ai trouvé {len(threats_detected)} menace(s) sur ton PC. Regarde la console pour les détails.")
         else:
             await parler_callback("Analyse de sécurité terminée. Votre système est entièrement sécurisé. Aucun virus n'a été détecté.")
             
@@ -339,6 +356,6 @@ async def executer_scan_antivirus(ws_broadcast_callback, parler_callback):
             "status": "error",
             "message": f"Erreur système durant le scan : {e}"
         })
-        await parler_callback("Une erreur s'est produite lors de l'analyse antivirus de votre ordinateur.")
+        await parler_callback("L'analyse antivirus de ton PC a planté.")
     finally:
         ACTIVE_SCAN_TASK = None

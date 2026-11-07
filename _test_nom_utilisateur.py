@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import sys
+import time
 
 import config
 
@@ -96,12 +97,17 @@ def verifier():
         d["user_name"] = "zoe"
         io.open(CONFIG, "w", encoding="utf-8").write(
             json.dumps(d, ensure_ascii=False, indent=2))
-        os.utime(CONFIG, None)
+        # Horodatage explicite : os.utime(..., None) peut retomber sur la
+        # meme tranche d'horloge que la lecture precedente, et le cache
+        # mtime de config.nom_utilisateur() rend alors l'ecriture invisible.
+        futur = time.time() + 60
+        os.utime(CONFIG, (futur, futur))
         assert config.nom_utilisateur() == "Zoe", \
             "le nom n'a pas suivi le changement : %r" % config.nom_utilisateur()
     finally:
         shutil.move(secours, CONFIG)
-        os.utime(CONFIG, None)
+        passe = time.time() - 60
+        os.utime(CONFIG, (passe, passe))
 
     assert config.nom_utilisateur().lower() == attendu.lower(), \
         "la config n'a pas ete restauree"

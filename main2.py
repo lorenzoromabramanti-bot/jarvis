@@ -44,6 +44,10 @@ import google.genai as genai
 from google.genai import types
 import speech_recognition as sr
 import edge_tts
+import oreille  # client de l'oreille (oreille.py) : urllib seulement, aucune DLL
+import annonces  # pendant un quiz, les annonces de fond attendent la fin (annonces.py)
+import parole_anticipee  # la 1re phrase d'une réponse vocale part pendant que la suite s'écrit
+import journal_phrases  # chaque phrase de l'utilisateur, si « garder_phrases » est activé (désactivé par défaut)
 # --- Pygame (audio TTS) : optionnel ---
 sys.stdout.flush()
 sys.stderr.flush()
@@ -869,8 +873,30 @@ async def generer_et_chanter_musique(prompt_utilisateur: str) -> bool:
         print(f"[MUSIQUE GEN] [ERREUR] Erreur : {e}")
         return False
 
-async def parler(texte):
+def _retenir_parole(texte):
+    """Ce que JARVIS dit entre dans sa mémoire de conversation, sauf si c'est déjà sa dernière réplique."""
+    if historique and len(historique) > 0:
+        dernier_texte_modele = historique[-1].parts[0].text
+        if dernier_texte_modele != texte:
+            historique.append(types.Content(role="model", parts=[types.Part(text=f"[Information retournée par l'action et énoncée à voix haute]: {texte}")]))
+
+
+async def parler(texte, memoire=True, apres=None, urgent=False):
+    """Dit `texte` (ou l'envoie au canal écrit). Renvoie True si on lui a coupé la parole.
+
+    memoire=False : la parole anticipée découpe une réponse en deux appels, et
+    traiter_reponse_ia la retient une seule fois, entière (_retenir_parole).
+    apres : tâche parler() de la 1re phrase ; on prépare la voix de la suite
+    pendant qu'elle parle, puis on enchaîne (rien si on lui a coupé la parole).
+    urgent : dit même pendant un quiz (minuteur, antivirus, micro coupé) ; les autres
+    annonces de fond attendent la fin du quiz (annonces.py).
+    """
     global is_speaking, speak_volume, STOP_PARLER, _skip_pc_audio, historique
+
+    texte = annonces.filtrer(texte, EN_REPONSE.get(), urgent, _quiz_en_cours())
+    if texte is None:
+        print("[ANNONCE] gardée pour après le quiz")
+        return False
 
     # (Ici se trouvait un pansement : deux lignes identiques qui remplacaient
     # le prenom fige par le vrai nom au moment de parler. Il ne rattrapait que la
@@ -879,10 +905,8 @@ async def parler(texte):
     # a la source : plus aucun prenom n'est ecrit en dur.)
 
     # ENREGISTRER CE QUE JARVIS DIT DANS SA MÉMOIRE
-    if historique and len(historique) > 0:
-        dernier_texte_modele = historique[-1].parts[0].text
-        if dernier_texte_modele != texte:
-            historique.append(types.Content(role="model", parts=[types.Part(text=f"[Information retournée par l'action et énoncée à voix haute]: {texte}")]))
+    if memoire:
+        _retenir_parole(texte)
 
     # ── Canal ECRIT : livrer le texte entier, d'un bloc, sans le dire ──────
     #
@@ -931,10 +955,6 @@ async def parler(texte):
 
     if not phrases:
         return
-
-    is_speaking = True
-    await send_web_state("speaking")
-    speak_volume = 0.0
 
     # Dictionnaires de configuration des voix
     cfg = _charger_config()
@@ -1041,10 +1061,28 @@ async def parler(texte):
             print(f"[TTS PREGEN] Erreur phrase {index}: {e}")
         return None
 
+    # Pré-génération de la 1ère phrase. Avec `apres` (parole anticipée), elle se
+    # fait PENDANT que la 1re phrase de la réponse est dite : plus de blanc entre les deux.
+    premier_fichier = asyncio.ensure_future(pre_generate(0))
+    if apres is not None and await apres:
+        # On lui a coupé la parole pendant la 1re phrase : on ne dit pas la suite.
+        await premier_fichier
+        for f in created_files:
+            try:
+                if os.path.exists(f):
+                    os.remove(f)
+            except OSError:
+                pass
+        return True
+
+    is_speaking = True
+    oreille.signaler_parole(True, texte)  # ce que l'oreille entend maintenant, c'est sa voix
+    await send_web_state("speaking")
+    speak_volume = 0.0
+
     try:
         import time
-        # Lancement de la pré-génération de la 1ère phrase
-        current_file = await pre_generate(0)
+        current_file = await premier_fichier
         # Tâche en arrière-plan pour la 2ème phrase
         next_task = asyncio.create_task(pre_generate(1))
 
@@ -1099,7 +1137,11 @@ async def parler(texte):
                 init_mixer()
                 pygame.mixer.music.load(current_file)
                 pygame.mixer.music.play()
+                _tour_lecture = 0
                 while pygame.mixer.music.get_busy():
+                    _tour_lecture += 1
+                    if not STOP_PARLER and _tour_lecture % 3 == 0 and oreille.interruption():
+                        STOP_PARLER = True  # « stop », « attends », « Jarvis » pendant qu'il parle
                     if STOP_PARLER:
                         pygame.mixer.music.stop()
                         break
@@ -1131,9 +1173,11 @@ async def parler(texte):
         print(f"Erreur boucle parler: {e}")
     finally:
         # Nettoyage final
+        interrompu   = STOP_PARLER  # lu avant la remise à zéro : la parole anticipée ne dit pas la suite
         speak_volume = 0.0
         is_speaking  = False
         STOP_PARLER  = False
+        oreille.signaler_parole(False)
         try:
             if pygame and pygame.mixer.get_init():
                 pygame.mixer.music.stop()
@@ -1148,6 +1192,7 @@ async def parler(texte):
             except:
                 pass
         await send_web_state("idle")
+    return interrompu
 
 builtins.parler = parler
 
@@ -1271,6 +1316,13 @@ LAST_SHOWN_RESTAURANTS = []
 BACKGROUND_TASKS = set()
 
 def lancer_tache_arriere_plan(coro):
+    # LOR-9 : le done_callback ne s'execute jamais si la boucle s'est fermee
+    # avant la fin de la tache (boucles ephemeres de la voix, main2.py:11946-
+    # 11962) : l'entree resterait dans le set pour toujours. On purge les
+    # entrees mortes avant d'ajouter, quel que soit le chemin emprunte.
+    for _tache in list(BACKGROUND_TASKS):
+        if _tache.done() or _tache.get_loop().is_closed():
+            BACKGROUND_TASKS.discard(_tache)
     if WEB_LOOP and WEB_LOOP.is_running():
         try:
             return asyncio.run_coroutine_threadsafe(coro, WEB_LOOP)
@@ -2199,6 +2251,7 @@ OMNIROUTE_MODEL = "jarvis-auto-fallback"
 # Dernier recours si la route dédiée disparaît (les modèles auto/* d'Omniroute
 # répondent même quand une route nommée est absente ou en panne).
 OMNIROUTE_FALLBACK = "auto/best-chat"
+_ROUTE_OMNI_EN_PANNE_JUSQUA = 0.0  # demander_omniroute saute la route dédiée jusqu'à cet instant après une panne
 client = None
 grok_client = None
 groq_client = None
@@ -2310,7 +2363,8 @@ def recharger_clients_ia():
     _omni_url = os.getenv("EXTRA_LLM_1_URL", "http://localhost:20128/v1")
     OMNIROUTE_MODEL = os.getenv("EXTRA_LLM_1_MODEL", OMNIROUTE_FALLBACK) or OMNIROUTE_FALLBACK
     if _cle_valide(_omni_key):
-        omniroute_client = OpenAI(api_key=_omni_key, base_url=_omni_url)
+        # max_retries=0 : OmniRoute fait déjà ses propres replis ; les 2 relances du client doublaient l'attente d'un 502.
+        omniroute_client = OpenAI(api_key=_omni_key, base_url=_omni_url, max_retries=0)
     else:
         omniroute_client = None
 
@@ -2392,6 +2446,15 @@ class APIQuotaManager:
         print(f"[QUOTA] ⚠ {api_name.upper()} quota atteint — cooldown {duration}s "
               f"(total: {self._hit_count[api_name]} fois)")
 
+    PANNE = 600  # s : un cerveau en panne (502, modèle introuvable) n'est plus réessayé avant 10 min
+
+    def mark_failed(self, api_name: str) -> None:
+        """Panne, pas un quota : même mise à l'écart, plus longue. Appelée par demander_omniroute et
+        l'appel OpenAI depuis toujours, mais n'existait pas : l'AttributeError était avalée et le
+        cerveau cassé (combo OmniRoute en 502 depuis le 08/10) coûtait ~4 s à CHAQUE question."""
+        self._cooldowns[api_name] = self._datetime.now() + self._timedelta(seconds=self.PANNE)
+        print(f"[QUOTA] ⚠ {api_name.upper()} en panne — écarté {self.PANNE // 60} min")
+
     def remaining_cooldown(self, api_name: str) -> int:
         """Secondes restantes avant que l'API soit à nouveau disponible (0 si dispo)."""
         if self.is_available(api_name):
@@ -2421,9 +2484,9 @@ CREATOR_INFO = (
     "INFORMATIONS SUR TON CREATEUR :\n"
     f"- Prenom : {USER_NAME}\n"
     + _age_line +
-    "- Role : Ton createur et maitre\n"
-    f"- Tu dois toujours l appeler {USER_NAME} avec respect "
-    "mais aussi une pointe de sarcasme affectueux.\n"
+    "- Role : Ton createur\n"
+    f"- Tu peux l appeler {USER_NAME} de temps en temps (pas a chaque phrase, comme un vrai pote), "
+    "avec une pointe de sarcasme affectueux.\n"
 )
 
 EXTENSIONS = {
@@ -2452,7 +2515,57 @@ dossier_courant = None
 # ==========================================
 # WEBSOCKET
 # ==========================================
-CONNECTED_CLIENTS = set()
+class _ClientsWeb(set):
+    """Ens. de clients WebSocket sûr entre threads (LOR-6).
+
+    ws_handler ajoute/re retire sur la boucle WebSocket (thread dédié, cf.
+    start_ia) alors que les diffusions partent aussi de la boucle
+    principale, de boucles temporaires (loop.run_until_complete) et des
+    threads d'arrière-plan (send_web_broadcast_sync). Un asyncio.Lock ne
+    couvre pas ces autres threads ni ces autres boucles : le verrou est
+    donc un threading.Lock, pris uniquement autour d'opérations
+    synchrones — jamais pendant un await.
+
+    * chaque mutation (add/discard/...) prend le verrou ;
+    * chaque itération renvoie une copie prise sous le verrou.
+
+    Resultat : plus de « RuntimeError: Set changed size during iteration »,
+    plus d'envois manquants ou en double pendant une connexion/deconnexion.
+    set.copy() reste de niveau C et ne repasse pas par __iter__ : le verrou
+    n'est jamais repris en récursion.
+    """
+    _verrou = threading.Lock()
+
+    def __iter__(self):
+        with self._verrou:
+            return iter(set.copy(self))
+
+    def add(self, item):
+        with self._verrou:
+            set.add(self, item)
+
+    def discard(self, item):
+        with self._verrou:
+            set.discard(self, item)
+
+    def remove(self, item):
+        with self._verrou:
+            set.remove(self, item)
+
+    def pop(self):
+        with self._verrou:
+            return set.pop(self)
+
+    def clear(self):
+        with self._verrou:
+            set.clear(self)
+
+    def update(self, *others):
+        with self._verrou:
+            set.update(self, *others)
+
+
+CONNECTED_CLIENTS = _ClientsWeb()
 builtins.CONNECTED_CLIENTS = CONNECTED_CLIENTS
 interface_deja_connectee = False
 _skip_pc_audio = False  # True quand la commande vient du mobile (le tél gère son propre TTS)
@@ -2964,7 +3077,8 @@ async def boucle_surveillance_ciel():
     while True:
         try:
             await asyncio.sleep(INTERVAL)
-            if not SKY_WATCH_ON or not SHADOWBROKER_HMAC_SECRET:
+            import jeu_leger
+            if not SKY_WATCH_ON or not SHADOWBROKER_HMAC_SECRET or jeu_leger.actif():   # pas d'annonce en pleine partie
                 continue
             lat, lng = _sb_ma_position()
             data = await asyncio.to_thread(
@@ -2985,7 +3099,7 @@ async def boucle_surveillance_ciel():
                 dtxt = f"à {round(dist)} kilomètres" if isinstance(dist, (int, float)) else "à proximité"
                 layer = (r.get("source_layer") or r.get("type") or "").lower()
                 cat = "militaire" if "mil" in layer else ("jet privé" if ("jet" in layer or "priv" in layer) else "aéronef")
-                await parler(f"{nom_utilisateur()}, un avion {cat}, {label}, passe {dtxt} de chez vous.{_sb_contexte_vol(cat)}")
+                await parler(f"{nom_utilisateur()}, un avion {cat}, {label}, passe {dtxt} de chez toi.{_sb_contexte_vol(cat)}")
                 # Pin sur la carte ShadowBroker si disponible (sinon alerte vocale seule)
                 _montrer = globals().get("_shadowbroker_montrer")
                 if _montrer is not None:
@@ -3001,6 +3115,27 @@ async def boucle_surveillance_ciel():
         except Exception as e:
             print(f"[SKY-WATCH] {e}")
             await asyncio.sleep(30)
+
+
+async def boucle_micro_coupe():
+    """Toutes les 5 min : prévient une fois quand le micro de JARVIS est coupé dans Windows.
+
+    06/11 : « il ne m'entend pas » venait d'un micro coupé par la mise à jour d'un pilote, sans
+    aucun signe nulle part (micro_etat.py). Lecture seule : JARVIS ne le réactive pas lui-même.
+    """
+    import micro_etat
+    await asyncio.sleep(30)  # après le briefing
+    deja = False
+    while True:
+        try:
+            coupe, nom = await asyncio.to_thread(micro_etat.etat, _charger_config().get("mic_device_index"))
+            if coupe and not deja:
+                await parler(f"{nom_utilisateur()}, ton micro « {nom} » est coupé dans Windows : je ne peux "
+                             "pas t'entendre. Réactive-le dans Paramètres, Système, Son, Entrée.", urgent=True)
+            deja = bool(coupe)
+        except Exception as _e_micro:
+            print(f"[MICRO] vérification impossible : {_e_micro!r}")
+        await asyncio.sleep(300)
 
 
 _BRIEFING_FAIT = False
@@ -3168,7 +3303,7 @@ async def _briefing_demarrage(websocket):
                 # Echec du tri : le dire. Reciter les plus recents les ferait
                 # passer pour une selection, ce qu'ils ne sont pas.
                 print(f"[BRIEFING] tri du courrier indisponible : {_e_tri!r}")
-                await parler("Je n'ai pas pu trier votre courrier ; "
+                await parler("J'ai pas réussi à trier ton courrier ; "
                              "l'onglet messagerie le montre tel quel.")
     except Exception as e:
         print(f"[BRIEFING] Erreur globale : {e}")
@@ -4489,6 +4624,31 @@ async def ws_handler(websocket):
                         await websocket.send(json.dumps({
                             "type": "delegation_projets", "projets": delegation_code.projets_connus()}))
 
+                elif data.get("type") == "prisme_rgb":
+                    # {"type": "prisme_rgb", "texte": "mets le RGB en rouge"} : même chemin que la voix.
+                    import catalogue as _cat_pr
+                    _ok_pr, _msg_pr = _cat_pr.autorisation("prisme_rgb")
+                    if _ok_pr:
+                        import rgb_prisme
+                        _a_pr = rgb_prisme.detecter(str(data.get("texte", "")))
+                        _ok_pr, _msg_pr = (await asyncio.to_thread(rgb_prisme.executer, _a_pr)) if _a_pr \
+                            else (False, "phrase RGB non comprise")
+                    await websocket.send(json.dumps({"type": "prisme_rgb", "ok": _ok_pr, "message": _msg_pr}))
+
+                elif data.get("type") == "demontage_site":
+                    # {"type": "demontage_site", "url": "igloo.inc"} : même chemin que la voix.
+                    import catalogue as _cat_ds
+                    _ok_ds, _msg_ds = _cat_ds.autorisation("demontage_site")
+                    if _ok_ds:
+                        import demontage
+                        _d_ds = demontage.detecter("démonte ce site " + str(data.get("url", "")))
+                        if not (_d_ds and _d_ds["url"]):
+                            _ok_ds, _msg_ds = False, "adresse de site invalide"
+                        else:
+                            _ok_ds, _msg_ds = _demarrer_demontage(_d_ds["url"], _d_ds["domaine"])
+                    await websocket.send(json.dumps({"type": "demontage_site", "ok": _ok_ds,
+                                                     "erreur": _msg_ds or None}))
+
                 elif data.get("type") == "delegation_code":
                     import catalogue as _cat_dc
                     _ok_dc, _refus_dc = _cat_dc.autorisation("delegation_code")
@@ -4895,7 +5055,7 @@ async def ws_handler(websocket):
                 elif data.get("type") == "av_speak":
                     text = data.get("text")
                     if text:
-                        lancer_tache_arriere_plan(parler(text))
+                        lancer_tache_arriere_plan(parler(text, urgent=True))  # alerte antivirus
                 elif data.get("type") == "clear_cache":
                     # Nettoyage manuel du cache WebView2 depuis le bouton du menu.
                     # Reset le marqueur pour forcer un vrai nettoyage au prochain demarrage
@@ -5035,9 +5195,9 @@ async def ws_handler(websocket):
                         print(f"[AV LIVE] Protection antivirus en temps réel mise à jour : {AV_LIVE_PROTECTION_ENABLED}")
                         if av_changed:
                             if AV_LIVE_PROTECTION_ENABLED:
-                                asyncio.create_task(parler(f"{USER_NAME}, la détection antivirus en temps réel de votre ordinateur est maintenant activée."))
+                                asyncio.create_task(parler(f"{USER_NAME}, la protection antivirus en temps réel de ton PC est activée."))
                             else:
-                                asyncio.create_task(parler(f"{USER_NAME}, la détection antivirus en temps réel de votre ordinateur a été désactivée."))
+                                asyncio.create_task(parler(f"{USER_NAME}, la protection antivirus en temps réel de ton PC est coupée."))
 
                     # Diffuser la configuration mise à jour à tous les clients pour synchronisation
                     # asyncio.to_thread : voir la note sur get_settings ci-dessus.
@@ -5115,7 +5275,7 @@ async def ws_handler(websocket):
                             nom_modele = "ChatGPT"
                         else:
                             nom_modele = "xAI Grok"
-                        await parler(f"Compris, je lance la génération avec {nom_modele}, patientez un instant.")
+                        await parler(f"OK, je lance la génération avec {nom_modele}, deux secondes.")
 
                         msg_loading = json.dumps({"type": "generation_loading", "media_type": "image"})
                         if CONNECTED_CLIENTS:
@@ -5137,8 +5297,8 @@ async def ws_handler(websocket):
                         asyncio.create_task(generer_site_web(prompt_fr, force_model, image_model))
             except Exception as e:
                 print(f"[WEB] Erreur traitement message : {e}")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[WEB] Erreur WebSocket : {e}")
     finally:
         CONNECTED_CLIENTS.discard(websocket)
         print(f"[WEB] Interface deconnectee (Clients actifs: {len(CONNECTED_CLIENTS)})")
@@ -5370,6 +5530,24 @@ CANAL_COURANT = contextvars.ContextVar("canal_jarvis", default="voix")
 # partout ailleurs -- aucun effet sur les canaux existants.
 DISCORD_SINK = contextvars.ContextVar("discord_sink", default=None)
 
+# Posée par traiter_reponse_ia le temps de demander_ia, pour une réponse dite à
+# voix haute sur le PC : les cerveaux qui savent lire en flux (Omniroute,
+# Gemini) confient leur 1re phrase à parler() dès qu'elle est écrite.
+# None partout ailleurs (texte, mobile, Discord, briefing) : appel classique.
+PAROLE_ANTICIPEE = contextvars.ContextVar("parole_anticipee", default=None)
+
+# Posée par traiter_reponse_ia : ce que parler() dit là répond à l'utilisateur. Partout ailleurs
+# (avions, courrier, briefing…) c'est une annonce de fond, qui attend la fin d'un quiz.
+EN_REPONSE = contextvars.ContextVar("en_reponse", default=False)
+
+
+def _quiz_en_cours():
+    try:
+        import revisions
+        return revisions.quiz_actif()
+    except Exception:
+        return False
+
 # Directives de reponse, par canal.
 _DIRECTIVES_VOIX = (
     "DIRECTIVES DE RÉPONSE (RÈGLE D'OR DE LATENCE MINIMALE) :\n"
@@ -5398,7 +5576,13 @@ def construire_system_prompt(use_search=False):
         "Voici tes directives strictes de fonctionnement :\n"
         "1. UTILISATION DE LA CONNAISSANCE INTERNE : Tu possèdes une base de données interne extrêmement solide. Pour chaque demande, analyse tes propres connaissances et donne la réponse directement, de manière claire, précise et sans aucune hésitation.\n"
         "2. RECHERCHE INTERNET (EN DERNIER RECOURS UNIQUEMENT) : Tu ne dois utiliser l'outil de recherche sur Internet QUE si la réponse absolue te manque ou s'il s'agit d'une actualité récente en temps réel que tu ne peux pas connaître. Si tu as besoin de chercher sur le web, fais-le discrètement pour compléter ton savoir, mais privilégie toujours ton cerveau interne.\n"
-        "3. TON ET STYLE : Adopte le ton de JARVIS : intelligent, réactif, courtois, efficace et légèrement sophistiqué. Pas de fioritures inutiles, va droit au but avec un maximum de précision.\n\n"
+        f"3. TA FAÇON DE PARLER : parle comme une vraie personne, pas comme une IA. Tu TUTOIES {USER_NAME} : "
+        "tu es son assistant et un peu son pote geek, malin et franc. Réponds d'abord à ce qu'il demande, avec "
+        "des mots simples, comme à l'oral. Jamais de formules de robot : pas de « Bien sûr ! », « Excellente "
+        "question », « En tant qu'IA », « Je serais ravi de », « N'hésite pas », « Voici ». Ne répète pas son "
+        "prénom à chaque phrase et varie tes débuts. Tu peux dire « Bon », « Ah ok », « Attends », « Franchement ». "
+        "Si tu ne sais pas, dis-le au lieu d'inventer ; si c'est une mauvaise idée, dis-le gentiment avec la raison. "
+        "Un peu d'humour, pas de flatterie ni d'enthousiasme forcé.\n\n"
         f"La ville de l'utilisateur est {VILLE_PAR_DEFAUT} (Latitude: {LAT_PAR_DEFAUT}, Longitude: {LON_PAR_DEFAUT}). Si l'utilisateur te demande la météo ou la température sans préciser de lieu, considère qu'il parle de sa ville ({VILLE_PAR_DEFAUT}) et utilise l'action 'meteo' avec la ville '{VILLE_PAR_DEFAUT}' ou 'null'.\n\n"
         + (_DIRECTIVES_TEXTE if CANAL_COURANT.get() == "texte" else _DIRECTIVES_VOIX)
         + ("" if CANAL_COURANT.get() == "texte" else
@@ -5498,6 +5682,12 @@ def construire_system_prompt(use_search=False):
                 "(traité avant toi, avec le vrai quiz) ; « stop révision » l'arrête. Si on te "
                 "demande si tu peux aider à réviser, réponds OUI et donne ces phrases. Hors de ce "
                 "mode, n'invente ni évaluation ni quiz Pronote.\n"
+                "MODE PROFESSEUR (traité avant toi, comme le quiz) : « interroge-moi sur <sujet> » "
+                "fait un quiz de 10 questions sur n'importe quel sujet ; « fais-moi un cours sur "
+                "<sujet> » fait un petit cours puis 4 questions ; « révise mes erreurs » repose les "
+                "questions ratées ; « reprends la révision » reprend un quiz arrêté ; « mode "
+                "professeur » dit tout ça. Pendant un quiz : « répète », « indice », « redis le "
+                "cours ». Donne ces phrases si on te demande comment réviser.\n"
             )
 
         if _cat_prompt.action_autorisee("get_plugins"):
@@ -5531,6 +5721,16 @@ def construire_system_prompt(use_search=False):
                 "phrases que tu traites toi-même.\n"
             )
 
+        if _cat_prompt.action_autorisee("get_agents"):
+            base += (
+                "\n\nPAPERCLIP (ÉQUIPE D'AGENTS DE CODE) :\n"
+                f"Paperclip fait travailler des agents de code sur "
+                f"des tâches de {USER_NAME}. « Où en est Paperclip ? », « qu'est-ce que fait "
+                "Paperclip ? » sont lues directement dans Paperclip, avant toi : tâches en cours, "
+                "en relecture, terminées, et agents au travail. Si on te demande si tu suis "
+                "Paperclip, réponds OUI et donne ces formulations ; n'invente jamais son état.\n"
+            )
+
         if _cat_prompt.action_autorisee("rappel_os_creer"):
             base += (
                 "\n\nRAPPELS QUI SURVIVENT À L'EXTINCTION :\n"
@@ -5556,6 +5756,42 @@ def construire_system_prompt(use_search=False):
                 "enregistré dans git, il relit le diff. Si on te demande si tu peux coder, "
                 "réponds OUI et explique cette phrase, sans prétendre avoir déjà lancé "
                 "quoi que ce soit.\n"
+            )
+
+        if _cat_prompt.action_autorisee("prisme_rgb"):
+            base += (
+                "\n\nÉCLAIRAGE RGB DU PC (PRISME) :\n"
+                f"Tu PEUX piloter les LED RGB du PC de {USER_NAME} avec Prisme : « éteins le RGB », "
+                "« allume le RGB », « mets le RGB en rouge » (rouge, vert, bleu, jaune, orange, violet, "
+                "rose, blanc, cyan), « RGB arc-en-ciel / feu / étoiles / respiration / dégradé / gyrophare », "
+                "« RGB à 40 % », « RGB suivant ». Ces phrases sont traitées avant toi, il faut le mot RGB. "
+                "Ce ne sont PAS les lampes de la maison (ça, c'est Home Assistant). Si on te demande si tu "
+                "sais changer les lumières du PC, réponds OUI et donne ces phrases.\n"
+            )
+
+        if _cat_prompt.action_autorisee("demontage_site"):
+            base += (
+                "\n\nDÉMONTER UN SITE (RÉTRO-INGÉNIERIE) :\n"
+                f"Tu PEUX démonter un site web pour {USER_NAME} : la phrase « démonte ce site X » "
+                "(ou « démonte igloo point inc ») est traitée avant toi. Claude Code ouvre le site "
+                "dans un navigateur à part avec l'outil REA, relève son code et ses requêtes, puis "
+                "un rapport (technologies, effets, poids, comment refaire pareil) est rangé dans la "
+                "mémoire partagée, dossier etat. Ce n'est PAS une action que tu génères. Si on te "
+                "demande si tu sais démonter ou analyser un site, réponds OUI et donne cette phrase.\n"
+            )
+
+        if _cat_prompt.action_autorisee("tache_agent"):
+            base += (
+                "\n\nTÂCHES EN PLUSIEURS ÉTAPES (AGENT) :\n"
+                '{"action": "tache_agent", "objectif": "la demande complète, reformulée clairement"}\n'
+                f"Utilise cette action quand la demande de {USER_NAME} demande PLUSIEURS étapes dont la "
+                "suite dépend de ce qu'on trouve : lire ses devoirs Pronote puis lui bloquer du temps dans "
+                "l'agenda, chercher un mail puis en tirer un rendez-vous, chercher sur le web puis écrire une "
+                "note, croiser agenda et devoirs. Un agent s'en charge en arrière-plan (Pronote, agendas, "
+                "mails en lecture, web, météo, notes Obsidian, mémoire partagée) puis annonce le résultat. "
+                "Il n'envoie ni mail ni invitation. N'utilise PAS cette action pour une demande qu'une "
+                "seule autre action règle. Une phrase qui commence par « Mission : » le lance directement : "
+                "si on te demande si tu sais enchaîner plusieurs étapes, réponds OUI et donne cette formule.\n"
             )
     except Exception:
         pass          # le prompt reste correct meme si le controle echoue
@@ -5692,6 +5928,9 @@ def construire_system_prompt(use_search=False):
         f'{{"action": "vision_chercher_sur_site", "texte": "ce que {USER_NAME} veut rechercher"}}\n'
         '{"action": "lance_camera"}\n'
         '{"action": "vision_navigateur"}\n'
+        '{"action": "juge", "actif": true}\n'
+        f"'juge' : {USER_NAME} veut que tu le surveilles et le juges quand il ne fait rien (webcam et écran toutes les "
+        "3 minutes, modèle local, remarque s'il ne fait rien) ; \"actif\": false quand il veut que tu arrêtes.\n"
         f"IMPORTANT : Utilise 'voir_ecran' pour un simple CLIC (par exemple quand {USER_NAME} dit 'clique sur la musique numéro 2' ou 'clique sur Play'), "
         f"'vision_ecrire' pour TAPER dans un champ precis, 'vision_chercher_sur_site' quand {USER_NAME} dit 'recherche sur ce site', 'tape sur ce site', 'cherche ici' ou similaire, "
         "'lance_camera' pour activer la WEBCAM / CAMERA PHYSIQUE (quand il dit 'active la camera' ou 'montre-moi'), "
@@ -5844,14 +6083,14 @@ def executer_action_pc(commande):
             _ouvrir_url(url, new=2)
             time.sleep(5)
             pyautogui.press('f')
-            return f"C'est parti {USER_NAME}, je lance votre musique sur YouTube."
+            return f"C'est parti, je lance ta musique sur YouTube."
         lien = MUSIQUE_LIEN_PERSO.strip() if MUSIQUE_LIEN_PERSO else ""
         if lien:
             _ouvrir_url(lien, new=2)
-            return f"C'est parti {USER_NAME}, je lance votre musique."
+            return f"C'est parti, je lance ta musique."
         ok = spotify_lancer_playlist(SPOTIFY_MUSIQUE_URI)
         if ok:
-            return f"C'est parti {USER_NAME}, je lance votre playlist sur Spotify."
+            return f"C'est parti, je lance ta playlist sur Spotify."
         return f"Je n'ai pas réussi à ouvrir Spotify, {USER_NAME}."
 
     if "youtube" in cmd:
@@ -5877,7 +6116,7 @@ def executer_action_pc(commande):
                                             r"%PROGRAMFILES%\Google\Chrome\Application\chrome.exe"],
                              env_key="CHROME_PATH"):
                 return "Chrome ouvert."
-            return "Je n'ai pas trouvé Chrome sur votre PC."
+            return "J'ai pas trouvé Chrome sur ton PC."
 
         if "notepad" in cmd or "bloc-notes" in cmd:
             if _boulot_lancer("Notepad", ["notepad.exe"]):
@@ -6305,6 +6544,19 @@ def _lancer_menu_demarrer(nom):
         return False, None
 
 
+def _juge_basculer(actif):
+    """« juge-moi » / « arrête de me juger » (clavier, voix ou action du modèle) -> la phrase à dire. Voir juge.py."""
+    import catalogue as _cat_juge
+    import juge
+    if not _cat_juge.action_autorisee("juge"):
+        return _cat_juge.refus("juge")
+    juge.activer(actif)
+    if not actif:
+        return "OK, j'arrête de te juger. Pour l'instant."
+    return ("OK, je t'ai à l'œil. Toutes les trois minutes je regarde ta webcam et ton écran : si tu fais rien, "
+            "tu vas l'entendre. Les images restent sur ce PC. Dis « arrête de me juger » pour que j'arrête.")
+
+
 def _capture_ecran_locale_b64():
     """Ecran principal en JPEG base64 (format attendu par demander_ia_vision), ou None."""
     try:
@@ -6373,7 +6625,7 @@ async def resoudre_extras_locaux(texte):
                     f"Fin du décompte, {nom_utilisateur()}. Je reste à votre entière disposition."
                 ]
                 loop2 = asyncio.new_event_loop()
-                loop2.run_until_complete(parler(random.choice(reponses)))
+                loop2.run_until_complete(parler(random.choice(reponses), urgent=True))
                 loop2.close()
 
             timer = threading.Timer(duree, _sonner)
@@ -6460,8 +6712,8 @@ async def resoudre_extras_locaux(texte):
         if age_match:
             annee_naissance = int(age_match.group(1))
             age = datetime.now().year - annee_naissance
-            return f"Si vous êtes né en {annee_naissance}, vous avez {age} ans, {nom_utilisateur()}."
-        return "Précisez votre année de naissance, par exemple : 'Né en 1990, quel âge j'ai ?'"
+            return f"Si t'es né en {annee_naissance}, t'as {age} ans."
+        return "Dis-moi ton année de naissance, genre : « né en 2014, quel âge j'ai ? »"
 
     # ══ COMPTE À REBOURS ═══════════════════════════════════════
     if any(k in t for k in ["combien de jours avant noël", "combien de jours jusqu'à noël",
@@ -6548,7 +6800,7 @@ async def resoudre_extras_locaux(texte):
             listes["notes"].append(note)
             _sauvegarder_listes(listes)
             return f"Note enregistrée, {nom_utilisateur()} : '{contenu}'"
-        return "Que souhaitez-vous que je note ?"
+        return "Je note quoi ?"
 
     if any(k in t for k in ["lis mes notes", "montre mes notes", "quelles sont mes notes",
                              "mes notes", "affiche mes notes"]):
@@ -6563,7 +6815,7 @@ async def resoudre_extras_locaux(texte):
         listes = _charger_listes()
         listes["notes"] = []
         _sauvegarder_listes(listes)
-        return f"Toutes vos notes ont été effacées, {nom_utilisateur()}."
+        return "J'ai effacé toutes tes notes."
 
     # ══ LISTE DE COURSES ═══════════════════════════════════════
     if any(k in t for k in ["ajoute", "rajoute"]) and any(k in t for k in ["liste de courses", "courses", "liste d'achats"]):
@@ -6581,7 +6833,7 @@ async def resoudre_extras_locaux(texte):
             if CONNECTED_CLIENTS:
                 asyncio.ensure_future(asyncio.gather(*[ws.send(msg) for ws in CONNECTED_CLIENTS], return_exceptions=True))
                 asyncio.ensure_future(asyncio.gather(*[ws.send(msg_open) for ws in CONNECTED_CLIENTS], return_exceptions=True))
-            return f"'{article}' ajouté à votre liste de courses, {nom_utilisateur()}."
+            return f"'{article}' ajouté à ta liste de courses."
 
     # Check if the user is asking about what's on their shopping list (querying/reading it)
     is_asking_courses = False
@@ -6861,7 +7113,7 @@ async def resoudre_extras_locaux(texte):
                         await asyncio.gather(*[ws.send(msg) for ws in CONNECTED_CLIENTS], return_exceptions=True)
                 if CONNECTED_CLIENTS:
                     lancer_tache_arriere_plan(_send_images())
-                return f"Je recherche des images de {query} et je les affiche sur votre interface, {nom_utilisateur()}."
+                return f"Je cherche des images de {query} et je te les affiche."
 
     # ══ MISES À JOUR LOGICIELS (WINGET) ═════════════════════════════
     _winget_phrases = [
@@ -6886,7 +7138,7 @@ async def resoudre_extras_locaux(texte):
             if CONNECTED_CLIENTS:
                 msg = json.dumps({"type": "av_open"})
                 lancer_tache_arriere_plan(asyncio.gather(*[ws.send(msg) for ws in CONNECTED_CLIENTS], return_exceptions=True))
-            return f"J'ouvre la console de sécurité et j'initialise le scan antivirus de votre ordinateur, {nom_utilisateur()}."
+            return "J'ouvre la console de sécurité et je lance l'antivirus sur ton PC."
 
     # ══ RAPPELS / RENDEZ-VOUS ══════════════════════════════════════
     # Pattern 1: rappelle-moi [action] à [heure]
@@ -6931,7 +7183,7 @@ async def resoudre_extras_locaux(texte):
                                   "data": await asyncio.to_thread(_config_pour_hud)})
                 lancer_tache_arriere_plan(asyncio.gather(*[ws.send(msg) for ws in CONNECTED_CLIENTS], return_exceptions=True))
 
-            return f"Rappel enregistré, {nom_utilisateur()}. Je vous rappellerai : '{text}' à {time_str}."
+            return f"C'est noté, je te rappelle « {text} » à {time_str}."
 
     # ══ OBSIDIAN NOTES ═════════════════════════════════════════════
     if any(k in t for k in ["mes notes obsidian", "mes notes", "affiche mes notes", "ouvre mes notes", "ouvre obsidian", "coffre obsidian"]):
@@ -6941,7 +7193,7 @@ async def resoudre_extras_locaux(texte):
             msg_notes = json.dumps({"type": "obsidian_notes", "notes": notes_list})
             lancer_tache_arriere_plan(asyncio.gather(*[ws.send(msg_open) for ws in CONNECTED_CLIENTS], return_exceptions=True))
             lancer_tache_arriere_plan(asyncio.gather(*[ws.send(msg_notes) for ws in CONNECTED_CLIENTS], return_exceptions=True))
-        return f"J'ouvre votre coffre de notes Obsidian sur l'interface, {nom_utilisateur()}."
+        return "J'ouvre ton coffre Obsidian."
 
     # ══ RESTAURANTS LOCAL ══════════════════════════════════════════
     is_restaurant_query = any(k in t for k in ["restaurant", "restaurants", "ou manger", "où manger"])
@@ -6975,7 +7227,7 @@ async def resoudre_extras_locaux(texte):
             exclure = list(LAST_SHOWN_RESTAURANTS)
 
             lancer_recherche_restaurants_background(location, lat, lng, exclure, is_others)
-            return f"Je cherche d'autres adresses de restaurants pour vous, un instant {nom_utilisateur()}." if is_others else f"J'active le radar de recherche de restaurants, un instant {nom_utilisateur()}."
+            return "Je cherche d'autres restos." if is_others else "Je cherche des restos autour de toi."
 
     return None
 
@@ -7045,6 +7297,20 @@ async def demander_ia_isolee(texte):
         if not reponse:
             raise RuntimeError("Gemini indisponible, Ollama local n'a rien renvoyé") from _e_gemini
         return reponse
+
+
+def _retenir_echange(texte, rep):
+    """Ajoute l'echange a l'historique, seulement si la reponse contient du texte. Vrai si ajoute.
+
+    Une reponse vide (content None renvoye par OmniRoute, 22/10/2026) devenait un Part sans donnees :
+    Gemini refusait ensuite TOUT l'historique en 400 (« required oneof field 'data' ») jusqu'au
+    redemarrage, et JARVIS repondait avec des resultats de recherche web au lieu de reflechir.
+    """
+    if not (isinstance(rep, str) and rep.strip()):
+        return False
+    historique.append(types.Content(role="user", parts=[types.Part(text=texte)]))
+    historique.append(types.Content(role="model", parts=[types.Part(text=rep)]))
+    return True
 
 
 async def demander_ia(texte):
@@ -7120,23 +7386,31 @@ async def demander_ia(texte):
                     # aucune synthese vocale : on lui laisse le temps.
                     _delai_ia = 90.0 if CANAL_COURANT.get() == "texte" else 12.0
                     print(f"[CERVEAU] Essai modele : {model_name} (Timeout {_delai_ia:.0f}s, canal {CANAL_COURANT.get()})")
-                    response = await asyncio.wait_for(
-                        asyncio.to_thread(
-                            client.models.generate_content,
-                            model=model_name,
-                            config=types.GenerateContentConfig(
-                                system_instruction=prompt_actuel,
-                                temperature=0.7,
-                                tools=tools_list,
-                            ),
-                            contents=temp_hist
-                        ),
-                        timeout=_delai_ia
+                    _config_gemini = types.GenerateContentConfig(
+                        system_instruction=prompt_actuel,
+                        temperature=0.7,
+                        tools=tools_list,
                     )
-                    rep = response.text
-                    historique.append(types.Content(role="user", parts=[types.Part(text=texte)]))
-                    historique.append(types.Content(role="model", parts=[types.Part(text=rep)]))
-                    _sauvegarder_echange_conv(texte, rep)
+                    _anticipation = PAROLE_ANTICIPEE.get()
+                    if _anticipation is not None:
+                        # En flux : la 1re phrase part à la voix pendant que la suite s'écrit.
+                        rep, response = await parole_anticipee.texte_en_flux(
+                            lambda: client.models.generate_content_stream(
+                                model=model_name, config=_config_gemini, contents=temp_hist),
+                            lambda c: c.text, _anticipation, delai=_delai_ia)
+                    else:
+                        response = await asyncio.wait_for(
+                            asyncio.to_thread(
+                                client.models.generate_content,
+                                model=model_name,
+                                config=_config_gemini,
+                                contents=temp_hist
+                            ),
+                            timeout=_delai_ia
+                        )
+                        rep = response.text
+                    if _retenir_echange(texte, rep):
+                        _sauvegarder_echange_conv(texte, rep)
                     # Suivi cout : cable en revue de code (2026-09-18), meme
                     # garde que demander_ia_isolee (jamais bloquant).
                     try:
@@ -7373,7 +7647,7 @@ async def demander_ia(texte):
                         "temperature": str(temp),
                         "humidite": str(hum) if hum else None,
                     })
-                    return f"La température chez vous est de {temp} degrés."
+                    return f"Il fait {temp} degrés à la maison."
 
         # --- FALLBACK GROQ (LLAMA 3.3) ---
         if groq_client and _quota_mgr.is_available("groq"):
@@ -7457,7 +7731,8 @@ async def demander_ia(texte):
         )
     finally:
         is_thinking = False
-        await send_web_state("idle")
+        if not is_speaking:  # parole anticipée déjà en cours : parler() remettra « idle » à la fin
+            await send_web_state("idle")
 
 async def demander_ia_vision(texte, img_b64):
     """Analyse une image (capture d'écran) avec Gemini Vision."""
@@ -7562,15 +7837,14 @@ async def demander_ia_vision(texte, img_b64):
             raise last_err or Exception("Aucun modele n'a pu analyser l'image")
 
         # On ajoute la trace dans l'historique (sans l'image pour éviter de saturer la mémoire)
-        historique.append(types.Content(role="user", parts=[types.Part(text=f"[Analyse d'écran] {texte}")]))
-        historique.append(types.Content(role="model", parts=[types.Part(text=rep)]))
+        _retenir_echange(f"[Analyse d'écran] {texte}", rep)
 
         return rep
     except Exception as e:
         print(f"[VISION] Erreur Gemini Vision : {e}")
         # On évite les accolades dans le message d'erreur pour ne pas perturber l'extracteur JSON
         err_msg = str(e).replace("{", "[").replace("}", "]")
-        return f"Désolé {nom_utilisateur()}, je n'ai pas pu analyser votre écran. Erreur : {err_msg}"
+        return f"J'ai pas réussi à analyser ton écran ({err_msg})."
     finally:
         is_thinking = False
         await send_web_state("idle")
@@ -7640,9 +7914,8 @@ async def demander_openai(texte):
 
         if completion and completion.choices:
             rep = completion.choices[0].message.content
-            historique.append(types.Content(role="user", parts=[types.Part(text=texte)]))
-            historique.append(types.Content(role="model", parts=[types.Part(text=rep)]))
-            _sauvegarder_echange_conv(texte, rep)
+            if _retenir_echange(texte, rep):
+                _sauvegarder_echange_conv(texte, rep)
             return rep
         else:
             if last_openai_err:
@@ -7681,21 +7954,39 @@ async def demander_omniroute(texte):
         # Le modèle du .env peut pointer vers un backend éteint (502). Dans ce
         # cas on bascule sur le routage automatique d'Omniroute, qui choisit un
         # modèle disponible — sinon une panne backend tuerait tout le cerveau.
+        global _ROUTE_OMNI_EN_PANNE_JUSQUA
         _modeles = [OMNIROUTE_MODEL]
         if OMNIROUTE_MODEL != OMNIROUTE_FALLBACK:
             _modeles.append(OMNIROUTE_FALLBACK)
+            # Route dédiée en panne il y a moins de 10 min : on va droit au secours
+            # (06/11 : la route « jarvis-auto-fallback » ratait à chaque question, 0,3 à 3 s perdues).
+            if _maintenant() < _ROUTE_OMNI_EN_PANNE_JUSQUA:
+                _modeles = [OMNIROUTE_FALLBACK]
 
         completion = None
         _last_err = None
         _all_quota = True  # ne marquer Omniroute épuisé que si TOUS échouent en quota
         for _m in _modeles:
             try:
-                completion = omniroute_client.chat.completions.create(
-                    model=_m,
-                    messages=messages,
-                    max_tokens=2048,
-                    temperature=0.7,
-                )
+                _anticipation = PAROLE_ANTICIPEE.get()
+                if _anticipation is not None:
+                    # En flux : la 1re phrase part à la voix pendant que la suite s'écrit.
+                    from types import SimpleNamespace
+                    _rep_flux, _ = await parole_anticipee.texte_en_flux(
+                        lambda: omniroute_client.chat.completions.create(
+                            model=_m, messages=messages, max_tokens=2048, temperature=0.7, stream=True),
+                        lambda c: c.choices[0].delta.content if c.choices else None,
+                        _anticipation, delai=12.0)  # muet 12 s : on passe à la suite, comme Gemini
+                    completion = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=_rep_flux))])
+                else:
+                    # Dans un fil : l'appel est synchrone, il figeait toute la boucle (HUD, WebSocket) pendant l'attente.
+                    completion = await asyncio.to_thread(
+                        omniroute_client.chat.completions.create,
+                        model=_m,
+                        messages=messages,
+                        max_tokens=2048,
+                        temperature=0.7,
+                    )
                 if completion and completion.choices:
                     break
             except Exception as api_e:
@@ -7703,23 +7994,25 @@ async def demander_omniroute(texte):
                 _is_quota = "429" in _err or "quota" in _err.lower() or "rate limit" in _err.lower()
                 if not _is_quota:
                     _all_quota = False
+                    if _m == OMNIROUTE_MODEL and len(_modeles) > 1:
+                        _ROUTE_OMNI_EN_PANNE_JUSQUA = _maintenant() + 600
                 # Un 429 ne concerne que CE modèle (crédits épuisés sur cette
                 # route) — on tente quand même le suivant avant d'abandonner.
                 print(f"[OMNIROUTE] Modèle {_m} indisponible ({_err[:120]}).")
                 _last_err = api_e
         if not completion:
             if _all_quota and _last_err:
-                _quota_mgr.mark_failed("omniroute")
+                _quota_mgr.mark_quota_exceeded("omniroute")
                 raise _QuotaExceededError(str(_last_err))
             if _last_err:
+                _quota_mgr.mark_failed("omniroute")  # 502, modèle absent : inutile de repayer ~4 s à chaque question
                 raise _last_err
             return None
 
         if completion and completion.choices:
             rep = completion.choices[0].message.content
-            historique.append(types.Content(role="user", parts=[types.Part(text=texte)]))
-            historique.append(types.Content(role="model", parts=[types.Part(text=rep)]))
-            _sauvegarder_echange_conv(texte, rep)
+            if _retenir_echange(texte, rep):
+                _sauvegarder_echange_conv(texte, rep)
             return rep
         return None
 
@@ -7774,9 +8067,8 @@ async def demander_grok(texte):
         rep = completion.choices[0].message.content
 
         # On synchronise l'historique Gemini
-        historique.append(types.Content(role="user", parts=[types.Part(text=texte)]))
-        historique.append(types.Content(role="model", parts=[types.Part(text=rep)]))
-        _sauvegarder_echange_conv(texte, rep)
+        if _retenir_echange(texte, rep):
+            _sauvegarder_echange_conv(texte, rep)
 
         return rep
     except Exception as e:
@@ -7803,6 +8095,11 @@ async def handle_image_result_global(result_img, prompt_fr):
             except Exception: pass
     else:
         err = result_img.get("error", "Erreur inconnue.") if result_img else "Échec de la génération."
+        # L'interface affiche « génération en cours » depuis generation_loading : sans ce message,
+        # elle restait affichée après un échec (la vidéo le faisait déjà).
+        if CONNECTED_CLIENTS:
+            await asyncio.gather(*[ws.send(json.dumps({"type": "hide_generation_loading"}))
+                                   for ws in CONNECTED_CLIENTS], return_exceptions=True)
         await parler(f"Désolé {USER_NAME}, je n'ai pas pu générer l'image. {err}")
 
 async def generer_image_xai(prompt: str, force_model: str = None) -> dict:
@@ -8072,9 +8369,8 @@ async def demander_ollama(texte):
                     data = resp.json()
                     rep = data.get("message", {}).get("content", "")
                     if rep:
-                        historique.append(types.Content(role="user", parts=[types.Part(text=texte)]))
-                        historique.append(types.Content(role="model", parts=[types.Part(text=rep)]))
-                        _sauvegarder_echange_conv(texte, rep)
+                        if _retenir_echange(texte, rep):
+                            _sauvegarder_echange_conv(texte, rep)
                         print(f"[OLLAMA] Reponse recue de {model_name}")
                         return rep
                 else:
@@ -8116,9 +8412,8 @@ async def demander_groq(texte):
 
         rep = completion.choices[0].message.content
 
-        historique.append(types.Content(role="user", parts=[types.Part(text=texte)]))
-        historique.append(types.Content(role="model", parts=[types.Part(text=rep)]))
-        _sauvegarder_echange_conv(texte, rep)
+        if _retenir_echange(texte, rep):
+            _sauvegarder_echange_conv(texte, rep)
 
         return rep
     except Exception as e:
@@ -8148,9 +8443,8 @@ async def demander_mistral(texte):
             temperature=0.7,
         )
         rep = completion.choices[0].message.content
-        historique.append(types.Content(role="user", parts=[types.Part(text=texte)]))
-        historique.append(types.Content(role="model", parts=[types.Part(text=rep)]))
-        _sauvegarder_echange_conv(texte, rep)
+        if _retenir_echange(texte, rep):
+            _sauvegarder_echange_conv(texte, rep)
         return rep
     except Exception as e:
         if _quota_mgr.is_quota_error(e):
@@ -8184,9 +8478,8 @@ async def demander_claude(texte):
         rep = response.content[0].text
 
         # Sync historique global
-        historique.append(types.Content(role="user", parts=[types.Part(text=texte)]))
-        historique.append(types.Content(role="model", parts=[types.Part(text=rep)]))
-        _sauvegarder_echange_conv(texte, rep)
+        if _retenir_echange(texte, rep):
+            _sauvegarder_echange_conv(texte, rep)
 
         return rep
     except Exception as e:
@@ -8420,7 +8713,7 @@ async def resoudre_commandes_locales(texte):
             _sauvegarder_config({"user_age": _age_temp})
             USER_AGE = _age_temp
             _age_temp = ""
-            return f"Parfait {USER_NAME}, j'ai bien enregistré votre âge : {USER_AGE} ans. Je m'en souviendrai !"
+            return f"OK, {USER_AGE} ans, je retiens."
         else:
             _age_temp = ""
             return f"Pas de problème {USER_NAME}, je n'enregistre rien."
@@ -8431,8 +8724,8 @@ async def resoudre_commandes_locales(texte):
         if match:
             _age_temp = match.group(1)
             attente_confirmation_age = True
-            return f"{_age_temp} ans, noté ! Voulez-vous que je l'enregistre dans ma mémoire pour m'en souvenir la prochaine fois ?"
-        return f"Je n'ai pas compris votre âge, {USER_NAME}. Pouvez-vous me donner un nombre ? Par exemple : '28 ans'."
+            return f"{_age_temp} ans, noté. Tu veux que je m'en souvienne pour la prochaine fois ?"
+        return "J'ai pas compris ton âge. Dis-moi juste un nombre, genre « 12 ans »."
 
     if attente_nom_dossier:
         t = f"ouvre le dossier {t}"
@@ -8503,7 +8796,7 @@ async def resoudre_commandes_locales(texte):
                         ville = potentiel_ville.title()
                     break
 
-            await parler("Je consulte la météo, un instant.")
+            await parler("Je regarde la météo.")
             nom_ville = ville or VILLE_PAR_DEFAUT
             meteo_data = await asyncio.to_thread(get_meteo_structuree, nom_ville)
             if meteo_data:
@@ -8514,10 +8807,10 @@ async def resoudre_commandes_locales(texte):
         # Interception des commandes incompletes
         if t in ["ouvre le dossier", "ouvre mon dossier", "ouvre un dossier"]:
             attente_nom_dossier = True
-            return f"Quel dossier voulez-vous ouvrir, {USER_NAME} ?"
+            return "Quel dossier tu veux ouvrir ?"
         elif t in ["ouvre l'application", "lance l'application", "ouvre le logiciel", "lance le logiciel", "ouvre", "lance"]:
             attente_nom_app = True
-            return f"Quelle application voulez-vous lancer, {USER_NAME} ?"
+            return "Quelle appli tu veux lancer ?"
 
     # --- IDENTITE / CREATEUR (Priorite 0) ---
     _createur_questions = [
@@ -8822,7 +9115,7 @@ async def resoudre_commandes_locales(texte):
                 pyautogui.press('f')
                 if title:
                     lancer_tache_arriere_plan(fetch_and_broadcast_lyrics(title))
-                return f"C'est parti {USER_NAME}, je lance {recherche} sur YouTube."
+                return f"C'est parti, je lance {recherche} sur YouTube."
             else:
                 return f"Désolé {USER_NAME}, je n'ai pas trouvé de vidéo pour cette recherche sur YouTube."
         else:
@@ -8830,7 +9123,7 @@ async def resoudre_commandes_locales(texte):
             _ouvrir_url(url, new=2)
             time.sleep(5)
             pyautogui.press('f')
-            return f"C'est parti {USER_NAME}, je lance votre musique sur YouTube."
+            return f"C'est parti, je lance ta musique sur YouTube."
 
     # Commande "mets de la musique" — lien perso en priorité, Spotify sinon
     if any(k in t for k in [
@@ -8846,29 +9139,29 @@ async def resoudre_commandes_locales(texte):
                 if lien.startswith("spotify:"):
                     ok = spotify_lancer_playlist(lien)
                     if ok:
-                        return f"C'est parti {USER_NAME}, je lance votre playlist Spotify."
+                        return f"C'est parti, je lance ta playlist Spotify."
                     return f"Je n'ai pas réussi à ouvrir Spotify, {USER_NAME}."
                 else:
                     _ouvrir_url(lien, new=2)
-                    return f"C'est parti {USER_NAME}, j'ouvre votre playlist Spotify."
+                    return f"C'est parti, j'ouvre ta playlist Spotify."
             elif "youtube" in lien or "youtu.be" in lien:
                 _ouvrir_url(lien, new=2)
                 time.sleep(5)
                 pyautogui.press('f')
-                return f"C'est parti {USER_NAME}, je lance votre musique sur YouTube."
+                return f"C'est parti, je lance ta musique sur YouTube."
             elif "deezer" in lien:
                 _ouvrir_url(lien, new=2)
-                return f"C'est parti {USER_NAME}, j'ouvre votre musique sur Deezer."
+                return f"C'est parti, j'ouvre ta musique sur Deezer."
             elif "music.apple" in lien:
                 _ouvrir_url(lien, new=2)
-                return f"C'est parti {USER_NAME}, j'ouvre Apple Music."
+                return f"C'est parti, j'ouvre Apple Music."
             else:
                 _ouvrir_url(lien, new=2)
-                return f"C'est parti {USER_NAME}, je lance votre musique."
+                return f"C'est parti, je lance ta musique."
         # Fallback Spotify par défaut
         ok = spotify_lancer_playlist(SPOTIFY_MUSIQUE_URI)
         if ok:
-            return f"C'est parti {USER_NAME}, je lance votre playlist sur Spotify."
+            return f"C'est parti, je lance ta playlist sur Spotify."
         return f"Je n'ai pas réussi à ouvrir Spotify, {USER_NAME}."
 
     if any(k in t for k in ["ouvre spotify", "lance spotify", "démarre spotify"]):
@@ -8944,7 +9237,7 @@ async def resoudre_commandes_locales(texte):
         ]
         if any(v in t for v in variantes) or t == f"ouvre {cle}":
             ouvrir_dossier(chemin)
-            return f"J'ouvre votre dossier {cle}, {nom_utilisateur()}."
+            return f"J'ouvre ton dossier {cle}."
 
 
     # --- DOSSIER / APPLICATION INCONNU(E) ---
@@ -8985,7 +9278,7 @@ async def modifier_site_web_existant(prompt: str, project_name: str):
     with open(file_path, "r", encoding="utf-8") as f:
         code_actuel = f.read()
 
-    await parler(f"Je modifie le projet {project_name}. Un instant s'il vous plaît.")
+    await parler(f"Je modifie le projet {project_name}, deux secondes.")
 
     sys_prompt = "Tu es un développeur web expert. Voici le code HTML actuel d'un site. L'utilisateur veut y apporter des modifications. Tu dois répondre UNIQUEMENT avec le NOUVEAU code HTML complet (incluant CSS et JS). Ne mets pas de texte avant ou après. Le code doit rester très beau, moderne, avec un thème sombre élégant et des animations fluides. SI TU AS BESOIN DE NOUVELLES IMAGES, utilise des balises de la forme `[JARVIS_IMG: \"description en anglais\"]`."
     full_prompt = f"{sys_prompt}\n\nCODE ACTUEL:\n```html\n{code_actuel}\n```\n\nMODIFICATIONS DEMANDÉES : {prompt}"
@@ -9026,7 +9319,7 @@ async def modifier_site_web_existant(prompt: str, project_name: str):
         img_tags = re.findall(r'\[JARVIS_IMG:\s*"(.*?)"\]', code_html)
         if img_tags:
             print(f"[WEB] {len(img_tags)} nouvelles images à générer trouvées.")
-            await parler("Génération des nouvelles images en cours, veuillez patienter encore un instant.")
+            await parler("Je génère les nouvelles images, encore un petit moment.")
             for i, img_prompt in enumerate(img_tags):
                 img_filename = f"image_mod_{datetime.datetime.now().strftime('%H%M%S')}_{i}.jpg"
                 img_path = os.path.join(site_dir, img_filename)
@@ -9082,7 +9375,7 @@ async def generer_prompt_special(sujet: str):
             if len(lines) > 2:
                 prompt_result = "\n".join(lines[1:-1])
 
-        await parler("Voici le prompt que j'ai généré. Il s'affiche sur votre écran.")
+        await parler("J'ai écrit le prompt, il est sur ton écran.")
         if CONNECTED_CLIENTS:
             await asyncio.gather(*[ws.send(json.dumps({
                 "type": "show_generated_prompt",
@@ -9103,7 +9396,7 @@ async def generer_site_web(prompt: str, model: str, image_model: str = "gemini")
     }
     exact_model = CHOSEN_MODELS.get(agent_capitalized, defaults.get(agent_capitalized, "inconnu"))
 
-    await parler(f"Très bien, je crée votre site internet avec l'agent {agent_capitalized}, et le modèle {exact_model}. Un instant s'il vous plaît.")
+    await parler(f"OK, je crée ton site avec l'agent {agent_capitalized} et le modèle {exact_model}. Ça va prendre un moment.")
 
     sys_prompt = "Tu es un développeur web expert. L'utilisateur veut créer un site internet. Tu dois répondre UNIQUEMENT avec le code HTML complet (incluant CSS et JS à l'intérieur). Ne mets pas de texte avant ou après, juste le code. Le code doit être très beau, moderne, avec un thème sombre élégant et des animations fluides. SI TU AS BESOIN D'IMAGES POUR ILLUSTRER LE SITE, utilise UNIQUEMENT des balises spéciales de la forme `[JARVIS_IMG: \"description détaillée en anglais de l'image\"]` à la place de l'URL de l'image (par exemple `<img src='[JARVIS_IMG: \"a modern hair salon interior, cinematic lighting\"]' />` ou `background-image: url('[JARVIS_IMG: \"hairdresser at work\"]')`). Je vais générer ces images et les remplacer."
     full_prompt = f"{sys_prompt}\n\nDemande de l'utilisateur : {prompt}"
@@ -9192,7 +9485,7 @@ async def generer_site_web(prompt: str, model: str, image_model: str = "gemini")
         matches = list(re.finditer(pattern, code_html, flags=re.DOTALL))
         if matches:
             print(f"[WEB] {len(matches)} images à générer trouvées.")
-            await parler("Génération des images en cours, veuillez patienter encore un instant.")
+            await parler("Je génère les images, encore un petit moment.")
             import shutil
             for i, match in enumerate(matches):
                 original_tag = match.group(0)
@@ -9214,7 +9507,7 @@ async def generer_site_web(prompt: str, model: str, image_model: str = "gemini")
             f.write(code_html.strip())
 
         print(f"[WEB] Fichier sauvegardé : {file_path}")
-        await parler(f"Votre site internet est prêt. Il a été sauvegardé dans le dossier sites internet.")
+        await parler("Ton site est prêt, il est dans le dossier sites internet.")
         try:
             import webbrowser
             _ouvrir_url(file_path)
@@ -9296,7 +9589,9 @@ def _modele_agent_natif():
         if _quota_mgr.is_quota_error(e):
             _quota_mgr.mark_quota_exceeded("gemini")
 
-    return agent_gemini.creer_modele(client, types, nom, suivi=_suivi, sur_erreur=_quota)
+    import agent_taches
+    return agent_gemini.creer_modele(client, types, [nom, *agent_taches.MODELES_SECOURS],
+                                     suivi=_suivi, sur_erreur=_quota)
 
 
 async def _executer_delegation_arriere_plan(nom_projet, chemin_projet, tache):
@@ -9352,6 +9647,113 @@ def _demarrer_delegation(nom_projet, chemin_projet, tache):
     return True, ""
 
 
+# ── « Démonte ce site » (REA via Claude Code, 2026-10-16) ────────────────────
+# demontage.py fait le travail (plusieurs minutes) ; ici, juste l'arrière-plan,
+# la notif et la phrase finale. Un seul démontage à la fois.
+_DEMONTAGE_EN_COURS = None
+
+
+async def _demontage_arriere_plan(url, domaine):
+    global _DEMONTAGE_EN_COURS
+    try:
+        import demontage
+        res = await asyncio.to_thread(demontage.demonter, url)
+        phrase = demontage.phrase(res, nom_utilisateur())
+        print(f"[DEMONTAGE] {domaine} : {phrase}")
+        import notifications
+        await asyncio.to_thread(notifications.envoyer_tache_terminee, "🔍 " + phrase)
+        await parler(phrase)
+    except Exception as e:
+        print(f"[DEMONTAGE] Erreur : {e!r}")
+        try:
+            await parler(f"Le démontage de {domaine} a planté, {nom_utilisateur()}.")
+        except Exception:
+            pass
+    finally:
+        _DEMONTAGE_EN_COURS = None
+
+
+def _demarrer_demontage(url, domaine):
+    """(ok, message_si_refus)."""
+    global _DEMONTAGE_EN_COURS
+    if _DEMONTAGE_EN_COURS:
+        return False, f"je démonte déjà {_DEMONTAGE_EN_COURS}"
+    _DEMONTAGE_EN_COURS = domaine
+    coro = _demontage_arriere_plan(url, domaine)
+    if lancer_tache_arriere_plan(coro) is None:
+        coro.close()
+        _DEMONTAGE_EN_COURS = None
+        return False, "impossible de lancer la tâche en arrière-plan"
+    return True, ""
+
+
+# ── Tâches en plusieurs étapes (boucle d'agent, 2026-10-22) ──────────────────
+# agent_taches.py fait la boucle (Gemini appelle un outil, lit le résultat,
+# enchaîne) ; ici, l'arrière-plan, les étapes montrées au HUD et la phrase
+# finale. Une tâche à la fois.
+_TACHE_AGENT_EN_COURS = None
+
+
+async def _tache_agent_arriere_plan(objectif):
+    global _TACHE_AGENT_EN_COURS
+    try:
+        import agent_gemini
+        import agent_taches
+        import cout_suivi
+        _nom_modele = CHOSEN_MODELS.get("Gemini", "gemini-2.5-flash")
+
+        def _suivi(rep):
+            _um = getattr(rep, "usage_metadata", None)
+            cout_suivi.enregistrer("gemini", _nom_modele,
+                                   tokens_entree=getattr(_um, "prompt_token_count", 0) or 0,
+                                   tokens_sortie=getattr(_um, "candidates_token_count", 0) or 0,
+                                   contexte="tache_agent")
+
+        def _etape(ligne):
+            # « [AGENT] tour 2 : agenda(...) -> ... » : montrée au HUD comme un outil local.
+            print(ligne)
+            send_web_broadcast_sync({"type": "tool_call", "mode": "agent", "priorite": 0, "ms": 0,
+                                     "nom": "agent : " + ligne.split(" : ", 1)[-1].split("(")[0],
+                                     "ok": "-> ERREUR" not in ligne, "detail": ""})
+
+        modele = agent_gemini.creer_modele(client, types, [_nom_modele, *agent_taches.MODELES_SECOURS],
+                                           suivi=_suivi)
+        res = await asyncio.to_thread(agent_taches.executer, objectif, modele,
+                                      nom=nom_utilisateur(), journal=_etape)
+        phrase = res["resume"] if res["succes"] else agent_taches.phrase_echec(res["erreur"], nom_utilisateur())
+        print(f"[AGENT] {res['tours']} tour(s), outils {res['actions']} : {phrase}")
+        _retenir_echange(objectif, phrase)
+        import notifications
+        await asyncio.to_thread(notifications.envoyer_tache_terminee, "🤖 " + phrase)
+        await parler(phrase)
+    except Exception as e:
+        print(f"[AGENT] Erreur : {e!r}")
+        try:
+            await parler(f"La tâche a planté, {nom_utilisateur()}.")
+        except Exception:
+            pass
+    finally:
+        _TACHE_AGENT_EN_COURS = None
+
+
+def _demarrer_tache_agent(objectif):
+    """(ok, message_si_refus)."""
+    global _TACHE_AGENT_EN_COURS
+    if not objectif:
+        return False, "je n'ai pas compris la tâche"
+    if not gemini_actif:
+        return False, "il me faut Gemini pour enchaîner des étapes"
+    if _TACHE_AGENT_EN_COURS:
+        return False, "je termine déjà une autre tâche"
+    _TACHE_AGENT_EN_COURS = objectif
+    coro = _tache_agent_arriere_plan(objectif)
+    if lancer_tache_arriere_plan(coro) is None:
+        coro.close()
+        _TACHE_AGENT_EN_COURS = None
+        return False, "impossible de lancer la tâche en arrière-plan"
+    return True, ""
+
+
 async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False, canal="voix"):
     # `canal` explicite plutot qu'herite du contexte appelant.
     #
@@ -9363,6 +9765,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
     # serait devenu MUET, sans erreur nulle part. Trop cher pour une economie
     # d'un parametre.
     CANAL_COURANT.set(canal if canal in ("voix", "texte") else "voix")
+    EN_REPONSE.set(True)  # parler() : une réponse, jamais retenue pendant un quiz
     global MODE_IRON_MAN, jarvis_actif, dernier_message, _skip_pc_audio
     global ATTENTE_CHOIX_MODELE_IMAGE, ATTENTE_CHOIX_MODELE_SITE, ATTENTE_CHOIX_MODELE_IMAGE_SITE, MODELE_SITE_CHOISI, ATTENTE_SUJET_SITE, PROMPT_EN_ATTENTE, ATTENTE_CREATION_PROMPT, ATTENTE_SUJET_MUSIQUE, MUSIQUE_GENRE_EN_ATTENTE
     global ATTENTE_CONFIRMATION_ORCHESTRATION, ATTENTE_CONFIRMATION_DELEGATION, ATTENTE_CONFIRMATION_ACTION
@@ -9370,6 +9773,15 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
 
     # Reset du flag audio au début de chaque commande
     _skip_pc_audio = False
+
+    # « garder_phrases »: true dans jarvis_config.json : chaque phrase est gardée dans jarvis_phrases.jsonl
+    # (pour entraîner un classifieur). Désactivé par défaut : rien de ce que tu dis n'est écrit sur le disque.
+    try:
+        journal_phrases.noter(texte_utilisateur,
+                              "discord" if DISCORD_SINK.get() is not None else ("mobile" if mobile_ws else canal),
+                              _charger_config().get("garder_phrases", False))
+    except Exception as _e_phrase:  # le journal ne doit jamais empêcher de répondre
+        print(f"[PHRASES] {_e_phrase!r}")
 
     # ── Quitter JARVIS ────────────────────────────────────────────────────
     # Depuis que fermer le HUD masque au lieu d'eteindre, il FAUT un autre
@@ -9465,7 +9877,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                 print("[CONFIANCE] journalisation ignoree : %r" % (_e_conf_d,))
             if _approuve_d:
                 _ok_d, _refus_d = _demarrer_delegation(_att_d["nom"], _att_d["chemin"], _att_d["tache"])
-                await parler(f"C'est parti, {nom_utilisateur()}. Je vous préviens quand c'est terminé."
+                await parler("C'est parti. Je te préviens quand c'est fini."
                              if _ok_d else f"Je ne peux pas lancer ça : {_refus_d}.")
             else:
                 await parler(f"D'accord {nom_utilisateur()}, je ne lance rien.")
@@ -9500,7 +9912,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
             return
 
         ATTENTE_CREATION_PROMPT = False
-        await parler("Je génère le prompt détaillé, un instant s'il vous plaît.")
+        await parler("J'écris le prompt détaillé, deux secondes.")
         asyncio.create_task(generer_prompt_special(texte_utilisateur))
         return
 
@@ -9546,7 +9958,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
             MUSIQUE_GENRE_EN_ATTENTE = None
             _labels = {"rap": "rap", "chanson": "chanson", "slam": "slam", "reggae": "reggae", "metal": "métal", "pop": "pop", "blues": "blues", "rock": "rock", "electro": "électro"}
             _label = _labels.get(_genre_detecte, _genre_detecte)
-            await parler(f"Très bien {USER_NAME}, je vous compose un {_label} sur ce thème tout de suite...")
+            await parler(f"OK, je te compose un {_label} là-dessus...")
             try:
                 if _jarvis_music_instance is None:
                     from jarvis_music import JarvisMusic as _JarvisMusic
@@ -9561,7 +9973,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                 print(f"[JARVIS_MUSIC] Erreur : {e}")
                 await parler(f"Désolé {USER_NAME}, je n'ai pas réussi à composer ce {_label}.")
         else:
-            await parler("Très bien, je compose et je vous chante cela tout de suite...")
+            await parler("OK, je compose et je te chante ça...")
             success = await generer_et_chanter_musique("chanson sur " + texte_utilisateur)
             if not success:
                 await parler("Désolé, mon module musical a rencontré une petite erreur.")
@@ -9688,21 +10100,49 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
     # de chat (testé le 28/09 : il comptait faux une bonne réponse et
     # sautait des questions).
     import revisions
+    import professeur
     if revisions.quiz_actif() and revisions.reconnait_arret(texte_utilisateur):
         revisions.arreter()
-        await parler(f"Révision arrêtée, {nom_utilisateur()}. Reviens quand tu veux.")
+        await parler(f"Révision arrêtée, {nom_utilisateur()}. Dis « reprends la révision » pour continuer plus tard.")
         return
     _texte_quiz = None
-    if revisions.reconnait_demande(texte_utilisateur):
+    # Mode Professeur (professeur.py) : quiz sur un sujet libre, petit cours, erreurs à revoir, reprise.
+    # Avant « fais-moi réviser » : « interroge-moi sur les fractions » y serait devenu le quiz Pronote.
+    _demande_prof = professeur.reconnait(texte_utilisateur)
+    if _demande_prof:
+        import catalogue as _cat_prof
+        if not _cat_prof.action_autorisee("get_revisions"):
+            await parler(_cat_prof.refus("get_revisions"))
+            return
+        _tache_prof = asyncio.ensure_future(professeur.lancer(_demande_prof, demander_ia_isolee))
+        if not (await asyncio.wait({_tache_prof}, timeout=3))[0]:
+            await parler(f"Je prépare ça, {nom_utilisateur()}, quelques secondes.")
+        _texte_quiz, _raison_prof = await _tache_prof
+        if not _texte_quiz:
+            await parler(f"Pas possible pour l'instant, {nom_utilisateur()} : {_raison_prof}.")
+            return
+    elif revisions.reconnait_demande(texte_utilisateur):
         import catalogue as _cat_rev
         if not _cat_rev.action_autorisee("get_revisions"):
             await parler(_cat_rev.refus("get_revisions"))
             return
-        # Un quiz absent se génère à la volée : 2 à 4 minutes avec un modèle local.
-        _tache_quiz = asyncio.ensure_future(asyncio.to_thread(revisions.quiz_pour, texte_utilisateur))
+        # Un quiz absent se génère à la volée par le cerveau en ligne (quelques secondes, 1.4) ;
+        # qwen-moe en local (2 à 4 minutes) reste le secours, et prépare toujours ceux du soir.
+        _boucle_quiz = asyncio.get_running_loop()
+
+        def _appel_quiz(messages):
+            try:
+                _brut = asyncio.run_coroutine_threadsafe(
+                    demander_ia_isolee("\n\n".join(m["content"] for m in messages)), _boucle_quiz).result(timeout=90)
+                return professeur._json(_brut)
+            except Exception as _e_rapide:
+                print(f"[REVISIONS] cerveau en ligne indisponible ({_e_rapide!r}) : modèle local")
+                return revisions._ollama(messages)
+
+        _tache_quiz = asyncio.ensure_future(asyncio.to_thread(revisions.quiz_pour, texte_utilisateur,
+                                                               appel_modele=_appel_quiz))
         if not (await asyncio.wait({_tache_quiz}, timeout=3))[0]:
-            await parler(f"Je prépare le quiz avec le modèle local, {nom_utilisateur()}. "
-                         "Ça prend quelques minutes.")
+            await parler(f"Je prépare le quiz, {nom_utilisateur()}, quelques secondes.")
         _quiz, _raison_quiz = await _tache_quiz
         if not _quiz:
             await parler(f"Pas de révision possible, {nom_utilisateur()} : {_raison_quiz}.")
@@ -9725,7 +10165,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
             await parler("Quel genre de prompt veux-tu que je crée ?")
             return
 
-        await parler("Je génère le prompt détaillé, un instant s'il vous plaît.")
+        await parler("J'écris le prompt détaillé, deux secondes.")
         asyncio.create_task(generer_prompt_special(texte_utilisateur))
         return
 
@@ -9764,7 +10204,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
             await parler("Sur quel thème veux-tu que je compose cette musique ?")
             return
 
-        await parler(f"Très bien {nom_utilisateur()}, je compose et je vous chante cela tout de suite...")
+        await parler("OK, je compose et je te chante ça...")
         success = await generer_et_chanter_musique(texte_utilisateur)
         if success:
             return
@@ -9867,7 +10307,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
             await parler(f"Sur quel thème veux-tu que je te fasse ce {_label} ?")
             return
 
-        await parler(f"Très bien {USER_NAME}, je vous compose un {_label} tout de suite...")
+        await parler(f"OK, je te compose un {_label}...")
         try:
             if _jarvis_music_instance is None:
                 _jarvis_music_instance = _JarvisMusic()
@@ -9968,10 +10408,46 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
     # filet final « ouvre X inconnu » et la recherche YouTube sur « mets ...
     # youtube » avalaient « ouvre gmail » ou « mets youtube en plein ecran ».
     reponse = None
+    # « Où en est Paperclip ? » — avant les outils et le filet « ouvre X » :
+    # Paperclip est un nom propre qu'un filet prendrait pour une appli.
+    # Lecture seule de l'API locale, sous la garde du suivi des agents.
+    import paperclip_suivi
+    if paperclip_suivi.reconnait_demande(texte_utilisateur):
+        import catalogue as _cat_pc
+        if not _cat_pc.action_autorisee("get_agents"):
+            reponse = _cat_pc.refus("get_agents")
+        else:
+            _etat_pc = await asyncio.to_thread(paperclip_suivi.etat)
+            reponse = paperclip_suivi.phrase(_etat_pc, nom_utilisateur())
+    # Éclairage RGB du PC (Prisme, 2026-10-17) : la phrase doit dire « RGB » (ou un
+    # ordre à « Prisme ») ; « éteins la lumière » reste à la domotique Home Assistant.
+    if not reponse:
+        import rgb_prisme
+        _rgb = rgb_prisme.detecter(texte_utilisateur)
+        if _rgb:
+            import catalogue as _cat_rgb
+            if not _cat_rgb.action_autorisee("prisme_rgb"):
+                reponse = _cat_rgb.refus("prisme_rgb")
+            else:
+                _ok_rgb, _ph_rgb = await asyncio.to_thread(rgb_prisme.executer, _rgb)
+                reponse = f"{_ph_rgb[0].upper()}{_ph_rgb[1:]}, {nom_utilisateur()}."
+    # « Mission : … » lance la boucle d'agent sans passer par le cerveau : celui-ci
+    # peut ignorer l'action tache_agent (constaté via OmniRoute le 22/10/2026).
+    if not reponse:
+        import agent_taches
+        _mission = agent_taches.extraire_mission(texte_utilisateur)
+        if _mission:
+            import catalogue as _cat_ta
+            if not _cat_ta.action_autorisee("tache_agent"):
+                reponse = _cat_ta.refus("tache_agent")
+            else:
+                _ok_ta, _refus_ta = _demarrer_tache_agent(_mission)
+                reponse = (f"Mission reçue, {nom_utilisateur()}. Je vous préviens quand c'est fait."
+                           if _ok_ta else f"Pas maintenant, {nom_utilisateur()} : {_refus_ta}.")
     # Depuis Discord ou le telephone, personne ne voit l'ecran : taper au
     # clavier (dans un terminal, peut-etre) ou envoyer le presse-papiers
     # (un mot de passe copie) attend un « oui ».
-    if _TOOLS_OK and not _demande_longue_tapee and (mobile_ws is not None or DISCORD_SINK.get() is not None):
+    if not reponse and _TOOLS_OK and not _demande_longue_tapee and (mobile_ws is not None or DISCORD_SINK.get() is not None):
         try:
             from tools import pc_controle as _pc_dist
             _intention = _pc_dist.interpreter(texte_utilisateur)
@@ -9982,7 +10458,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                 _pc_dist.A_CONFIRMER_A_DISTANCE[_intention[0]],
                 lambda: _pc_dist.executer(*_intention))
             return
-    if _TOOLS_OK and not _demande_longue_tapee:
+    if not reponse and _TOOLS_OK and not _demande_longue_tapee:
         reponse = await tools.resoudre_async(texte_utilisateur, jusqua=9)
     if not reponse and not _demande_longue_tapee:
         reponse = await resoudre_commandes_locales(texte_utilisateur)
@@ -10001,6 +10477,13 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
         except Exception as _e_mail_call:
             print(f"[EMAIL_HUB] Erreur relève mail : {_e_mail_call}")
 
+    # JUGE (« juge-moi » / « arrête de me juger ») : avant la caméra, dont les mots-clés (« la cam ») sont larges
+    if not reponse:
+        import juge
+        _cmd_juge = juge.commande(texte_utilisateur)
+        if _cmd_juge is not None:
+            reponse = _juge_basculer(_cmd_juge)
+
     # VISION (Regarde mon écran)
     if not reponse:
         t = texte_utilisateur.lower()
@@ -10012,7 +10495,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                       "regarde l'ecran", "tu vois mon ecran", "resume la page", "resume cette page",
                       "lis la page", "lis cette page", "ce que je regarde", "regarde ce que je fais"]
         if any(k in _sa(t) for k in _vision_kw):
-            await parler(f"Bien sûr {nom_utilisateur()}, laissez-moi jeter un œil...")
+            await parler("Attends, je regarde...")
             img_b64 = await request_screen_capture()
             if not img_b64:
                 # Pas de HUD connecte (ou partage refuse) : JARVIS tourne sur ce
@@ -10021,7 +10504,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
             if img_b64:
                 reponse = await demander_ia_vision(texte_utilisateur, img_b64)
             else:
-                reponse = f"Je suis désolé {nom_utilisateur()}, mais je n'ai pas pu capturer votre écran. Assurez-vous d'avoir cliqué sur 'Activer la vision' sur l'interface et d'avoir autorisé le partage."
+                reponse = "J'arrive pas à voir ton écran. Vérifie que t'as cliqué sur « Activer la vision » dans l'interface et autorisé le partage."
 
         # CAMERA (Lance la caméra / Analyse visuelle / Objets / Tenue)
         camera_keywords = [
@@ -10079,7 +10562,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
             msg = json.dumps({"type": "open_webcam", "fullscreen": True})
             if CONNECTED_CLIENTS:
                 await asyncio.gather(*[ws.send(msg) for ws in CONNECTED_CLIENTS], return_exceptions=True)
-            reponse = f"J'ai activé votre caméra en plein écran en arrière-plan, {USER_NAME}."
+            reponse = "J'ai mis ta caméra en plein écran."
         elif any(kw in t for kw in small_kws):
             msg = json.dumps({"type": "open_webcam", "fullscreen": False})
             if CONNECTED_CLIENTS:
@@ -10089,7 +10572,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
             msg = json.dumps({"type": "open_webcam", "fullscreen": False})
             if CONNECTED_CLIENTS:
                 await asyncio.gather(*[ws.send(msg) for ws in CONNECTED_CLIENTS], return_exceptions=True)
-            reponse = f"J'ai activé votre retour caméra, {USER_NAME}. Regardez en bas à droite de votre écran."
+            reponse = "Caméra activée, regarde en bas à droite de ton écran."
         elif any(kw in t for kw in ["désactive la caméra", "désactive la camera", "désactive la webcam", "desactive la caméra", "desactive la camera", "desactive la webcam", "ferme la caméra", "ferme la camera", "ferme la webcam"]):
             msg = json.dumps({"type": "close_webcam"})
             if CONNECTED_CLIENTS:
@@ -10122,7 +10605,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                     _sauvegarder_config({"sky_watch": True})
                 except Exception:
                     pass
-                reponse = f"Veille du ciel activée, {nom_utilisateur()}. Je surveille les avions militaires et jets privés autour de vous."
+                reponse = "Veille du ciel activée : je surveille les avions militaires et les jets privés autour de toi."
 
     # ── Prochain décollage de fusée (à la demande) ──────────────────────
     if not reponse:
@@ -10223,6 +10706,21 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                            if _ok_v and _action_v == "ajouter"
                            else f"{_raison_v.capitalize()}, {nom_utilisateur()}.")
 
+    # ── « Démonte ce site X » : REA via Claude Code, en arrière-plan ─────
+    import catalogue as _catalogue_dem
+    if not reponse and _catalogue_dem.action_autorisee("demontage_site"):
+        import demontage
+        _dem = demontage.detecter(texte_utilisateur)
+        if _dem and not _dem["url"]:
+            reponse = (f"Donnez-moi l'adresse exacte du site, {nom_utilisateur()}, avec le point : "
+                       "par exemple « démonte igloo point inc ».")
+        elif _dem:
+            _ok_dem, _refus_dem = _demarrer_demontage(_dem["url"], _dem["domaine"])
+            reponse = (f"Je démonte {_dem['domaine']}, {nom_utilisateur()}. J'ouvre le site dans un "
+                       "navigateur à part et REA analyse son code : comptez quelques minutes, je vous "
+                       "préviens quand le rapport est prêt." if _ok_dem
+                       else f"Pas maintenant, {nom_utilisateur()} : {_refus_dem}.")
+
     # ── Délégation de code (missions D1/D2) ──────────────────────────────
     # « Code-moi X dans le projet Y » : le projet doit être NOMMÉ. Sans nom, la
     # phrase reste une conversation ordinaire — « développe ton idée » ne doit
@@ -10311,10 +10809,19 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                     _decomposition, texte_utilisateur, demander_ia_isolee)
                 reponse = orchestrateur.synthese(_resultats)
 
+    _anticipation = None
     if not reponse:
         origine = "téléphone" if mobile_ws else "ordinateur"
         texte_pour_ia = texte_utilisateur + f"\n\n[Note système : L'utilisateur te parle actuellement depuis son {origine}. Adapte ta réponse si la question porte sur ton moyen d'écoute.]"
-        reponse = await demander_ia(texte_pour_ia)
+        # Voix sur le PC : la 1re phrase part pendant que la suite s'écrit (parole_anticipee.py).
+        if (CANAL_COURANT.get() == "voix" and (not mobile_ws or target_pc) and DISCORD_SINK.get() is None
+                and _charger_config().get("parole_anticipee", True)):
+            _anticipation = parole_anticipee.Anticipation(parler)
+        _jeton_anticipation = PAROLE_ANTICIPEE.set(_anticipation)
+        try:
+            reponse = await demander_ia(texte_pour_ia)
+        finally:
+            PAROLE_ANTICIPEE.reset(_jeton_anticipation)
 
     # L'impression dans le terminal se fera desormais de maniere synchronisee dans parler()
     # Si commande mobile et que la cible n'est pas forcée sur le PC : activer le flag pour couper l'audio PC et répondre via mobile
@@ -10327,13 +10834,28 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
     texte_clean = re.sub(r'\{.*?\}', '', reponse, flags=re.DOTALL).strip()
     tache_parler = None
 
+    if _anticipation is not None and _anticipation.tache is not None:
+        # La 1re phrase est déjà partie : la mémoire retient la réponse entière, la voix ne dit que la suite.
+        _retenir_parole(texte_clean)
+
+        async def _dire_la_suite(texte_entier=texte_clean):
+            suite = _anticipation.suite(texte_entier)
+            if suite:
+                await parler(suite, memoire=False, apres=_anticipation.tache)
+            else:
+                await _anticipation.tache
+        # texte_clean reste intact : des actions plus bas (recherche_images…) ne parlent que s'il est vide.
+        tache_parler = asyncio.create_task(_dire_la_suite())
+
     if not json_blocks:
-        if texte_clean:
+        if tache_parler:
+            await tache_parler
+        elif texte_clean:
             await parler(texte_clean)
         _skip_pc_audio = False
         return
 
-    if texte_clean:
+    if texte_clean and tache_parler is None:
         tache_parler = asyncio.create_task(parler(texte_clean))
 
     for block in json_blocks:
@@ -10394,7 +10916,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                         await asyncio.gather(*[ws.send(msg_json) for ws in CONNECTED_CLIENTS], return_exceptions=True)
                     except Exception as e:
                         print(f"[ERREUR WS] Broadcast recette: {e}")
-                await parler(f"Voici la recette pour {titre}, affichée sur votre interface.")
+                await parler(f"La recette de {titre} est sur ton écran.")
             elif action == "memoriser":
                 cle    = data.get("cle",    "info")
                 valeur = data.get("valeur", "")
@@ -10478,14 +11000,14 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                     await asyncio.gather(*[ws.send(msg_open) for ws in CONNECTED_CLIENTS], return_exceptions=True)
                     await asyncio.gather(*[ws.send(msg_notes) for ws in CONNECTED_CLIENTS], return_exceptions=True)
                 if notes_list:
-                    await parler(f"J'affiche vos {len(notes_list)} notes Obsidian, {nom_utilisateur()}.")
+                    await parler(f"Voilà tes {len(notes_list)} notes Obsidian.")
                 else:
-                    await parler(f"Votre coffre Obsidian est actuellement vide, {nom_utilisateur()}.")
+                    await parler("Ton coffre Obsidian est vide pour l'instant.")
             elif action == "ouvrir_dossier":
                 chemin = data.get("chemin", "bureau")
                 ok, resultat = ouvrir_dossier(chemin)
                 if ok:
-                    await parler(f"Dossier ouvert, {nom_utilisateur()}. Dites-moi si vous voulez que je le trie.")
+                    await parler("Dossier ouvert. Dis-moi si tu veux que je le trie.")
                 else:
                     await parler(f"Je n ai pas trouve ce dossier, {nom_utilisateur()}. {resultat}")
             elif action == "lister_dossier":
@@ -10497,15 +11019,15 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                     nb_dossiers = len(contenu["dossiers"])
                     await parler(f"Le dossier contient {nb_fichiers} fichiers et {nb_dossiers} sous-dossiers, {nom_utilisateur()}.")
             elif action == "trier_par_type":
-                await parler(f"Je trie vos fichiers par type, {nom_utilisateur()}. Un instant.")
+                await parler("Je trie tes fichiers par type.")
                 ok, msg = trier_par_type()
                 await parler(msg if ok else f"Probleme lors du tri : {msg}")
             elif action == "trier_par_date":
-                await parler(f"Je trie vos fichiers par date, {nom_utilisateur()}. Un instant.")
+                await parler("Je trie tes fichiers par date.")
                 ok, msg = trier_par_date()
                 await parler(msg if ok else f"Probleme lors du tri : {msg}")
             elif action == "trier_complet":
-                await parler(f"Je trie vos fichiers par type puis par date dans chaque categorie, {nom_utilisateur()}.")
+                await parler("Je trie tes fichiers par type, puis par date dans chaque catégorie.")
                 ok, msg = trier_par_type_puis_date()
                 await parler(msg if ok else f"Probleme lors du tri : {msg}")
             elif action == "creer_dossier":
@@ -10564,7 +11086,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                         _r = {"trouve": False, "raison": repr(_e_res)}
                     if _r.get("ambigu"):
                         _noms = [c["nom"] for c in (_r.get("candidats") or [])[:3]]
-                        await parler("Je ne sais pas laquelle vous voulez : "
+                        await parler("Je sais pas laquelle tu veux : "
                                      + ", ou ".join(_noms) + " ?")
                         continue
                     if not _r.get("trouve"):
@@ -10761,7 +11283,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
             elif action == "ha_tiktok":
                 entity_id = PIECES_CAPTEURS.get("tiktok")
                 followers = ha_get_etat(entity_id)
-                await parler(f"Vous avez actuellement {followers} abonnés, {nom_utilisateur()}.")
+                await parler(f"T'as {followers} abonnés en ce moment.")
             elif action == "ha_oeufs":
                 entity_id = PIECES_CAPTEURS.get("oeufs")
                 # On récupère l'état (le dernier choix) et le moment de la modif
@@ -10855,13 +11377,13 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                 await parler(result)
             elif action == "read_emails":
                 result = lire_emails()
-                await parler(f"Voici vos derniers emails {nom_utilisateur()}. {result}")
+                await parler(f"Tes derniers mails : {result}")
             elif action == "read_calendar":
                 result = lister_evenements_calendar()
-                await parler(f"Voici vos prochains evenements {nom_utilisateur()}. {result}")
+                await parler(f"Tes prochains événements : {result}")
             elif action == "meteo":
                 ville = data.get("ville") or None
-                await parler("Je consulte la meteo, un instant.")
+                await parler("Je regarde la météo.")
                 result = await asyncio.to_thread(get_meteo_actuelle, ville)
                 meteo_data = await asyncio.to_thread(get_meteo_structuree, ville)
                 if meteo_data:
@@ -10871,6 +11393,11 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                 ville = data.get("ville") or None
                 result = await asyncio.to_thread(get_alertes_meteo, ville)
                 await parler(result)
+            elif action == "tache_agent":
+                _objectif_ta = str(data.get("objectif") or texte_utilisateur or "").strip()
+                _ok_ta, _refus_ta = _demarrer_tache_agent(_objectif_ta)
+                await parler("Je m'en occupe, je te préviens quand c'est fait." if _ok_ta
+                             else f"Pas maintenant : {_refus_ta}.")
             elif action == "recherche_web":
                 query = data.get("query", "")
                 await parler(f"Je lance une recherche sur internet pour {query}.")
@@ -10879,7 +11406,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
             elif action == "generer_image":
                 prompt_fr = data.get("prompt", "")
                 if not prompt_fr:
-                    await parler(f"Désolé {USER_NAME}, je n'ai pas compris ce que vous souhaitez que je génère.")
+                    await parler("J'ai pas compris ce que tu veux que je génère.")
                 else:
                     ATTENTE_CHOIX_MODELE_IMAGE = True
                     PROMPT_EN_ATTENTE = prompt_fr
@@ -10895,11 +11422,11 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
             elif action == "generer_video":
                 prompt_fr = data.get("prompt", "")
                 if not prompt_fr:
-                    await parler(f"Désolé {USER_NAME}, je n'ai pas compris ce que vous souhaitez que je génère comme vidéo.")
+                    await parler("J'ai pas compris quelle vidéo tu veux.")
                 elif not grok_client:
                     await parler(f"Désolé {USER_NAME}, le client xAI n'est pas configuré. La génération vidéo nécessite une clé xAI.")
                 else:
-                    await parler(f"Je génère votre vidéo avec xAI, cela peut prendre une à deux minutes {USER_NAME}. Patience !")
+                    await parler("Je génère ta vidéo avec xAI, ça peut prendre une ou deux minutes.")
 
                     # Notifier le frontend pour afficher l'animation de chargement
                     msg_loading = json.dumps({"type": "generation_loading", "media_type": "video"})
@@ -10937,7 +11464,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                 query = data.get("query", "")
                 nb    = int(data.get("nb", 6))
                 if not texte_clean:
-                    await parler(f"Je recherche des images de {query} sur internet, un instant {USER_NAME}.")
+                    await parler(f"Je cherche des images de {query}.")
                 cfg = _charger_config()
                 engine = cfg.get("image_search_engine", "serpapi")
                 urls = await asyncio.to_thread(recherche_images_web, query, nb_images=nb, engine=engine)
@@ -10953,16 +11480,16 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                         except Exception as e:
                             print(f"[ERREUR WS] Broadcast images: {e}")
                     if not texte_clean:
-                        await parler(f"Voilà, j'affiche {len(urls)} image{'s' if len(urls) > 1 else ''} de {query} sur votre interface, {nom_utilisateur()}.")
+                        await parler(f"Voilà, j'affiche {len(urls)} image{'s' if len(urls) > 1 else ''} de {query} sur ton écran.")
                 else:
                     if not texte_clean:
-                        await parler(f"Désolé {nom_utilisateur()}, je n'ai pas trouvé d'images pour {query}. Vérifiez votre connexion internet.")
+                        await parler(f"J'ai rien trouvé pour {query}. Vérifie ta connexion internet.")
 
             elif action == "antivirus_scan":
                 if CONNECTED_CLIENTS:
                     msg = json.dumps({"type": "av_open"})
                     await asyncio.gather(*[ws.send(msg) for ws in CONNECTED_CLIENTS], return_exceptions=True)
-                await parler(f"J'initialise le protocole d'analyse de sécurité de votre système, {nom_utilisateur()}. Scan en cours.")
+                await parler("Je lance l'analyse de sécurité de ton PC.")
 
             elif action == "restaurant_search":
                 global LAST_SHOWN_RESTAURANTS
@@ -10980,14 +11507,14 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                         location = obtenir_ville_par_ip()
                         lat = USER_LOCATION_GPS.get("lat") if USER_LOCATION_GPS else None
                         lng = USER_LOCATION_GPS.get("lng") if USER_LOCATION_GPS else None
-                await parler(f"Je recherche des restaurants à proximité de {location.split(',')[0]} et j'initialise le radar de repérage, un instant {nom_utilisateur()}.")
+                await parler(f"Je recherche des restaurants à proximité de {location.split(',')[0]} et je les mets sur la carte.")
                 lancer_recherche_restaurants_background(location, lat, lng, [], False)
 
             elif action == "sport_resultats":
                 equipe = data.get("equipe") or None
                 ligue  = data.get("ligue")  or None
                 print(f"[SPORT] Action sport_resultats pour {equipe or ligue}")
-                await parler(f"Je cherche les informations pour {equipe or ligue}, un instant.")
+                await parler(f"Je regarde pour {equipe or ligue}.")
                 result = get_resultats_football(equipe=equipe, ligue=ligue)
                 if "pas trouvé" in result or "Impossible" in result:
                     print(f"[SPORT] Echec recherche locale. Verification avec Grok...")
@@ -11002,7 +11529,7 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                 await parler(result)
             elif action == "sport_live":
                 question = data.get("question", "derniers resultats sportifs 2026")
-                await parler(f"Je recherche les derniers résultats en direct, un instant {nom_utilisateur()}.")
+                await parler("Je regarde les résultats en direct.")
                 from datetime import datetime as _dt
                 _date_auj = _dt.now().strftime("%d/%m/%Y")
                 # Toujours utiliser Gemini + Google Search pour les données sportives en temps réel
@@ -11046,6 +11573,8 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
             elif action == "lance_camera":
                 res = await jarvis_vision_camera(texte_utilisateur)
                 await parler(res)
+            elif action == "juge":
+                await parler(_juge_basculer(data.get("actif") is not False))
             elif action == "vision_navigateur":
                 _ok, _raison = await asyncio.to_thread(
                     _garde_web, data.get("url", ""), "vision_navigateur")
@@ -11160,6 +11689,7 @@ def nettoyer_commande(texte):
 
 WAKE_WORD       = _charger_config().get("wake_word", "jarvis").lower().strip()
 SESSION_TIMEOUT = 30
+SUITE_CONVERSATION = 12  # s après une réponse où l'on peut enchaîner sans redire « Jarvis » (réglage « suite_conversation »)
 STOP_PARLER      = False
 MIC_MUTED        = False
 is_listening     = False
@@ -11459,6 +11989,45 @@ async def boucle_surveillance_bureau():
 
         await asyncio.sleep(surveillance_bureau.INTERVALLE_VERIFICATION)
 
+
+async def boucle_juge():
+    """
+    Le juge (juge.py, opt-in : « juge-moi ») : webcam + écran au modèle local toutes les 3 minutes ; s'il ne fait
+    rien ~6 minutes, JARVIS le lui dit. Rien pendant une partie, la nuit, ou pendant que JARVIS réfléchit déjà.
+    """
+    import catalogue as _cat_juge
+    import juge
+    import vision_module
+    etat = juge.Juge()
+    while True:
+        try:
+            if not is_thinking and _cat_juge.action_autorisee("juge") and juge.doit_regarder():
+                sans_clavier = await asyncio.to_thread(juge.secondes_sans_clavier)
+                fenetre = await asyncio.to_thread(juge.fenetre_active)
+                if juge.occupe(sans_clavier, fenetre):
+                    etat.observer(juge.OCCUPE, time.time())  # il tape : ni webcam ni modèle
+                else:
+                    frame, erreur = await vision_module.capturer_frame_camera()
+                    if frame is None:
+                        print(f"[JUGE] Webcam indisponible : {erreur}")
+                    else:
+                        ecran = await asyncio.to_thread(juge.ecran_b64)
+                        obs = await asyncio.to_thread(juge.regarder, frame, nom_utilisateur(), etat.niveau(), ecran,
+                                                      infos=juge.contexte(sans_clavier, fenetre))
+                        print(f"[JUGE] {obs['activite'] if obs else 'pas de réponse lisible du modèle'}"
+                              f"{' (ne fait rien)' if obs and obs['inactif'] else ''}")
+                        if etat.observer(obs, time.time()):
+                            import rgb_prisme
+                            rouge = (await asyncio.to_thread(rgb_prisme.passer_rouge)
+                                     if _cat_juge.action_autorisee("prisme_rgb") else None)
+                            await parler(obs["remarque"])
+                            if rouge:
+                                await asyncio.sleep(juge.DUREE_ROUGE)
+                                await asyncio.to_thread(rgb_prisme.restaurer, rouge)
+        except Exception as e:
+            print(f"[JUGE] Erreur boucle : {e!r}")
+        await asyncio.sleep(juge.INTERVALLE)
+
 # ── Protection Antivirus en temps réel (LIVE) ───────────────────────────────
 AV_LIVE_PROTECTION_ENABLED = False
 AV_LIVE_REPORTED_THREATS = set()
@@ -11472,7 +12041,7 @@ async def boucle_antivirus_live():
     import stat
     import shutil
     import psutil
-    from antivirus_scanner import is_file_suspicious, get_exclusions, is_excluded
+    from antivirus_scanner import is_file_suspicious, get_exclusions, is_excluded, lance_depuis_temp
 
     # Charger l'état initial depuis la config
     try:
@@ -11487,7 +12056,8 @@ async def boucle_antivirus_live():
 
     while True:
         try:
-            if AV_LIVE_PROTECTION_ENABLED:
+            import jeu_leger                # en jeu (option « JARVIS léger » du mode jeu) : on saute le tour
+            if AV_LIVE_PROTECTION_ENABLED and not jeu_leger.actif():
                 folders = [
                     os.path.expanduser("~/Desktop"),
                     os.path.expanduser("~/Downloads"),
@@ -11591,7 +12161,7 @@ async def boucle_antivirus_live():
                         if "mimikatz" in name_lower or "miner.exe" in name_lower or "keylogger" in name_lower:
                             detected = True
                             desc = "Processus suspect (menace connue)"
-                        elif ("temp" in exe_lower or "tmp" in exe_lower) and name_lower.endswith((".exe", ".bat")):
+                        elif lance_depuis_temp(name, exe):
                             if ("docker" in name_lower and "installer" in name_lower) or name_lower == "7zr.exe":
                                 detected = False
                             else:
@@ -11744,6 +12314,10 @@ def detecter_microphone() -> int | None:
 def ecouter():
     global is_listening, jarvis_actif, dernier_message, STOP_PARLER, is_speaking, MIC_NEED_RELOAD
 
+    import oreille
+    if _charger_config().get("oreille", "parakeet") != "google" and not oreille.jeu_en_cours():
+        oreille.demarrer()  # Parakeet se charge (~20 s) pendant que Google assure les premières phrases
+
     r   = sr.Recognizer()
 
     # ── Détection automatique du micro ───────────────────────
@@ -11847,80 +12421,108 @@ def ecouter():
                 print("[JARVIS] Timeout session. Retour en veille.")
                 jarvis_actif = False
 
-            try:
-                with mic as source:
-                    is_listening = True
-                    state = "active" if jarvis_actif else "listening"
-                    send_web_broadcast_sync({"action": "set_state", "state": state})
-                    if jarvis_actif:
-                        send_web_broadcast_sync({"action": "user_listening"})
-
-                    audio = r.listen(source, timeout=2, phrase_time_limit=15)
-
-                    is_listening = False
+            # L'oreille (oreille.py) écoute en continu : micro + Silero + Parakeet, même pendant qu'il parle.
+            # Sinon (absente, en chargement, partie en cours, « oreille »: « google »), l'écoute d'avant.
+            texte = None
+            if _charger_config().get("oreille", "parakeet") != "google":
+                is_listening = True
+                send_web_broadcast_sync({"action": "set_state", "state": "active" if jarvis_actif else "listening"})
+                texte = oreille.prochaine_phrase(attente=2)
+                is_listening = False
+                if texte == "":
+                    continue  # rien entendu
+                if texte is not None:
                     send_web_broadcast_sync({"action": "set_state", "state": "thinking"})
-            except sr.WaitTimeoutError:
-                is_listening = False
-                raise  # Re-lever pour le gestionnaire WaitTimeoutError existant
-            except (OSError, AttributeError, ValueError) as _mic_hw_err:
-                is_listening = False
-                _err_str = str(_mic_hw_err)
-                if any(k in _err_str for k in ["Invalid input device", "No Default Input", "unanticipated", "[Errno"]):
-                    print(f"[MIC] ⚠ Périphérique audio invalide/perdu ({_mic_hw_err}) — rechargement demandé")
-                    MIC_NEED_RELOAD = True
-                    time.sleep(1)
+            if texte is None:
+                try:
+                    with mic as source:
+                        is_listening = True
+                        state = "active" if jarvis_actif else "listening"
+                        send_web_broadcast_sync({"action": "set_state", "state": state})
+                        if jarvis_actif:
+                            send_web_broadcast_sync({"action": "user_listening"})
+
+                        audio = r.listen(source, timeout=2, phrase_time_limit=15)
+
+                        is_listening = False
+                        send_web_broadcast_sync({"action": "set_state", "state": "thinking"})
+                except sr.WaitTimeoutError:
+                    is_listening = False
+                    raise  # Re-lever pour le gestionnaire WaitTimeoutError existant
+                except (OSError, AttributeError, ValueError) as _mic_hw_err:
+                    is_listening = False
+                    _err_str = str(_mic_hw_err)
+                    if any(k in _err_str for k in ["Invalid input device", "No Default Input", "unanticipated", "[Errno"]):
+                        print(f"[MIC] ⚠ Périphérique audio invalide/perdu ({_mic_hw_err}) — rechargement demandé")
+                        MIC_NEED_RELOAD = True
+                        time.sleep(1)
+                        continue
+                    raise
+
+                # ── Transcription — Nemotron ASR (local) ou Google (cloud) ──
+                raw_data = audio.get_raw_data(convert_rate=16000, convert_width=2)
+
+                # Filtrage par durée minimale de 0.5s pour éviter les micro-bruits
+                audio_duration = len(raw_data) / 32000.0
+                if audio_duration < 0.5:
+                    print(f"[ASR] Segment ignoré (trop court : {audio_duration:.2f}s)")
+                    send_web_broadcast_sync({"action": "set_state", "state": "idle"})
                     continue
-                raise
 
-            # ── Transcription — Nemotron ASR (local) ou Google (cloud) ──
-            raw_data = audio.get_raw_data(convert_rate=16000, convert_width=2)
+                # Vérification de l'énergie moyenne du segment (RMS) pour éliminer les bruits/souffles
+                try:
+                    import numpy as _np
+                    _pcm = _np.frombuffer(raw_data, dtype=_np.int16).astype(_np.float32)
+                    rms_energy = int(_np.sqrt(_np.mean(_pcm ** 2))) if len(_pcm) > 0 else 0
+                except Exception:
+                    rms_energy = 9999  # Fallback si numpy indisponible
 
-            # Filtrage par durée minimale de 0.5s pour éviter les micro-bruits
-            audio_duration = len(raw_data) / 32000.0
-            if audio_duration < 0.5:
-                print(f"[ASR] Segment ignoré (trop court : {audio_duration:.2f}s)")
-                send_web_broadcast_sync({"action": "set_state", "state": "idle"})
-                continue
+                # Plancher de bruit — SUIT le reglage de sensibilite, au lieu du
+                # 250 code en dur qu'aucun reglage ne pouvait atteindre.
+                #
+                # Mesure du 31/08/2026 sur ce poste : l'entree par defaut donne
+                # RMS 9 a 42, cretes ~200. Le seuil de 250 rejetait donc CHAQUE
+                # segment, y compris la parole — et le seul message etait une
+                # ligne de console que personne ne lit. « JARVIS ne m'entend
+                # pas » venait de la, pas du micro.
+                #
+                # Le facteur 0.5 garde la proportion d'origine (250 pour une
+                # sensibilite de 500) tout en rendant le plancher REGLABLE : la
+                # meme molette du panneau agit desormais sur les deux verrous.
+                # Plancher absolu de 20 pour continuer a jeter le silence pur.
+                _seuil_rms = max(20, int(sens * 0.5))
+                print(f"[ASR] Énergie moyenne du segment : {rms_energy} "
+                      f"(seuil minimum : {_seuil_rms}, sensibilité : {sens})")
+                if rms_energy < _seuil_rms:
+                    print("[ASR] Segment ignoré (bruit ou silence sous le seuil)")
+                    send_web_broadcast_sync({"action": "set_state", "state": "idle"})
+                    continue
 
-            # Vérification de l'énergie moyenne du segment (RMS) pour éliminer les bruits/souffles
-            try:
-                import numpy as _np
-                _pcm = _np.frombuffer(raw_data, dtype=_np.int16).astype(_np.float32)
-                rms_energy = int(_np.sqrt(_np.mean(_pcm ** 2))) if len(_pcm) > 0 else 0
-            except Exception:
-                rms_energy = 9999  # Fallback si numpy indisponible
-
-            # Plancher de bruit — SUIT le reglage de sensibilite, au lieu du
-            # 250 code en dur qu'aucun reglage ne pouvait atteindre.
-            #
-            # Mesure du 31/08/2026 sur ce poste : l'entree par defaut donne
-            # RMS 9 a 42, cretes ~200. Le seuil de 250 rejetait donc CHAQUE
-            # segment, y compris la parole — et le seul message etait une
-            # ligne de console que personne ne lit. « JARVIS ne m'entend
-            # pas » venait de la, pas du micro.
-            #
-            # Le facteur 0.5 garde la proportion d'origine (250 pour une
-            # sensibilite de 500) tout en rendant le plancher REGLABLE : la
-            # meme molette du panneau agit desormais sur les deux verrous.
-            # Plancher absolu de 20 pour continuer a jeter le silence pur.
-            _seuil_rms = max(20, int(sens * 0.5))
-            print(f"[ASR] Énergie moyenne du segment : {rms_energy} "
-                  f"(seuil minimum : {_seuil_rms}, sensibilité : {sens})")
-            if rms_energy < _seuil_rms:
-                print("[ASR] Segment ignoré (bruit ou silence sous le seuil)")
-                send_web_broadcast_sync({"action": "set_state", "state": "idle"})
-                continue
-
-            if NEMOTRON_ASR_ENABLED and _nemotron_instance is not None:
-                texte = _nemotron_instance.transcrire(raw_data, sample_rate=16000).lower().strip()
-            else:
-                texte = r.recognize_google(audio, language="fr-FR").lower().strip()
+                if NEMOTRON_ASR_ENABLED and _nemotron_instance is not None:
+                    texte = _nemotron_instance.transcrire(raw_data, sample_rate=16000).lower().strip()
+                else:
+                    # L'oreille (oreille.py : Parakeet en local, processus à part) ; Google si elle est absente,
+                    # en chargement, désactivée (« oreille »: « google ») ou pendant une partie.
+                    # Google d'abord (meilleur sur ce micro, mesuré le 23/10) ; sans Internet, Parakeet (oreille.py).
+                    try:
+                        texte = r.recognize_google(audio, language="fr-FR")
+                    except sr.RequestError:
+                        texte = oreille.transcrire(raw_data)
+                        if texte is None:
+                            raise
+                    texte = texte.lower().strip()
+            texte = texte.lower().strip()
 
             if not texte:
                 send_web_broadcast_sync({"action": "set_state", "state": "idle"})
                 continue  # Transcription vide — on ignore
 
             print(f"[ENTENDU] {texte}")
+
+            if oreille.est_coupure_seule(texte):  # « stop », « Jarvis, attends » : il s'est tu, rien à répondre
+                jarvis_actif = True
+                dernier_message = time.time() - SESSION_TIMEOUT + SUITE_CONVERSATION
+                continue
 
             # GESTION INTERRUPTION DURANT LA PAROLE
             if is_speaking and ("tais-toi" in texte or "silence" in texte or "tais toi" in texte):
@@ -11933,7 +12535,7 @@ def ecouter():
                 if jarvis_actif:
                     jarvis_actif = False
                     loop = asyncio.new_event_loop()
-                    loop.run_until_complete(parler(f"A votre service {nom_utilisateur()}. Je me mets en veille."))
+                    loop.run_until_complete(parler("OK, je me mets en veille."))
                     loop.close()
                 continue
 
@@ -11966,9 +12568,13 @@ def ecouter():
                         loop.run_until_complete(parler(action_pc))
                     else:
                         loop.run_until_complete(traiter_reponse_ia(commande))
+                    # Suite de conversation : quelques secondes après la réponse, on répond sans redire
+                    # « Jarvis » (la session expire SUITE_CONVERSATION s après, via SESSION_TIMEOUT).
+                    jarvis_actif = True
+                    dernier_message = time.time() - SESSION_TIMEOUT + float(_charger_config().get("suite_conversation", SUITE_CONVERSATION))
                 else:
                     if wake_word_detected: # "Jarvis" tout seul
-                        loop.run_until_complete(parler(f"Oui {nom_utilisateur()}, je vous écoute."))
+                        loop.run_until_complete(parler("Oui, je t'écoute."))
 
                 loop.close()
             else:
@@ -12147,6 +12753,9 @@ def start_ia():
         # Lancer la boucle de veille du ciel (avions militaires / jets privés)
         asyncio.create_task(boucle_surveillance_ciel())
 
+        # Prévenir si le micro est coupé dans Windows (micro_etat.py)
+        asyncio.create_task(boucle_micro_coupe())
+
         # Lancer la boucle de surveillance des décollages de fusées
         asyncio.create_task(boucle_surveillance_fusees())
 
@@ -12164,6 +12773,9 @@ def start_ia():
 
         # Detection de presence webcam (opt-in, desactivee par defaut)
         asyncio.create_task(boucle_surveillance_bureau())
+
+        # Le juge : remarque quand l'utilisateur ne fait rien (opt-in, « juge-moi »)
+        asyncio.create_task(boucle_juge())
 
         # Bot Discord (texte, commandes complètes) — no-op silencieux si
         # DISCORD_BOT_TOKEN/DISCORD_USER_ID absents du .env.
@@ -12371,23 +12983,51 @@ def start_mobile_http_server():
     threading.Thread(target=_start_redirect_server, daemon=True).start()
     server.serve_forever()
 
+def pid_ecoute_toutes_interfaces(netstat, port):
+    """PID qui ecoute sur 0.0.0.0:port ou [::]:port dans une sortie de `netstat -ano`, sinon None.
+
+    Port exact (avant, « :80 » attrapait aussi 8000, 8001, 8443...) et seulement l'adresse que JARVIS
+    prend lui-meme : un service local sur 127.0.0.1 au meme port (ShadowBroker sur 127.0.0.1:8000)
+    cohabite avec lui et etait tue a chaque demarrage (08/10/2026).
+    """
+    for line in netstat.splitlines():
+        parts = line.split()
+        if (len(parts) >= 5 and parts[0] == "TCP" and parts[1] in (f"0.0.0.0:{port}", f"[::]:{port}")
+                and parts[3] in ("LISTENING", "ÉCOUTE") and parts[-1].isdigit()):
+            return int(parts[-1])
+    return None
+
+
+def attendre_vite(processus, ecoute, delai, pas=1.0, dormir=time.sleep):
+    """« ok » quand l'interface repond, « mort » si npm s'est arrete, « delai » s'il tourne encore.
+
+    Au demarrage de Windows, vite a mis 2 min 30 a ouvrir :8001 (22/10/2026). Le delai fixe de
+    15 s faisait alors servir dist/ par Python (build du 04/09) pendant que vite demarrait quand
+    meme : deux serveurs sur :8001, et la fenetre ouverte sur la vieille version du HUD.
+    """
+    fin = time.monotonic() + delai
+    while True:
+        if ecoute():
+            return "ok"
+        if processus.poll() is not None:
+            return "mort"
+        if time.monotonic() >= fin:
+            return "delai"
+        dormir(pas)
+
+
 def liberer_port(port):
-    """Tue le processus qui occupe le port donné (Windows)."""
+    """Tue l'instance precedente qui occupe le port donne sur toutes les interfaces (Windows)."""
     try:
         result = subprocess.run(
             ["netstat", "-ano"],
             capture_output=True
         )
         stdout = result.stdout.decode(errors='ignore')
-        for line in stdout.splitlines():
-            if f":{port}" in line and ("LISTENING" in line or "ÉCOUTE" in line):
-                parts = line.strip().split()
-                pid = parts[-1]
-                if pid.isdigit() and int(pid) != os.getpid():
-                    subprocess.run(["taskkill", "/F", "/PID", pid],
-                                   capture_output=True)
-                    print(f"[DÉMARRAGE] Port {port} libéré (PID {pid} terminé).")
-                    return
+        pid = pid_ecoute_toutes_interfaces(stdout, port)
+        if pid is not None and pid != os.getpid():
+            subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+            print(f"[DÉMARRAGE] Port {port} libéré (PID {pid} terminé).")
     except Exception as e:
         print(f"[DÉMARRAGE] Impossible de libérer le port {port} : {e}")
 
@@ -12555,6 +13195,16 @@ def main():
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
     INTERFACE_PORT = int(os.environ.get("JARVIS_INTERFACE_PORT", "") or "5173")
 
+    # L'oreille et le HUD de l'ancien JARVIS lui survivent : les fermer avant d'en lancer d'autres
+    # (le HUD part juste en dessous, l'oreille avec start_ia).
+    try:
+        import instance_unique
+        _compagnons = instance_unique.terminer_compagnons(dossier_hud=INTERFACE_DIR)
+        if _compagnons:
+            print("[INSTANCE] %d oreille(s) ou HUD laisses par l'ancien JARVIS fermes" % len(_compagnons))
+    except Exception as _e_comp:
+        print("[INSTANCE] menage de l'oreille et du HUD impossible (%r)" % (_e_comp,))
+
     frontend_dir = INTERFACE_DIR
     frontend_process = None
     FRONTEND_URL = f"http://localhost:{INTERFACE_PORT}"
@@ -12582,7 +13232,25 @@ def main():
             print(f"[JARVIS] Frontend servi via Python HTTP sur http://localhost:{port}")
             httpd.serve_forever()
 
+    def _servir_dist():
+        """Tentative 2 : servir dist/ avec Python (pas besoin de npm). Vrai si ca repond."""
+        dist_dir = os.path.join(frontend_dir, "dist")
+        if not os.path.exists(os.path.join(dist_dir, "index.html")):
+            print("[JARVIS] Aucun dossier dist/ trouve. Interface non disponible.")
+            print("[JARVIS] Pour corriger : cd frontend && npm install && npm run build")
+            return False
+        print("[JARVIS] Fallback : service du dossier dist/ via Python HTTP...")
+        threading.Thread(target=_servir_dist_python, args=(INTERFACE_PORT,), daemon=True).start()
+        ok = _port_ecoute(INTERFACE_PORT, timeout=3.0)
+        if ok:
+            print("[JARVIS] Frontend dist/ servi correctement.")
+        return ok
+
+    def _vite_repond():
+        return _port_ecoute(INTERFACE_PORT, timeout=0.5)
+
     vite_ok = False
+    vite_en_route = False      # npm tourne mais vite n'ecoute pas encore : la fenetre l'attendra
     if os.path.exists(frontend_dir):
         # L'installeur .exe n'installe que les paquets Python : sans ceci, l'interface
         # ne démarrait jamais chez qui n'avait pas lancé install.bat. Une seule fois.
@@ -12603,35 +13271,21 @@ def main():
                 ["npm", "run", "dev"], cwd=frontend_dir, shell=True,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
-            vite_ok = _port_ecoute(INTERFACE_PORT, timeout=15.0)
+            _etat_vite = attendre_vite(frontend_process, _vite_repond, 15.0)
+            vite_ok, vite_en_route = _etat_vite == "ok", _etat_vite == "delai"
             if vite_ok:
                 print(f"[JARVIS] Interface demarree sur localhost:{INTERFACE_PORT}")
+            elif vite_en_route:
+                print("[JARVIS] Vite demarre lentement : la fenetre l'attendra, les services partent sans lui.")
             else:
                 print("[JARVIS] Vite n'a pas demarre (npm/vite absent ou erreur).")
-                if frontend_process:
-                    frontend_process.terminate()
-                    frontend_process = None
+                frontend_process = None
         except Exception as e:
             print(f"[JARVIS] Impossible de lancer Vite : {e}")
             frontend_process = None
 
-        # Tentative 2 : servir dist/ avec Python (pas besoin de npm)
-        if not vite_ok:
-            dist_dir = os.path.join(frontend_dir, "dist")
-            if os.path.exists(dist_dir) and os.path.exists(os.path.join(dist_dir, "index.html")):
-                print("[JARVIS] Fallback : service du dossier dist/ via Python HTTP...")
-                t_dist = threading.Thread(target=_servir_dist_python, args=(INTERFACE_PORT,), daemon=True)
-                t_dist.start()
-                vite_ok = _port_ecoute(INTERFACE_PORT, timeout=3.0)
-                if vite_ok:
-                    print("[JARVIS] Frontend dist/ servi correctement.")
-            else:
-                print("[JARVIS] Aucun dossier dist/ trouve. Interface non disponible.")
-                print("[JARVIS] Pour corriger : cd frontend && npm install && npm run build")
-
-    if not vite_ok:
-        print("[JARVIS] ATTENTION : l'interface visuelle ne sera pas disponible.")
-        print("[JARVIS] JARVIS reste fonctionnel en mode vocal uniquement.")
+        if not vite_ok and not vite_en_route:
+            vite_ok = _servir_dist()
 
     # Verification initiale des mises a jour
     verifier_mises_a_jour()
@@ -12660,6 +13314,22 @@ def main():
         print()
 
     threading.Thread(target=_nettoyer_console_demarrage, daemon=True).start()
+
+    # Vite lent (demarrage de Windows) : les services tournent deja, seule la fenetre attend.
+    if vite_en_route:
+        vite_ok = attendre_vite(frontend_process, _vite_repond, 240.0) == "ok"
+        if vite_ok:
+            print(f"[JARVIS] Interface demarree sur localhost:{INTERFACE_PORT}")
+        else:
+            # /T : npm lance par cmd (shell=True) ; terminate() ne tuait que cmd, vite survivait.
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(frontend_process.pid)],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            frontend_process = None
+            vite_ok = _servir_dist()
+
+    if not vite_ok:
+        print("[JARVIS] ATTENTION : l'interface visuelle ne sera pas disponible.")
+        print("[JARVIS] JARVIS reste fonctionnel en mode vocal uniquement.")
 
     # Choisir le mode d'affichage
     if _WEBVIEW_OK and webview is not None:
@@ -12816,8 +13486,23 @@ def main():
         except Exception as _e_barre:
             print(f"[JARVIS] Barre rapide indisponible : {_e_barre!r}")
 
+        # ── Orbe flottante ───────────────────────────────────────────────
+        # Meme processus que le HUD, pour la meme raison que la barre.
+        _orbe = None
+        try:
+            import orbe_flottante
+            _orbe = orbe_flottante.creer(FRONTEND_URL)
+        except Exception as _e_orbe:
+            print(f"[JARVIS] Orbe flottante indisponible : {_e_orbe!r}")
+
         def _au_demarrage():
             """Apres le lancement de la boucle graphique."""
+            if _orbe is not None:
+                try:
+                    import orbe_flottante
+                    print("[ORBE] %s" % orbe_flottante.demarrer()[1])
+                except Exception as _e_ob:
+                    print(f"[JARVIS] Orbe flottante : {_e_ob!r}")
             if _barre is not None:
                 try:
                     import barre_rapide

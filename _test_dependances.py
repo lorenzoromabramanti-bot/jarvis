@@ -52,6 +52,7 @@ FACULTATIFS = {
     "winshell":  "raccourcis Windows",
     "backports": "dependance transitive de setuptools",
     "comfy_client": "module local, pas un paquet",
+    "openwakeword": "detecteur local de « Jarvis » (oreille.py), seulement avec un modele dans modeles/",
 }
 
 

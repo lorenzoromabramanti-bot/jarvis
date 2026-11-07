@@ -134,6 +134,14 @@ const MESSAGES_AUTORISES = {
   // get_meteo : ajoute cote main2.py pour ce lot (la meteo n'etait que
   // poussee a la voix). 25s : geocodage + open-meteo, deportes en thread.
   get_meteo: { niveau: 1, reponse: 'meteo_data', champs: ['ville'], timeout: 25000 },
+
+  // Lot 10 — creation. Reponse aux questions « avec quel modele ? » de
+  // JARVIS. Ecrit un fichier (image) ou un projet (site) via des API payantes,
+  // sans rien detruire : 4 et 5. Le site arrive cote JARVIS sous la cle
+  // `action`, pas `type` (protocole de main2.py, reproduit tel quel).
+  generate_image_selected: { niveau: 4, reponse: null, champs: ['prompt', 'model'] },
+  generate_website_selected: { niveau: 5, reponse: null, cle: 'action',
+    champs: ['prompt', 'model', 'image_model'] },
   // Panneau scolaire (Pronote via Home Assistant). Lecture pure -> niveau 1,
   // meme famille que get_meteo. La synchro ECRIT dans Google Agenda ->
   // niveau 3, meme niveau que update_shopping_list juste en dessous.
@@ -255,6 +263,13 @@ const EVENEMENTS_RELAYES = new Set([
   'ha_state_changed',   // diffuse par JARVIS a tous les clients apres une action
   'show_images',        // JARVIS pousse des images apres une recherche vocale
   'iptv_playlist_error', 'iptv_stream_ready', 'iptv_direct_stream',
+  // Lot 10 — creation (images, videos, sites, prompts) : choix du modele,
+  // chargement et resultat. Ignores jusqu'ici : JARVIS disait « clique sur
+  // les boutons a l'ecran » et l'image annoncee n'apparaissait nulle part.
+  'ask_image_model', 'close_image_model_selector',
+  'ask_website_model', 'close_website_model_selector',
+  'generation_loading', 'hide_generation_loading', 'coding_started', 'coding_finished',
+  'show_generated_image', 'show_generated_video', 'show_generated_prompt',
 ]);
 
 // Index inverse : types de reponse qu'un jarvis.send peut attendre.
@@ -589,7 +604,7 @@ export function gwRequest(method, params = {}) {
           return reject(new Error(
             'service domotique non autorise : ' + params.domain + '.' + params.service));
         }
-        const paquet = { type: params.type };
+        const paquet = { [decl.cle || 'type']: params.type };
         for (const champ of decl.champs || []) {
           if (params[champ] !== undefined) paquet[champ] = params[champ];
         }

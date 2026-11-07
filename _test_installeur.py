@@ -134,8 +134,9 @@ def verifier():
     # creer pour que le telephone puisse se connecter.
     import catalogue
     racine_avant, installeur.RACINE = installeur.RACINE, tempfile.mkdtemp(prefix="jarvis_env_")
-    choix = str(catalogue._chemin_choix())
-    sauv_choix = io.open(choix, encoding="utf-8").read() if os.path.exists(choix) else None
+    # Fichier de choix temporaire, pas le vrai : voir _test_catalogue (08/10/2026).
+    choix = os.path.join(tempfile.mkdtemp(prefix="jarvis_choix_"), "capacites.json")
+    vrai_chemin, catalogue._chemin_choix = catalogue._chemin_choix, lambda: choix
     try:
         r = api.enregistrer("simple", [], {})
         jeton = installeur._lire_env().get("JARVIS_ACCESS_TOKEN", "")
@@ -146,11 +147,8 @@ def verifier():
     finally:
         shutil.rmtree(installeur.RACINE, ignore_errors=True)
         installeur.RACINE = racine_avant
-        if sauv_choix is None:
-            if os.path.exists(choix):
-                os.remove(choix)
-        else:
-            io.open(choix, "w", encoding="utf-8", newline="\n").write(sauv_choix)
+        catalogue._chemin_choix = vrai_chemin
+        shutil.rmtree(os.path.dirname(choix), ignore_errors=True)
     print("  OK  jeton d'acces genere dans un .env vide, jamais renvoye ni ecrase")
 
 
