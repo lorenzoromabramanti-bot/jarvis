@@ -89,6 +89,8 @@ Ollama 服务器读取。
 
 在手机浏览器中同样可用。
 
+**1.5 新增——玻璃球**（`frontend/verre.html`）：适合日常使用的简洁视图，白天浅色、夜晚深色，还有麦克风按钮，不用说“Jarvis”就能直接说话。聊到相关话题时，玻璃卡片会出现在球体周围：天气（未来几小时、风、降雨、最低/最高温）、音乐（Home Assistant 播放器正在播放的内容，可控制）和设备。要默认打开它，请在 `jarvis_config.json` 中设置 `"interface_page": "verre.html"`。
+
 界面基于 **JincocoDev** 的 [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui)
 （ISC 许可证，见 [`frontend/LICENSE`](frontend/LICENSE)），而它又基于 **Filip Zrnzevic** 的
 [Three.js Orb Visualizer](https://codepen.io/filipz/pen/yyyRgry)。它已被重新接线，直接与 JARVIS 通信。

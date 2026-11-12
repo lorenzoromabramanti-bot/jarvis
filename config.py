@@ -51,7 +51,7 @@ from pathlib import Path
 #
 # Un numéro de version n'est pas décoratif : sans lui, la vérification de
 # mise à jour n'a rien à comparer. Il doit monter à chaque publication.
-VERSION = "1.4.1"
+VERSION = "1.5.0"
 
 SYSTEME = platform.system()            # 'Windows' | 'Darwin' | 'Linux'
 EST_WINDOWS = SYSTEME == "Windows"

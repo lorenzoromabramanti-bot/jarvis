@@ -53,7 +53,7 @@ CAPACITES = {
         reglages=["GEMINI_API_KEY", "JARVIS_ACCESS_TOKEN"],
         capacites=[], niveau=3, avance=False, defaut=True, obligatoire=True,
         actions=["user_input", "get_settings", "update_settings", "stop_audio",
-                 "toggle_mic", "toggle_fullscreen", "location_update",
+                 "toggle_mic", "ecoute_directe", "toggle_fullscreen", "location_update",
                  "mobile_command", "torche_telephone",
                  "set_primary_model", "get_available_models",
                  "get_auto_diagnostic", "get_propositions", "envoyer_proposition",

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fr" data-theme="sombre" data-etat="hors">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Jarvis · Orbe de verre</title>
+<link rel="stylesheet" href="/src/verre/verre.css">
+</head>
+<body>
+<div class="ecran">
+
+  <header class="haut">
+    <div class="bloc">
+      <span class="grand" id="heure">--:--</span>
+      <span class="doux" id="date"></span>
+    </div>
+    <div class="ile" role="status" aria-live="polite">
+      <span class="point" aria-hidden="true"></span>
+      <span id="ile-texte">Connexion à Jarvis…</span>
+    </div>
+    <div class="bloc droite">
+      <span class="grand" id="temp">--°</span>
+      <span class="doux" id="ciel"></span>
+    </div>
+  </header>
+
+  <main class="centre">
+
+    <!-- Cartes façon Opal : elles apparaissent quand on en parle et repartent toutes seules -->
+    <div class="colonne">
+      <aside class="panneau" id="carte-meteo" aria-label="Météo" hidden>
+        <div class="panneau-titre">
+          <h2 id="meteo-ville">Météo</h2>
+          <button type="button" class="fermer" data-ferme="carte-meteo" aria-label="Fermer la météo">×</button>
+        </div>
+        <div class="meteo-haut">
+          <span class="meteo-temp" id="meteo-temp">--°</span>
+          <span class="doux" id="meteo-ciel"></span>
+        </div>
+        <svg class="courbe" id="meteo-courbe" viewBox="0 0 280 96" role="img" aria-label="Températures des prochaines heures" hidden></svg>
+        <dl class="stats">
+          <div><dt>Vent</dt><dd id="meteo-vent">--</dd></div>
+          <div><dt>Pluie</dt><dd id="meteo-pluie">--</dd></div>
+          <div><dt>Mini · maxi</dt><dd id="meteo-minmax">--</dd></div>
+        </dl>
+      </aside>
+    </div>
+
+    <section class="scene" aria-label="Jarvis">
+      <p class="doux question" id="question"></p>
+      <div class="orbe" role="img" aria-label="Orbe de Jarvis">
+        <span class="reflet"></span>
+        <span class="reflet petit"></span>
+      </div>
+      <p class="reponse" id="reponse" aria-live="polite">Bonjour. Dis « Jarvis » ou écris-moi.</p>
+    </section>
+
+    <div class="colonne">
+      <aside class="panneau" id="carte-musique" aria-label="Musique" hidden>
+        <div class="panneau-titre">
+          <h2>Musique</h2>
+          <button type="button" class="fermer" data-ferme="carte-musique" aria-label="Fermer la musique">×</button>
+        </div>
+        <div class="lecteur">
+          <span class="pochette" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="16" r="2"/></svg>
+          </span>
+          <div class="piste">
+            <div class="kicker" id="musique-kicker">Musique</div>
+            <div class="titre-piste" id="musique-titre"></div>
+            <div class="artiste" id="musique-artiste"></div>
+          </div>
+        </div>
+        <span class="barres" id="musique-barres" aria-hidden="true"></span>
+        <div class="commandes" id="musique-commandes" hidden>
+          <button type="button" id="musique-prec" aria-label="Titre précédent">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 6h2v12H6zM18 6v12L9.5 12z"/></svg>
+          </button>
+          <button type="button" class="central" id="musique-pp" aria-label="Lecture ou pause">
+            <svg class="i-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="i-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+          </button>
+          <button type="button" id="musique-suiv" aria-label="Titre suivant">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 6h2v12h-2zM6 6v12l8.5-6z"/></svg>
+          </button>
+        </div>
+      </aside>
+
+      <aside class="panneau" id="carte-appareils" aria-label="Appareils" hidden>
+        <div class="panneau-titre">
+          <h2>Appareils <span class="doux" id="appareils-nombre"></span></h2>
+          <button type="button" class="fermer" data-ferme="carte-appareils" aria-label="Fermer les appareils">×</button>
+        </div>
+        <ul class="liste" id="appareils-liste"></ul>
+      </aside>
+
+      <aside class="panneau" id="panneau-pronote" aria-label="Pronote" hidden>
+        <div class="panneau-titre">
+          <h2>Pronote</h2>
+          <button type="button" class="fermer" id="fermer-pronote" aria-label="Fermer le panneau Pronote">×</button>
+        </div>
+        <ul class="liste" id="pronote-liste"></ul>
+        <button type="button" class="action" id="reviser">Réviser avec Jarvis</button>
+        <p class="doux petit-texte">Ce panneau repart tout seul quand on change de sujet.</p>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="bas">
+    <nav class="maison" id="maison" aria-label="Maison"></nav>
+    <form class="saisie" id="saisie">
+      <label class="sr" for="message">Écrire à Jarvis</label>
+      <input id="message" type="text" autocomplete="off" placeholder="Écris à Jarvis…">
+      <button type="button" class="rond micro" id="micro" aria-label="Parler à Jarvis">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <button type="submit" class="rond" aria-label="Envoyer à Jarvis">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+    <div class="coin">
+      <a class="theme" href="/" aria-label="Tableau de bord complet" title="Tableau de bord complet">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>
+      </a>
+      <button type="button" class="theme" id="theme" aria-label="Thème : automatique">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </footer>
+
+</div>
+<script type="module" src="/src/verre/verre.js"></script>
+</body>
+</html>

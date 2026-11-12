@@ -2,9 +2,10 @@
 """
 J.A.R.V.I.S — Orbe flottante
 ============================
-Une petite orbe, toujours au-dessus des autres fenêtres, en bas à droite de
-l'écran. Elle respire au repos, tourne plus vite avec un anneau quand JARVIS
-réfléchit, ondule quand il parle (état lu sur /api/events, le flux du HUD).
+Une petite orbe de verre (1.5 : la même que le HUD « Orbe de verre », claire
+le jour, sombre la nuit), toujours au-dessus des autres fenêtres, en bas à
+droite de l'écran. Elle respire au repos, prend un anneau quand JARVIS
+réfléchit, vibre quand il parle (état lu sur /api/events, le flux du HUD).
 Clic : la barre rapide. Glisser : la déplacer. Double-clic : cachée jusqu'au
 prochain démarrage.
 
@@ -13,8 +14,8 @@ Une fenêtre pywebview « transparente » ne l'est pas : WinForms peint dessous
 une photo figée de ce qu'il y avait derrière à sa création (mesuré le 15/10
 devant une fenêtre rouge : aucun rouge aux coins). Dès que l'arrière-plan
 change, on voit un rectangle. Ici, une fenêtre « layered » reçoit une image
-avec sa transparence pixel par pixel (UpdateLayeredWindow) : rien d'autre que
-les particules n'est dessiné. ctypes et Pillow, déjà là : rien à installer.
+avec sa transparence pixel par pixel (UpdateLayeredWindow, BGRA prémultiplié) :
+rien d'autre que l'orbe n'est dessiné. ctypes, Pillow et numpy, déjà là.
 
 JAMAIS PAR-DESSUS UN JEU
 Un fil regarde toutes les deux secondes si un jeu ou une vidéo occupe l'écran
@@ -24,6 +25,7 @@ Désactivable : JARVIS_ORBE=0 dans l'environnement.
 """
 
 import ctypes
+import functools
 import json
 import math
 import os
@@ -36,8 +38,7 @@ TAILLE = 132            # pixels logiques
 MARGE = 18
 IMAGES_PAR_SECONDE = 20
 PERIODE_PLEIN_ECRAN = 2.0
-TEINTE = 186            # cyan du thème « classic » ; JARVIS_ORBE_TEINTE pour une autre (140 neon, 45 aurum)
-N_POINTS = 520
+TEINTE = 186            # teinte des particules d'avant la 1.5 (JARVIS_ORBE_TEINTE) : plus utilisée par le verre
 
 _url_evenements = None
 _etat = {"nom": "idle", "depuis": 0.0}
@@ -60,65 +61,82 @@ def active():
     return os.environ.get("JARVIS_ORBE", "1") != "0"
 
 
-# ── Dessin ────────────────────────────────────────────────────────────────
-
-def _points():
-    """Points répartis sur la sphère (Fibonacci) : projetés, ils se serrent sur le bord, comme la sphère creuse du HUD."""
-    pts = []
-    for i in range(N_POINTS):
-        y = 1 - (i + .5) / N_POINTS * 2
-        r = math.sqrt(1 - y * y)
-        a = i * 2.39996
-        pts.append((math.cos(a) * r, y, math.sin(a) * r, (i * 7.31) % 6.28))
-    return pts
+# ── Dessin : l'orbe de verre (1.5) : la même que celle du HUD « Orbe de verre », claire le jour, sombre la nuit ──
+PALETTES = {
+    "clair": ((0.0, (255, 255, 255)), (0.30, (228, 239, 251)), (0.66, (188, 213, 240)), (1.0, (143, 180, 224))),
+    "sombre": ((0.0, (201, 224, 250)), (0.28, (94, 141, 196)), (0.66, (35, 62, 102)), (1.0, (16, 27, 46))),
+}
+ACCENTS = {"clair": (31, 111, 196), "sombre": (127, 184, 245)}
 
 
-_POINTS = _points()
+def theme_du_moment(heure=None):
+    """« clair » de 7 h à 20 h, « sombre » sinon, comme le HUD ; JARVIS_ORBE_THEME=clair|sombre l'impose."""
+    choix = os.environ.get("JARVIS_ORBE_THEME", "auto")
+    if choix in PALETTES:
+        return choix
+    h = time.localtime().tm_hour if heure is None else heure
+    return "clair" if 7 <= h < 20 else "sombre"
 
 
-def _hsl(h, s, l):
-    """(r, g, b) 0-255 depuis une teinte en degrés, saturation et luminosité 0-1."""
-    c = (1 - abs(2 * l - 1)) * s
-    x = c * (1 - abs((h / 60) % 2 - 1))
-    m = l - c / 2
-    r, g, b = [(c, x, 0), (x, c, 0), (0, c, x), (0, x, c), (x, 0, c), (c, 0, x)][int(h // 60) % 6]
-    return int((r + m) * 255), int((g + m) * 255), int((b + m) * 255)
+def rayon(taille, t, intensite):
+    """Rayon de la sphère à l'instant t : elle respire, et vibre quand JARVIS parle."""
+    return taille * (.30 + math.sin(t * 1.6) * .025 + intensite * .035 * math.sin(t * 9))
 
 
-def rendu(taille, t, intensite, teinte=TEINTE):
+@functools.lru_cache(maxsize=64)
+def _sphere(diametre, theme):
+    """La sphère de verre (numpy) : dégradé éclairé d'en haut à gauche, reflet, ombre interne vers le bas.
+    Opaque dedans ; seul le bord (un pixel) est adouci. Rien autour : pas de halo, donc pas de voile."""
+    import numpy as np
+    from PIL import Image
+
+    n = diametre
+    y, x = np.mgrid[0:n, 0:n].astype(np.float32) + 0.5
+    r = n / 2
+    dx, dy = (x - r) / r, (y - r) / r
+    dist = np.sqrt(dx * dx + dy * dy)
+    lum = np.sqrt((dx + 0.32) ** 2 + (dy + 0.44) ** 2) / 1.45
+    positions = [p for p, _ in PALETTES[theme]]
+    rgb = np.stack([np.interp(lum, positions, [c[i] for _, c in PALETTES[theme]]) for i in range(3)], axis=-1)
+    hx, hy = (dx + 0.30) / 0.30, (dy + 0.58) / 0.13
+    reflet = np.clip(1 - (hx * hx + hy * hy), 0, 1) ** 0.6 * (0.9 if theme == "clair" else 0.55)
+    rgb = rgb * (1 - reflet[..., None]) + 255 * reflet[..., None]
+    ombre = np.clip((dist - 0.55) / 0.45, 0, 1) * np.clip(dy, 0, 1) * (0.18 if theme == "clair" else 0.35)
+    rgb = rgb * (1 - ombre[..., None])
+    alpha = np.clip((1 - dist) * r, 0, 1)
+    return Image.fromarray(np.dstack([np.clip(rgb, 0, 255), alpha * 255]).astype(np.uint8), "RGBA")
+
+
+def rendu(taille, t, intensite, teinte=TEINTE, theme=None):
     """
-    L'image RGBA d'un instant. Fond transparent, particules opaques (rien de semi-transparent : pas de voile),
-    et un disque à alpha 1/255, invisible, pour que la souris attrape l'orbe entre les particules.
+    L'image RGBA d'un instant : la sphère de verre (opaque, bord adouci d'un pixel), un disque à alpha 1/255,
+    invisible, pour que la souris attrape l'orbe autour, et un arc quand JARVIS réfléchit ou parle.
+    `teinte` (JARVIS_ORBE_TEINTE) servait aux particules d'avant la 1.5 : gardée pour ne casser aucun appel.
     """
     from PIL import Image, ImageDraw
 
+    theme = theme or theme_du_moment()
     img = Image.new("RGBA", (taille, taille), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
     cx = cy = taille / 2
-    souffle = math.sin(t * 1.6) * .025
-    rayon = taille * (.30 + souffle + intensite * .03)
-    d.ellipse((cx - rayon * 1.35, cy - rayon * 1.35, cx + rayon * 1.35, cy + rayon * 1.35), fill=(0, 0, 0, 1))
-    vitesse = .25 + intensite * 1.2
-    ca, sa = math.cos(t * vitesse), math.sin(t * vitesse)
-    cb, sb = math.cos(.42), math.sin(.42)
-    epais = max(1, round(taille / 150))
-    for px, py, pz, ph in _POINTS:
-        onde = 1 + intensite * .07 * math.sin(t * 9 + ph * 3)
-        x, z = px * ca + pz * sa, -px * sa + pz * ca
-        y = py * cb - z * sb
-        z = py * sb + z * cb
-        bord = 1 - abs(z)
-        avant = (z + 1) / 2
-        r, g, b = _hsl(teinte, 1, .30 + avant * .30 + bord * .30)
-        sx, sy = round(cx + x * rayon * onde), round(cy + y * rayon * onde)
-        e = epais * (2 if bord > .6 else 1)
-        d.rectangle((sx, sy, sx + e - 1, sy + e - 1), fill=(r, g, b, 255))
+    r = rayon(taille, t, intensite)
+    ImageDraw.Draw(img).ellipse((cx - r * 1.35, cy - r * 1.35, cx + r * 1.35, cy + r * 1.35), fill=(0, 0, 0, 1))
+    diametre = max(8, int(round(r * 2)))
+    img.alpha_composite(_sphere(diametre, theme), (int(round(cx - diametre / 2)), int(round(cy - diametre / 2))))
     if intensite > .05:
         a0 = math.degrees(t * 2.2)
-        r1 = rayon * 1.28
-        d.arc((cx - r1, cy - r1, cx + r1, cy + r1), a0, a0 + 109,
-              fill=_hsl(teinte, 1, .25 + intensite * .40) + (255,), width=2 * epais)
+        r1 = r * 1.22
+        ImageDraw.Draw(img).arc((cx - r1, cy - r1, cx + r1, cy + r1), a0, a0 + 109,
+                                fill=ACCENTS[theme] + (255,), width=max(2, round(taille / 75)))
     return img
+
+
+def _octets_bgra(img):
+    """BGRA prémultiplié, ce qu'attend UpdateLayeredWindow. Non prémultiplié, un bord adouci devenait un
+    liseré clair : c'est le « voile » du 15/10, et la raison pour laquelle l'orbe n'avait que des pixels opaques."""
+    import numpy as np
+    a = np.asarray(img.convert("RGBA"), dtype=np.uint16)
+    rgb = a[..., :3] * a[..., 3:4] // 255
+    return np.dstack([rgb[..., 2], rgb[..., 1], rgb[..., 0], a[..., 3]]).astype(np.uint8).tobytes()
 
 
 # ── État de JARVIS (même flux que le HUD et la barre rapide) ──────────────
@@ -319,7 +337,7 @@ def _dessiner(hwnd, taille):
 
 
 def _poser_image(hwnd, img):
-    """Donne l'image à la fenêtre avec sa transparence (BGRA prémultiplié : nos pixels sont opaques ou d'alpha ~0)."""
+    """Donne l'image à la fenêtre avec sa transparence (BGRA prémultiplié, _octets_bgra)."""
     w, h = img.size
     ecran = user32.GetDC(None)
     mem = gdi32.CreateCompatibleDC(ecran)
@@ -327,7 +345,7 @@ def _poser_image(hwnd, img):
     bits = ctypes.c_void_p()
     dib = gdi32.CreateDIBSection(mem, ctypes.byref(bmi), 0, ctypes.byref(bits), None, 0)
     ancien = gdi32.SelectObject(mem, dib)
-    donnees = img.tobytes("raw", "BGRA")
+    donnees = _octets_bgra(img)
     ctypes.memmove(bits, donnees, len(donnees))
     r = wintypes.RECT(); user32.GetWindowRect(hwnd, ctypes.byref(r))
     pos, taille, src = wintypes.POINT(r.left, r.top), wintypes.SIZE(w, h), wintypes.POINT(0, 0)

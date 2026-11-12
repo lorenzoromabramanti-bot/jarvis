@@ -94,6 +94,8 @@ VPN, सॉफ़्टवेयर हटाना, Spotify और Deezer क�
 
 यह फ़ोन के ब्राउज़र में भी चलता है।
 
+**1.5 में नया — काँच का गोला** (`frontend/verre.html`): रोज़ के इस्तेमाल के लिए एक शांत दृश्य, दिन में हल्का और रात में गहरा, साथ में एक माइक बटन ताकि "Jarvis" कहे बिना बोल सकें। जिस विषय पर आप बात करते हैं, उसके काँच के कार्ड गोले के चारों ओर दिखते हैं: मौसम (अगले घंटे, हवा, बारिश, न्यूनतम/अधिकतम), संगीत (आपके Home Assistant प्लेयर पर क्या बज रहा है, नियंत्रण के साथ) और डिवाइस। इसे डिफ़ॉल्ट रूप से खोलने के लिए `jarvis_config.json` में `"interface_page": "verre.html"` डालें।
+
 यह इंटरफ़ेस **JincocoDev** के [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui) पर बना है
 (ISC लाइसेंस, देखें [`frontend/LICENSE`](frontend/LICENSE)), जो खुद **Filip Zrnzevic** के
 [Three.js Orb Visualizer](https://codepen.io/filipz/pen/yyyRgry) पर आधारित है। इसे सीधे JARVIS से बात करने के

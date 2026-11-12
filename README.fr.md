@@ -102,6 +102,12 @@ tournent.
 
 Elle marche aussi sur téléphone, depuis le navigateur.
 
+**Nouveau dans la 1.5 — l'Orbe de verre** (`frontend/verre.html`) : une vue calme pour tous les jours,
+claire le jour et sombre la nuit, avec un bouton micro pour parler sans dire « Jarvis ». Des cartes de
+verre apparaissent autour de l'orbe quand on en parle : la météo (prochaines heures, vent, pluie,
+mini/maxi), la musique (ce qui joue sur vos lecteurs Home Assistant, avec les commandes) et les
+appareils. Pour l'ouvrir par défaut, mettez `"interface_page": "verre.html"` dans `jarvis_config.json`.
+
 L'interface est construite sur [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui)
 de **JincocoDev** (licence ISC, voir [`frontend/LICENSE`](frontend/LICENSE)), lui-même basé sur
 le [Three.js Orb Visualizer](https://codepen.io/filipz/pen/yyyRgry) de **Filip Zrnzevic**. Elle

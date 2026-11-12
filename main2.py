@@ -3484,6 +3484,10 @@ async def ws_handler(websocket):
                     if MIC_MUTED:
                         await send_web_state("idle")
                     print(f"[WEB] Micro {'COUPE' if MIC_MUTED else 'REACTIF'}")
+                elif data.get("type") == "ecoute_directe":
+                    # Bouton micro de l'Orbe de verre : « parle maintenant », sans le mot d'éveil.
+                    reveiller_ecoute()
+                    await websocket.send(json.dumps({"type": "ecoute_directe_ok", "muted": MIC_MUTED}))
                 elif data.get("type") == "toggle_fullscreen":
                     if _WEBVIEW_WINDOW:
                         _WEBVIEW_WINDOW.toggle_fullscreen()
@@ -11704,6 +11708,14 @@ interface_deja_connectee = False
 #  DÉTECTION MICROPHONE — Énumération + Fallback automatique
 # ══════════════════════════════════════════════════════════════
 
+def reveiller_ecoute():
+    """Bouton micro de l'Orbe de verre (1.5) : la prochaine phrase est prise sans redire « Jarvis »,
+    comme juste après une réponse (la session expire au bout de SESSION_TIMEOUT)."""
+    global jarvis_actif, dernier_message
+    jarvis_actif = True
+    dernier_message = time.time()
+
+
 def _sauvegarder_config(data: dict) -> None:
     """Sauvegarde les données dans jarvis_config.json."""
     try:
@@ -13209,6 +13221,10 @@ def main():
     frontend_dir = INTERFACE_DIR
     frontend_process = None
     FRONTEND_URL = f"http://localhost:{INTERFACE_PORT}"
+    # 1.5 : la page qu'ouvre la fenêtre. « interface_page » (jarvis_config.json) ou JARVIS_INTERFACE_PAGE :
+    # "verre.html" = l'Orbe de verre ; vide = le tableau de bord complet (index.html), comme avant.
+    _page = str(os.environ.get("JARVIS_INTERFACE_PAGE") or _charger_config().get("interface_page") or "")
+    PAGE_ACCUEIL = f"{FRONTEND_URL}/{_page.strip().lstrip('/')}" if _page.strip() else FRONTEND_URL
 
     def _port_ecoute(port, timeout=4.0):
         """Retourne True si quelque chose ecoute sur le port donne."""
@@ -13357,7 +13373,7 @@ def main():
 
         window = webview.create_window(
             title            = "J.A.R.V.I.S",
-            url              = FRONTEND_URL,
+            url              = PAGE_ACCUEIL,
             width            = _win_w,
             height           = _win_h,
             x                = _win_x,
@@ -13558,10 +13574,10 @@ def main():
             webview.start(_au_demarrage, private_mode=False)
         except Exception as e:
             print(f"[JARVIS] PyWebView impossible : {e} — bascule sur navigateur")
-            _ouvrir_dans_navigateur(FRONTEND_URL, frontend_process)
+            _ouvrir_dans_navigateur(PAGE_ACCUEIL, frontend_process)
     else:
         # MODE NAVIGATEUR (fallback si pywebview absent)
-        _ouvrir_dans_navigateur(FRONTEND_URL, frontend_process)
+        _ouvrir_dans_navigateur(PAGE_ACCUEIL, frontend_process)
 
 
 def _ouvrir_dans_navigateur(url, frontend_process):

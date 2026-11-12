@@ -101,6 +101,13 @@ modelos) y cuáles están en marcha.
 
 También funciona en el teléfono, desde el navegador.
 
+**Novedad de la 1.5 — la Esfera de cristal** (`frontend/verre.html`): una vista tranquila para el día
+a día, clara de día y oscura de noche, con un botón de micrófono para hablar sin decir «Jarvis».
+Aparecen tarjetas de cristal alrededor de la esfera cuando hablas de ellas: el tiempo (próximas horas,
+viento, lluvia, mínima y máxima), la música (lo que suena en tus reproductores de Home Assistant, con
+controles) y los dispositivos. Para abrirla por defecto, pon `"interface_page": "verre.html"` en
+`jarvis_config.json`.
+
 La interfaz está construida sobre [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui)
 de **JincocoDev** (licencia ISC, ver [`frontend/LICENSE`](frontend/LICENSE)), basado a su vez en
 el [Three.js Orb Visualizer](https://codepen.io/filipz/pen/yyyRgry) de **Filip Zrnzevic**. Se ha

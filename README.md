@@ -98,6 +98,12 @@ controls, agents and system. The **Agents** tab lists the AI tools found on the 
 
 It also works on a phone, from the browser.
 
+**New in 1.5 — the Glass Orb** (`frontend/verre.html`): a calm view for every day, light by day and
+dark at night, with a mic button to talk without saying "Jarvis". Glass cards appear around the orb
+when you talk about them: weather (next hours, wind, rain, min/max), music (what plays on your Home
+Assistant players, with controls) and devices. To open it by default, set `"interface_page": "verre.html"`
+in `jarvis_config.json`.
+
 The interface is built on [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui)
 by **JincocoDev** (ISC License, see [`frontend/LICENSE`](frontend/LICENSE)), itself based on the
 [Three.js Orb Visualizer](https://codepen.io/filipz/pen/yyyRgry) by **Filip Zrnzevic**. It has

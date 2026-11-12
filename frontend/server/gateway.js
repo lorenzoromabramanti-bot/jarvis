@@ -85,6 +85,8 @@ const NIVEAU_AUTONOMIE = (() => {
 const MESSAGES_AUTORISES = {
   // Lot 1 — bascules simples
   toggle_mic: { niveau: 3, reponse: 'mic_state' },
+  // Orbe de verre (1.5) : bouton micro = « parle maintenant », sans le mot d'éveil. Rien n'est modifié : niveau 1.
+  ecoute_directe: { niveau: 1, reponse: 'ecoute_directe_ok' },
   toggle_nemotron_asr: { niveau: 3, reponse: 'nemotron_asr_state', champs: ['enabled'], timeout: 60000 },
   clear_cache: { niveau: 3, reponse: 'cache_cleared' },
   toggle_fullscreen: { niveau: 3, reponse: null },   // agit sur la fenetre pywebview
@@ -246,6 +248,8 @@ const SERVICES_HA_AUTORISES = {
   fan: ['turn_on', 'turn_off', 'toggle'],
   vacuum: ['start', 'pause', 'stop', 'return_to_base', 'locate'],
   climate: ['set_temperature'],
+  // Carte musique de l'Orbe de verre (1.5) : précédent, lecture/pause, suivant. Rien de destructeur.
+  media_player: ['media_play_pause', 'media_previous_track', 'media_next_track'],
 };
 
 function serviceHaAutorise(domaine, service) {

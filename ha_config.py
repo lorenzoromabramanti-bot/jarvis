@@ -382,13 +382,17 @@ def get_meteo_structuree(ville=None):
             params={
                 "latitude" : lat, "longitude": lon,
                 "current"  : "temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weathercode",
+                "hourly"   : "temperature_2m,precipitation_probability",
+                "daily"    : "temperature_2m_max,temperature_2m_min",
+                "forecast_days": 2,
                 "timezone" : "Europe/Paris",
             },
             timeout=8
         )
-        cur  = r.json()["current"]
+        data = r.json()
+        cur  = data["current"]
         code = cur.get("weathercode", 0)
-        return {
+        meteo = {
             "ville"      : nom_affiche,
             "temperature": round(float(cur.get("temperature_2m", 0))),
             "ressenti"   : round(float(cur.get("apparent_temperature", 0))),
@@ -397,6 +401,19 @@ def get_meteo_structuree(ville=None):
             "code"       : code,
             "description": CODES_METEO.get(code, "inconnu"),
         }
+        # Carte météo de l'Orbe de verre (1.5) : 10 prochaines heures, pluie sur 6 h, mini/maxi du jour.
+        # Si l'API ne donne pas ces champs, la carte n'a que la température du moment : rien ne casse.
+        try:
+            h, j = data["hourly"], data["daily"]
+            i = h["time"].index(cur["time"][:13] + ":00")
+            meteo["heures"] = [{"h": int(t[11:13]), "t": round(v)}
+                               for t, v in zip(h["time"][i:i + 10], h["temperature_2m"][i:i + 10]) if v is not None]
+            meteo["pluie"] = max([p for p in h["precipitation_probability"][i:i + 6] if p is not None], default=0)
+            meteo["mini"] = round(j["temperature_2m_min"][0])
+            meteo["maxi"] = round(j["temperature_2m_max"][0])
+        except (KeyError, ValueError, IndexError, TypeError):
+            pass
+        return meteo
     except Exception as e:
         print(f"[METEO_DATA] Erreur : {e}")
         return None
