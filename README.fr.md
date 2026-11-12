@@ -12,7 +12,10 @@ l'écran.
 
 <sub>Parti du <b>J.A.R.V.I.S.</b> v9 de <a href="https://techenclair.fr">TechEnClair</a> — voir les <a href="#crédits">crédits</a>.</sub>
 
-![L'interface de JARVIS](docs/images/hud-desktop.jpg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/hud-desktop-clair.jpg">
+  <img src="docs/images/hud-desktop.jpg" alt="L'interface de JARVIS">
+</picture>
 
 </div>
 
@@ -88,25 +91,17 @@ n'apparaissent qu'en mode avancé. Chaque réglage est décrit dans `.env.exampl
 
 ## L'interface
 
-<p align="center"><img src="docs/images/orbe.webp" alt="L'orbe de JARVIS, en mouvement" width="340"></p>
+<p align="center"><img src="docs/images/orbe.webp" alt="L'Orbe de verre, en mouvement" width="340"></p>
 
-![L'onglet Agents liste les outils d'IA trouvés sur la machine](docs/images/hud-agents.jpg)
+<img src="docs/images/hud-mobile.jpg" alt="L'Orbe de verre sur un téléphone" width="260" align="right">
 
-<img src="docs/images/hud-mobile.jpg" alt="L'interface sur un téléphone" width="260" align="right">
+**L'Orbe de verre** (`frontend/verre.html`) est l'interface de tous les jours : l'orbe au milieu, ce que vous avez dit au-dessus, sa réponse en dessous. Claire le jour, sombre la nuit, sur ordinateur comme sur téléphone (depuis le navigateur). Des cartes de verre apparaissent autour de l'orbe quand vous en parlez : la météo (prochaines heures, vent, pluie, mini/maxi), la musique (ce qui joue sur vos lecteurs Home Assistant, avec les commandes), les appareils et vos devoirs Pronote. Un bouton micro permet de parler sans dire « Jarvis ».
 
-Une orbe 3D qui réagit à la voix de JARVIS, le chat, l'état de la machine, et un *Data
-center* à onglets : tâches, compétences, mémoire, planning, médias, quotidien, maison,
-sécurité, réglages, contrôles, agents et système. L'onglet **Agents** liste les outils d'IA
-trouvés sur la machine (assistants de code, serveurs MCP, moteurs de modèles) et lesquels
-tournent.
+Pour l'ouvrir par défaut, mettez `"interface_page": "verre.html"` dans `jarvis_config.json`.
 
-Elle marche aussi sur téléphone, depuis le navigateur.
+Le **tableau de bord complet** est à un clic (le bouton en grille, dans le coin) : un *Data center* à onglets : tâches, compétences, mémoire, planning, médias, quotidien, maison, sécurité, réglages, contrôles, agents et système. L'onglet **Agents** liste les outils d'IA trouvés sur la machine (assistants de code, serveurs MCP, moteurs de modèles) et lesquels tournent.
 
-**Nouveau dans la 1.5 — l'Orbe de verre** (`frontend/verre.html`) : une vue calme pour tous les jours,
-claire le jour et sombre la nuit, avec un bouton micro pour parler sans dire « Jarvis ». Des cartes de
-verre apparaissent autour de l'orbe quand on en parle : la météo (prochaines heures, vent, pluie,
-mini/maxi), la musique (ce qui joue sur vos lecteurs Home Assistant, avec les commandes) et les
-appareils. Pour l'ouvrir par défaut, mettez `"interface_page": "verre.html"` dans `jarvis_config.json`.
+![L'onglet Agents du tableau de bord complet liste les outils d'IA trouvés sur la machine](docs/images/hud-agents.jpg)
 
 L'interface est construite sur [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui)
 de **JincocoDev** (licence ISC, voir [`frontend/LICENSE`](frontend/LICENSE)), lui-même basé sur

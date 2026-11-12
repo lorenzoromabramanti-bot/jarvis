@@ -11,7 +11,10 @@ Assistant, correo, actualizaciones de software, VPN, abrir aplicaciones, leer la
 
 <sub>Basado en <b>J.A.R.V.I.S.</b> v9 de <a href="https://techenclair.fr">TechEnClair</a> — ver los <a href="#créditos">créditos</a>.</sub>
 
-![La interfaz de JARVIS](docs/images/hud-desktop.jpg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/hud-desktop-clair.jpg">
+  <img src="docs/images/hud-desktop.jpg" alt="La interfaz de JARVIS">
+</picture>
 
 </div>
 
@@ -87,26 +90,17 @@ solo aparecen en modo avanzado. Cada ajuste se describe en `.env.example`.
 
 ## La interfaz
 
-<p align="center"><img src="docs/images/orbe.webp" alt="La esfera de JARVIS, en movimiento" width="340"></p>
+<p align="center"><img src="docs/images/orbe.webp" alt="La Esfera de cristal, en movimiento" width="340"></p>
 
-![La pestaña Agents lista las herramientas de IA encontradas en el equipo](docs/images/hud-agents.jpg)
+<img src="docs/images/hud-mobile.jpg" alt="La Esfera de cristal en un teléfono" width="260" align="right">
 
-<img src="docs/images/hud-mobile.jpg" alt="La interfaz en un teléfono" width="260" align="right">
+**La Esfera de cristal** (`frontend/verre.html`) es la interfaz de todos los días: la esfera en el centro, lo que dijiste encima, su respuesta debajo. Clara de día, oscura de noche, en el ordenador o en el teléfono (desde el navegador). Aparecen tarjetas de cristal alrededor de la esfera cuando hablas de ellas: el tiempo (próximas horas, viento, lluvia, mínima y máxima), la música (lo que suena en tus reproductores de Home Assistant, con controles), los dispositivos y tus deberes de Pronote. Un botón de micrófono permite hablar sin decir «Jarvis».
 
-Una esfera 3D que reacciona a la voz de JARVIS, el chat, el estado del equipo y un *Data
-center* con pestañas: tareas, habilidades, memoria, agenda, multimedia, día a día, casa,
-seguridad, ajustes, controles, agentes y sistema. La pestaña **Agents** lista las
-herramientas de IA encontradas en el equipo (asistentes de código, servidores MCP, motores de
-modelos) y cuáles están en marcha.
+Para abrirla por defecto, pon `"interface_page": "verre.html"` en `jarvis_config.json`.
 
-También funciona en el teléfono, desde el navegador.
+El **panel completo** está a un clic (el botón de cuadrícula, en la esquina): un *Data center* con pestañas: tareas, habilidades, memoria, agenda, multimedia, día a día, casa, seguridad, ajustes, controles, agentes y sistema. La pestaña **Agents** lista las herramientas de IA encontradas en el equipo (asistentes de código, servidores MCP, motores de modelos) y cuáles están en marcha.
 
-**Novedad de la 1.5 — la Esfera de cristal** (`frontend/verre.html`): una vista tranquila para el día
-a día, clara de día y oscura de noche, con un botón de micrófono para hablar sin decir «Jarvis».
-Aparecen tarjetas de cristal alrededor de la esfera cuando hablas de ellas: el tiempo (próximas horas,
-viento, lluvia, mínima y máxima), la música (lo que suena en tus reproductores de Home Assistant, con
-controles) y los dispositivos. Para abrirla por defecto, pon `"interface_page": "verre.html"` en
-`jarvis_config.json`.
+![La pestaña Agents del panel completo lista las herramientas de IA encontradas en el equipo](docs/images/hud-agents.jpg)
 
 La interfaz está construida sobre [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui)
 de **JincocoDev** (licencia ISC, ver [`frontend/LICENSE`](frontend/LICENSE)), basado a su vez en

@@ -48,6 +48,7 @@ import oreille  # client de l'oreille (oreille.py) : urllib seulement, aucune DL
 import annonces  # pendant un quiz, les annonces de fond attendent la fin (annonces.py)
 import parole_anticipee  # la 1re phrase d'une réponse vocale part pendant que la suite s'écrit
 import journal_phrases  # chaque phrase de l'utilisateur, si « garder_phrases » est activé (désactivé par défaut)
+import appels_outils  # faux appels d'outil du modèle (pseudo-XML) : jamais dits, affichés, ni exécutés
 # --- Pygame (audio TTS) : optionnel ---
 sys.stdout.flush()
 sys.stderr.flush()
@@ -892,6 +893,13 @@ async def parler(texte, memoire=True, apres=None, urgent=False):
     annonces de fond attendent la fin du quiz (annonces.py).
     """
     global is_speaking, speak_volume, STOP_PARLER, _skip_pc_audio, historique
+
+    # Dernier filet : un faux appel d'outil du modèle (pseudo-XML) ne part jamais à la voix ni au HUD (appels_outils.py).
+    _propre = appels_outils.sans_appels(texte)
+    if _propre != texte:
+        texte = _propre
+        if not texte.strip():
+            return False
 
     texte = annonces.filtrer(texte, EN_REPONSE.get(), urgent, _quiz_en_cours())
     if texte is None:
@@ -7311,6 +7319,7 @@ def _retenir_echange(texte, rep):
     Gemini refusait ensuite TOUT l'historique en 400 (« required oneof field 'data' ») jusqu'au
     redemarrage, et JARVIS repondait avec des resultats de recherche web au lieu de reflechir.
     """
+    rep = appels_outils.sans_appels(rep)   # la mémoire ne garde pas les faux appels d'outil : ils donnaient l'exemple au modèle
     if not (isinstance(rep, str) and rep.strip()):
         return False
     historique.append(types.Content(role="user", parts=[types.Part(text=texte)]))
@@ -10825,6 +10834,10 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
         _jeton_anticipation = PAROLE_ANTICIPEE.set(_anticipation)
         try:
             reponse = await demander_ia(texte_pour_ia)
+            if appels_outils.est_seul(reponse):
+                # Le modèle n'a écrit qu'un faux appel d'outil (pseudo-XML) : inutilisable, on redemande une réponse.
+                print(f"[APPELS] faux appel d'outil seul {appels_outils.extraire(reponse)[1]} : on redemande")
+                reponse = await demander_ia(texte_pour_ia + appels_outils.NOTE_REPRISE)
         finally:
             PAROLE_ANTICIPEE.reset(_jeton_anticipation)
 
@@ -10832,6 +10845,14 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
     # Si commande mobile et que la cible n'est pas forcée sur le PC : activer le flag pour couper l'audio PC et répondre via mobile
     if mobile_ws and not target_pc:
         _skip_pc_audio = True
+
+    # Faux appel d'outil (pseudo-XML du modèle) : jamais dit, jamais affiché, jamais exécuté (appels_outils.py).
+    if isinstance(reponse, str):
+        reponse, _faux_appels = appels_outils.extraire(reponse)
+        if _faux_appels:
+            print(f"[APPELS] faux appel d'outil ignoré : {_faux_appels}")
+            if not reponse.strip():
+                reponse = f"Je n'ai pas réussi à répondre à ça, {nom_utilisateur()}. Tu peux reformuler ?"
 
     # Recherche de TOUS les blocs JSON dans la réponse
     json_blocks = re.findall(r'\{.*?\}', reponse, re.DOTALL)

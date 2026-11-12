@@ -11,7 +11,10 @@ Home Assistant, ईमेल, सॉफ़्टवेयर अपडेट, VP
 
 <sub><a href="https://techenclair.fr">TechEnClair</a> के <b>J.A.R.V.I.S.</b> v9 पर आधारित — <a href="#श्रेय">श्रेय</a> देखें।</sub>
 
-![JARVIS का इंटरफ़ेस](docs/images/hud-desktop.jpg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/hud-desktop-clair.jpg">
+  <img src="docs/images/hud-desktop.jpg" alt="JARVIS का इंटरफ़ेस">
+</picture>
 
 </div>
 
@@ -81,20 +84,17 @@ VPN, सॉफ़्टवेयर हटाना, Spotify और Deezer क�
 
 ## इंटरफ़ेस
 
-<p align="center"><img src="docs/images/orbe.webp" alt="JARVIS का गोला, चलते हुए" width="340"></p>
+<p align="center"><img src="docs/images/orbe.webp" alt="काँच का गोला, चलते हुए" width="340"></p>
 
-![Agents टैब मशीन पर मिले AI टूल्स की सूची दिखाता है](docs/images/hud-agents.jpg)
+<img src="docs/images/hud-mobile.jpg" alt="फ़ोन पर काँच का गोला" width="260" align="right">
 
-<img src="docs/images/hud-mobile.jpg" alt="फ़ोन पर इंटरफ़ेस" width="260" align="right">
+**काँच का गोला** (`frontend/verre.html`) रोज़ के इस्तेमाल का इंटरफ़ेस है: बीच में गोला, ऊपर आपकी कही बात, नीचे उसका जवाब। दिन में हल्का, रात में गहरा, कंप्यूटर पर भी और फ़ोन पर भी (ब्राउज़र से)। जिस विषय पर आप बात करते हैं, उसके काँच के कार्ड गोले के चारों ओर दिखते हैं: मौसम (अगले घंटे, हवा, बारिश, न्यूनतम/अधिकतम), संगीत (आपके Home Assistant प्लेयर पर क्या बज रहा है, नियंत्रण के साथ), डिवाइस और आपका Pronote होमवर्क। माइक बटन से "Jarvis" कहे बिना बोल सकते हैं।
 
-एक 3D गोला जो JARVIS की आवाज़ पर प्रतिक्रिया देता है, चैट, मशीन की स्थिति, और टैब वाला एक *डेटा सेंटर*:
-कार्य, कौशल, मेमोरी, शेड्यूल, मीडिया, दिनचर्या, घर, सुरक्षा, सेटिंग्स, नियंत्रण, एजेंट और सिस्टम।
-**Agents** टैब मशीन पर मिले AI टूल्स (कोडिंग असिस्टेंट, MCP सर्वर, मॉडल इंजन) और उनमें से कौन चल रहे हैं,
-यह दिखाता है।
+इसे डिफ़ॉल्ट रूप से खोलने के लिए `jarvis_config.json` में `"interface_page": "verre.html"` डालें।
 
-यह फ़ोन के ब्राउज़र में भी चलता है।
+**पूरा डैशबोर्ड** बस एक क्लिक दूर है (कोने में ग्रिड बटन): टैब वाला एक *डेटा सेंटर*: कार्य, कौशल, मेमोरी, शेड्यूल, मीडिया, दिनचर्या, घर, सुरक्षा, सेटिंग्स, नियंत्रण, एजेंट और सिस्टम। **Agents** टैब मशीन पर मिले AI टूल्स (कोडिंग असिस्टेंट, MCP सर्वर, मॉडल इंजन) और उनमें से कौन चल रहे हैं, यह दिखाता है।
 
-**1.5 में नया — काँच का गोला** (`frontend/verre.html`): रोज़ के इस्तेमाल के लिए एक शांत दृश्य, दिन में हल्का और रात में गहरा, साथ में एक माइक बटन ताकि "Jarvis" कहे बिना बोल सकें। जिस विषय पर आप बात करते हैं, उसके काँच के कार्ड गोले के चारों ओर दिखते हैं: मौसम (अगले घंटे, हवा, बारिश, न्यूनतम/अधिकतम), संगीत (आपके Home Assistant प्लेयर पर क्या बज रहा है, नियंत्रण के साथ) और डिवाइस। इसे डिफ़ॉल्ट रूप से खोलने के लिए `jarvis_config.json` में `"interface_page": "verre.html"` डालें।
+![पूरे डैशबोर्ड का Agents टैब मशीन पर मिले AI टूल्स की सूची दिखाता है](docs/images/hud-agents.jpg)
 
 यह इंटरफ़ेस **JincocoDev** के [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui) पर बना है
 (ISC लाइसेंस, देखें [`frontend/LICENSE`](frontend/LICENSE)), जो खुद **Filip Zrnzevic** के

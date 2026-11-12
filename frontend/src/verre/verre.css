@@ -13,6 +13,7 @@
   --orbe-ombre: 0 40px 80px rgba(31, 111, 196, 0.20), inset 0 -24px 50px rgba(31, 111, 196, 0.22),
                 inset 0 10px 30px rgba(255, 255, 255, 0.9);
   --orbe-bord: #FFFFFF; --reflet: rgba(255, 255, 255, 0.9); --eteint: #CBD5E1;
+  --halo: rgba(45, 212, 191, 0.24); --halo2: rgba(139, 92, 246, 0.14);
 }
 :root[data-theme="sombre"] {
   --fond: #0B0D12; --texte: #E8EDF5; --doux: #9AA7BA;
@@ -23,6 +24,7 @@
   --orbe-ombre: 0 40px 90px rgba(127, 184, 245, 0.18), inset 0 -24px 50px rgba(0, 0, 0, 0.45),
                 inset 0 10px 30px rgba(255, 255, 255, 0.25);
   --orbe-bord: rgba(255, 255, 255, 0.25); --reflet: rgba(255, 255, 255, 0.55); --eteint: rgba(255, 255, 255, 0.22);
+  --halo: rgba(45, 212, 191, 0.36); --halo2: rgba(139, 92, 246, 0.28);
 }
 
 * { box-sizing: border-box; }
@@ -40,7 +42,7 @@ button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 .ecran {
-  position: relative; min-height: 100dvh; padding: 24px 34px; display: flex; flex-direction: column; gap: 18px;
+  position: relative; overflow-x: clip; min-height: 100dvh; padding: 24px 34px; display: flex; flex-direction: column; gap: 18px;
   padding-bottom: max(24px, env(safe-area-inset-bottom));
 }
 
@@ -60,11 +62,33 @@ button { cursor: pointer; }
 /* Centre : l'orbe et la réponse, le panneau qui apparaît au besoin */
 .centre { flex: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 44px; }
 .scene { flex: 1 1 460px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.orbe-zone { position: relative; width: min(340px, 62vw); }
 .orbe {
-  position: relative; width: min(340px, 62vw); aspect-ratio: 1; border-radius: 50%;
-  background: var(--orbe); box-shadow: var(--orbe-ombre); border: 1px solid var(--orbe-bord);
+  position: relative; z-index: 1; width: 100%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle at 80% 86%, var(--halo) 0%, transparent 46%),
+              radial-gradient(circle at 16% 84%, var(--halo2) 0%, transparent 40%), var(--orbe);
+  box-shadow: var(--orbe-ombre); border: 1px solid var(--orbe-bord);
   animation: respire 6s ease-in-out infinite;
 }
+/* Halo : un dégradé derrière l'orbe (pas de grosse ombre floue, qui se découpe en blocs sur certains écrans) ;
+   plus fort quand Jarvis écoute ou parle, plus violet quand il réfléchit */
+.halo {
+  position: absolute; inset: -36%; pointer-events: none; opacity: 0.8;
+  background: radial-gradient(closest-side at 54% 58%, var(--halo) 0%, transparent 100%),
+              radial-gradient(closest-side at 40% 62%, var(--halo2) 0%, transparent 100%);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+:root[data-etat="ecoute"] .halo, :root[data-etat="responding"] .halo { opacity: 1; transform: scale(1.1); }
+:root[data-etat="thinking"] .halo { opacity: 0.95; transform: scale(1.04); }
+:root[data-etat="hors"] .halo { opacity: 0.2; }
+
+/* Onde vocale : une ligne de points sous l'orbe, elle s'anime quand Jarvis écoute ou parle */
+.onde { display: flex; align-items: center; justify-content: center; gap: 4px; height: 32px; }
+.onde i { width: 3px; height: 3px; border-radius: 2px; background: var(--accent); opacity: 0.4; transition: opacity 0.3s; }
+:root[data-etat="ecoute"] .onde i, :root[data-etat="responding"] .onde i {
+  opacity: 0.95; animation: onde 1s ease-in-out infinite; animation-delay: calc(var(--i) * -0.09s);
+}
+:root[data-etat="thinking"] .onde i { opacity: 0.7; animation: onde 1.8s ease-in-out infinite; animation-delay: calc(var(--i) * -0.14s); }
 .reflet { position: absolute; left: 21%; top: 14%; width: 27%; height: 12%; border-radius: 50%; background: var(--reflet); }
 .reflet.petit { left: auto; top: auto; right: 18%; bottom: 16%; width: 9%; height: 4%; opacity: 0.6; }
 :root[data-etat="thinking"] .orbe { animation: reflechit 1.4s ease-in-out infinite; }
@@ -189,7 +213,7 @@ button { cursor: pointer; }
   .centre { flex-direction: column; flex-wrap: nowrap; gap: 16px; justify-content: flex-start; }
   .scene { flex: 0 0 auto; width: 100%; gap: 14px; order: -1; }
   .colonne { flex: 0 0 auto; width: 100%; }
-  .orbe { width: min(210px, 56vw); }
+  .orbe-zone { width: min(210px, 56vw); }
   .reponse { font-size: 19px; }
   .panneau { flex: 0 0 auto; width: 100%; border-radius: 24px; padding: 14px 16px; }
   .bas { flex-direction: column; align-items: stretch; }
@@ -205,5 +229,6 @@ button { cursor: pointer; }
 @keyframes parle { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 @keyframes pulse { 50% { opacity: 0.35; } }
 @keyframes barre { 50% { transform: scaleY(1); } }
+@keyframes onde { 50% { transform: scaleY(var(--haut, 6)); } }
 @keyframes entre { from { opacity: 0; transform: translateY(12px); } }
 @media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }

@@ -10,6 +10,11 @@ def test_premiere_phrase():
     assert premiere_phrase("Oui. Il fait beau aujourd'hui. Et") == "Oui. Il fait beau aujourd'hui."  # « Oui. » trop court seul
     assert premiere_phrase("Il fait 3.5 degrés") is None  # un point dans un nombre n'est pas une fin de phrase
     assert premiere_phrase('Je lance ça {"action": "x"}. Voilà. ') is None  # jamais de JSON à voix haute
+    # jamais de faux appel d'outil (pseudo-XML) à voix haute, même avec une virgule assez loin pour partir
+    faux = ('<dots_function_call>\ninvoke name="voir_ecran">\n<parameter name="instruction">regarde l\'écran pour voir '
+            'quelle musique est en train de jouer (sur Spotify, Deezer, YouTube)\n</parameter>\n</invoke>')
+    assert premiere_phrase(faux) is None
+    assert premiere_phrase("Je regarde ça tout de suite. " + faux) == "Je regarde ça tout de suite."  # le vrai texte avant part
     assert premiere_phrase("Bonjour, je suis là.") is None  # la phrase n'est pas encore finie dans le flux
     assert premiere_phrase("Bonjour, je suis là.\n") == "Bonjour, je suis là."
     assert premiere_phrase("\n Salut tout le monde ! Oui") == "Salut tout le monde !"

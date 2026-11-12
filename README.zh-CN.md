@@ -11,7 +11,10 @@
 
 <sub>基于 <a href="https://techenclair.fr">TechEnClair</a> 的 <b>J.A.R.V.I.S.</b> v9 —— 见<a href="#致谢">致谢</a>。</sub>
 
-![JARVIS 界面](docs/images/hud-desktop.jpg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/hud-desktop-clair.jpg">
+  <img src="docs/images/hud-desktop.jpg" alt="JARVIS 界面">
+</picture>
 
 </div>
 
@@ -77,19 +80,17 @@ Ollama 服务器读取。
 
 ## 界面
 
-<p align="center"><img src="docs/images/orbe.webp" alt="JARVIS 的球体动画" width="340"></p>
+<p align="center"><img src="docs/images/orbe.webp" alt="玻璃球动画" width="340"></p>
 
-![Agents 标签页列出本机找到的 AI 工具](docs/images/hud-agents.jpg)
+<img src="docs/images/hud-mobile.jpg" alt="手机上的玻璃球" width="260" align="right">
 
-<img src="docs/images/hud-mobile.jpg" alt="手机上的界面" width="260" align="right">
+**玻璃球**（`frontend/verre.html`）是每天使用的界面：球体居中，你说的话在上方，它的回答在下方。白天浅色，夜晚深色，电脑和手机（通过浏览器）都能用。聊到相关话题时，玻璃卡片会出现在球体周围：天气（未来几小时、风、降雨、最低/最高温）、音乐（Home Assistant 播放器正在播放的内容，可控制）、设备，以及你在 Pronote 上的作业。麦克风按钮让你不用说“Jarvis”就能直接说话。
 
-一个随 JARVIS 声音变化的 3D 球体、聊天窗口、本机状态，以及带标签页的*数据中心*：任务、技能、记忆、
-日程、媒体、日常、家居、安全、设置、控制、代理和系统。**Agents** 标签页会列出本机找到的 AI 工具
-（编程助手、MCP 服务器、模型引擎）以及哪些正在运行。
+要默认打开它，请在 `jarvis_config.json` 中设置 `"interface_page": "verre.html"`。
 
-在手机浏览器中同样可用。
+**完整仪表板**只需点一下（角落里的网格按钮）：带标签页的*数据中心*：任务、技能、记忆、日程、媒体、日常、家居、安全、设置、控制、代理和系统。**Agents** 标签页会列出本机找到的 AI 工具（编程助手、MCP 服务器、模型引擎）以及哪些正在运行。
 
-**1.5 新增——玻璃球**（`frontend/verre.html`）：适合日常使用的简洁视图，白天浅色、夜晚深色，还有麦克风按钮，不用说“Jarvis”就能直接说话。聊到相关话题时，玻璃卡片会出现在球体周围：天气（未来几小时、风、降雨、最低/最高温）、音乐（Home Assistant 播放器正在播放的内容，可控制）和设备。要默认打开它，请在 `jarvis_config.json` 中设置 `"interface_page": "verre.html"`。
+![完整仪表板的 Agents 标签页列出本机找到的 AI 工具](docs/images/hud-agents.jpg)
 
 界面基于 **JincocoDev** 的 [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui)
 （ISC 许可证，见 [`frontend/LICENSE`](frontend/LICENSE)），而它又基于 **Filip Zrnzevic** 的

@@ -11,7 +11,10 @@ email, software updates, VPN, launching apps, reading the screen.
 
 <sub>Based on <b>J.A.R.V.I.S.</b> v9 by <a href="https://techenclair.fr">TechEnClair</a> — see the <a href="#credits">credits</a>.</sub>
 
-![The JARVIS interface](docs/images/hud-desktop.jpg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/hud-desktop-clair.jpg">
+  <img src="docs/images/hud-desktop.jpg" alt="The JARVIS interface">
+</picture>
 
 </div>
 
@@ -85,24 +88,17 @@ mode. Every setting is described in `.env.example`.
 
 ## The interface
 
-<p align="center"><img src="docs/images/orbe.webp" alt="The JARVIS orb, live" width="340"></p>
+<p align="center"><img src="docs/images/orbe.webp" alt="The Glass Orb, live" width="340"></p>
 
-![The Agents tab lists the AI tools found on the machine](docs/images/hud-agents.jpg)
+<img src="docs/images/hud-mobile.jpg" alt="The Glass Orb on a phone" width="260" align="right">
 
-<img src="docs/images/hud-mobile.jpg" alt="The interface on a phone" width="260" align="right">
+**The Glass Orb** (`frontend/verre.html`) is JARVIS's everyday interface: the orb in the middle, what you said above it, its answer below. Light by day, dark at night, on a computer or on a phone (from the browser). Glass cards appear around the orb when you talk about them: weather (next hours, wind, rain, min/max), music (what plays on your Home Assistant players, with controls), devices and your Pronote homework. A mic button lets you talk without saying "Jarvis".
 
-A 3D orb that reacts to JARVIS's voice, the chat, the machine's status, and a *Data center*
-with tabs: tasks, skills, memory, schedule, media, daily life, home, security, settings,
-controls, agents and system. The **Agents** tab lists the AI tools found on the machine
-(coding assistants, MCP servers, model engines) and which ones are running.
+To open it by default, set `"interface_page": "verre.html"` in `jarvis_config.json`.
 
-It also works on a phone, from the browser.
+The **full dashboard** is one click away (the grid button in the corner): a *Data center* with tabs — tasks, skills, memory, schedule, media, daily life, home, security, settings, controls, agents and system. The **Agents** tab lists the AI tools found on the machine (coding assistants, MCP servers, model engines) and which ones are running.
 
-**New in 1.5 — the Glass Orb** (`frontend/verre.html`): a calm view for every day, light by day and
-dark at night, with a mic button to talk without saying "Jarvis". Glass cards appear around the orb
-when you talk about them: weather (next hours, wind, rain, min/max), music (what plays on your Home
-Assistant players, with controls) and devices. To open it by default, set `"interface_page": "verre.html"`
-in `jarvis_config.json`.
+![The Agents tab of the full dashboard lists the AI tools found on the machine](docs/images/hud-agents.jpg)
 
 The interface is built on [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui)
 by **JincocoDev** (ISC License, see [`frontend/LICENSE`](frontend/LICENSE)), itself based on the

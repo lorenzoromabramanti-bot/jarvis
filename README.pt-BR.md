@@ -11,7 +11,10 @@ Assistant, e-mail, atualizações de software, VPN, abrir aplicativos, ler a tel
 
 <sub>Baseado no <b>J.A.R.V.I.S.</b> v9 de <a href="https://techenclair.fr">TechEnClair</a> — veja os <a href="#créditos">créditos</a>.</sub>
 
-![A interface do JARVIS](docs/images/hud-desktop.jpg)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/hud-desktop-clair.jpg">
+  <img src="docs/images/hud-desktop.jpg" alt="A interface do JARVIS">
+</picture>
 
 </div>
 
@@ -86,25 +89,17 @@ só aparecem no modo avançado. Cada configuração está descrita no `.env.exam
 
 ## A interface
 
-<p align="center"><img src="docs/images/orbe.webp" alt="A esfera do JARVIS, em movimento" width="340"></p>
+<p align="center"><img src="docs/images/orbe.webp" alt="A Esfera de vidro, em movimento" width="340"></p>
 
-![A aba Agents lista as ferramentas de IA encontradas na máquina](docs/images/hud-agents.jpg)
+<img src="docs/images/hud-mobile.jpg" alt="A Esfera de vidro em um celular" width="260" align="right">
 
-<img src="docs/images/hud-mobile.jpg" alt="A interface em um celular" width="260" align="right">
+**A Esfera de vidro** (`frontend/verre.html`) é a interface do dia a dia: a esfera no meio, o que você disse acima, a resposta abaixo. Clara de dia, escura à noite, no computador ou no celular (pelo navegador). Cartões de vidro aparecem em volta da esfera quando você fala deles: o tempo (próximas horas, vento, chuva, mínima e máxima), a música (o que toca nos seus players do Home Assistant, com controles), os dispositivos e suas lições do Pronote. Um botão de microfone permite falar sem dizer "Jarvis".
 
-Uma esfera 3D que reage à voz do JARVIS, o chat, o estado da máquina e um *Data center* com
-abas: tarefas, habilidades, memória, agenda, mídia, dia a dia, casa, segurança,
-configurações, controles, agentes e sistema. A aba **Agents** lista as ferramentas de IA
-encontradas na máquina (assistentes de código, servidores MCP, motores de modelos) e quais
-estão rodando.
+Para abri-la por padrão, coloque `"interface_page": "verre.html"` em `jarvis_config.json`.
 
-Também funciona no celular, pelo navegador.
+O **painel completo** está a um clique (o botão de grade, no canto): um *Data center* com abas: tarefas, habilidades, memória, agenda, mídia, dia a dia, casa, segurança, configurações, controles, agentes e sistema. A aba **Agents** lista as ferramentas de IA encontradas na máquina (assistentes de código, servidores MCP, motores de modelos) e quais estão rodando.
 
-**Novidade da 1.5 — a Esfera de vidro** (`frontend/verre.html`): uma visão tranquila para o dia a dia,
-clara de dia e escura à noite, com um botão de microfone para falar sem dizer "Jarvis". Cartões de
-vidro aparecem em volta da esfera quando você fala deles: o tempo (próximas horas, vento, chuva,
-mínima e máxima), a música (o que toca nos seus players do Home Assistant, com controles) e os
-dispositivos. Para abri-la por padrão, coloque `"interface_page": "verre.html"` em `jarvis_config.json`.
+![A aba Agents do painel completo lista as ferramentas de IA encontradas na máquina](docs/images/hud-agents.jpg)
 
 A interface é construída sobre o [openclaw-jarvis-ui](https://github.com/jincocodev/openclaw-jarvis-ui)
 de **JincocoDev** (licença ISC, veja [`frontend/LICENSE`](frontend/LICENSE)), que por sua vez se

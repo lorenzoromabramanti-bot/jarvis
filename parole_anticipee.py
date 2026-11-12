@@ -10,6 +10,8 @@ Anticipation est active (canal voix, PC, pas Discord) ; traiter_reponse_ia dit e
 import asyncio
 import re
 
+import appels_outils
+
 _FIN_DE_PHRASE = re.compile(r"[.!?…](?=\s)")
 _PAUSE = re.compile(r"[,;:](?=\s)")
 
@@ -19,10 +21,11 @@ def premiere_phrase(texte, mini=12, pause_mini=50):
 
     Phrase longue (06/11 : souvent 150 caractères, soit 2,6 s de synthèse) : on part à la 1re pause
     (virgule, point-virgule, deux-points) placée après `pause_mini` caractères.
-    Rien après le début d'un bloc d'action JSON (« { ») : il n'est jamais dit à voix haute.
+    Rien après le début d'un bloc d'action JSON (« { ») ni d'un faux appel d'outil (pseudo-XML, voir
+    appels_outils.py) : ils ne sont jamais dits à voix haute.
     None tant que rien n'est prêt.
     """
-    avant_action = texte.split("{", 1)[0]
+    avant_action = appels_outils.avant_appel(texte).split("{", 1)[0]
     for m in _FIN_DE_PHRASE.finditer(avant_action):
         if m.end() >= mini:
             return avant_action[:m.end()].strip()

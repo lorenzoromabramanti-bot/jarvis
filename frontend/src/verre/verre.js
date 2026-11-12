@@ -55,6 +55,14 @@ function etat(e) {
   $('ile-texte').textContent = TEXTES_ETAT[connu];
 }
 
+// ── Onde vocale : 31 points, plus hauts au milieu ; le CSS les anime selon l'état ──
+$('onde').append(...Array.from({ length: 31 }, (_, i) => {
+  const point = document.createElement('i');
+  point.style.setProperty('--i', String(i));
+  point.style.setProperty('--haut', (2 + 8 * Math.exp(-(((i - 15) / 8) ** 2))).toFixed(1));
+  return point;
+}));
+
 // ── Conversation ──────────────────────────────────────────────────────────
 const SUJET_ECOLE = /devoir|[ée]valuation|contr[ôo]le|pronote|r[ée]vis|interro|moyenne|\bnotes?\b/i;
 let derniereQuestion = '';
@@ -465,18 +473,22 @@ $('musique-prec').addEventListener('click', () => commandeMusique('media_previou
 $('musique-pp').addEventListener('click', () => commandeMusique('media_play_pause'));
 $('musique-suiv').addEventListener('click', () => commandeMusique('media_next_track'));
 
-// Appareils : les lecteurs, télés et amplis que Home Assistant voit en ligne.
+// Appareils : les lecteurs, télés et amplis allumés (ni éteints, ni hors ligne), un seul par nom : sur une vraie
+// installation, Home Assistant en compte souvent deux par appareil et une trentaine au total.
 const ETATS_APPAREIL = {
   playing: 'en lecture', paused: 'en pause', idle: 'en veille', standby: 'en veille',
   on: 'allumé', off: 'éteint', buffering: 'chargement',
 };
 
 function dessinerAppareils() {
-  const en_ligne = entites.filter((e) => e.entity_id.startsWith('media_player.') && disponible(e))
+  const vus = new Set();
+  const allumes = entites
+    .filter((e) => e.entity_id.startsWith('media_player.') && !['off', 'unavailable', 'unknown'].includes(e.state))
     .sort((a, b) => (Number(b.state === 'playing') - Number(a.state === 'playing'))
-      || nomEntite(a).localeCompare(nomEntite(b), 'fr'));
-  $('appareils-nombre').textContent = en_ligne.length ? `${en_ligne.length} en ligne` : '';
-  const lignes = en_ligne.slice(0, 5).map((e) => {
+      || nomEntite(a).localeCompare(nomEntite(b), 'fr'))
+    .filter((e) => !vus.has(nomEntite(e)) && vus.add(nomEntite(e)));
+  $('appareils-nombre').textContent = allumes.length ? `${allumes.length} allumé${allumes.length > 1 ? 's' : ''}` : '';
+  const lignes = allumes.slice(0, 5).map((e) => {
     const li = document.createElement('li');
     const point = document.createElement('span');
     point.className = `etat-point${e.state === 'playing' || e.state === 'on' ? ' actif' : ''}`;
@@ -490,8 +502,8 @@ function dessinerAppareils() {
     return li;
   });
   const note = (texte) => Object.assign(document.createElement('li'), { className: 'doux', textContent: texte });
-  if (en_ligne.length > 5) lignes.push(note(`+ ${en_ligne.length - 5} autres`));
-  if (!lignes.length) lignes.push(note('Aucun appareil en ligne.'));
+  if (allumes.length > 5) lignes.push(note(`+ ${allumes.length - 5} autres`));
+  if (!lignes.length) lignes.push(note('Aucun appareil allumé.'));
   $('appareils-liste').replaceChildren(...lignes);
 }
 

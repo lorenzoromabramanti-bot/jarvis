@@ -8,30 +8,71 @@
 <meta property="og:title" content="J.A.R.V.I.S">
 <meta property="og:description" content="A desktop voice assistant that answers, acts, and stays quiet when it doesn't know.">
 <meta property="og:image" content="images/hud-desktop.jpg">
-<meta name="theme-color" content="#021311">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#EEF2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B0D12" media="(prefers-color-scheme: dark)">
 <style>
 :root{
-  --fond:#021311; --fond2:#000706; --accent:#3df5d0; --accent2:#9ffbe8; --texte:#e6fffa; --doux:#7fb3aa;
-  --ligne:rgba(61,245,208,.22); --verre:rgba(4,30,27,.55);
+  color-scheme:light dark;
+  --fond:#EEF2F7; --degrade:radial-gradient(ellipse at 50% 18%,#FFFFFF 0%,#EEF2F7 62%);
+  --texte:#0E1726; --doux:#4A5A70; --carte:rgba(255,255,255,.72); --bord:#FFFFFF; --ombre:0 18px 44px rgba(14,23,38,.08);
+  --accent:#1F6FC4; --sur-accent:#FFFFFF; --pastille:#EAF2FB; --ligne:rgba(31,111,196,.22);
+  --halo:rgba(45,212,191,.24); --halo2:rgba(139,92,246,.14);
+  --orbe:radial-gradient(circle at 34% 28%,#FFFFFF 0%,#E4EFFB 30%,#BCD5F0 66%,#8FB4E0 100%);
+  --orbe-ombre:0 40px 80px rgba(31,111,196,.20),inset 0 -24px 50px rgba(31,111,196,.22),inset 0 10px 30px rgba(255,255,255,.9);
+  --orbe-bord:#FFFFFF; --reflet:rgba(255,255,255,.9); --photo-ombre:0 30px 80px rgba(14,23,38,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --fond:#0B0D12; --degrade:radial-gradient(ellipse at 50% 18%,#151B28 0%,#0B0D12 62%);
+    --texte:#E8EDF5; --doux:#9AA7BA; --carte:rgba(255,255,255,.07); --bord:rgba(255,255,255,.14); --ombre:none;
+    --accent:#7FB8F5; --sur-accent:#0B0D12; --pastille:rgba(127,184,245,.16); --ligne:rgba(127,184,245,.25);
+    --halo:rgba(45,212,191,.36); --halo2:rgba(139,92,246,.28);
+    --orbe:radial-gradient(circle at 34% 28%,#C9E0FA 0%,#5E8DC4 28%,#233E66 66%,#101B2E 100%);
+    --orbe-ombre:0 40px 90px rgba(127,184,245,.18),inset 0 -24px 50px rgba(0,0,0,.45),inset 0 10px 30px rgba(255,255,255,.25);
+    --orbe-bord:rgba(255,255,255,.25); --reflet:rgba(255,255,255,.55); --photo-ombre:0 30px 90px rgba(0,0,0,.6);
+  }
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{background:radial-gradient(ellipse at 50% 30%,#06302b 0%,var(--fond) 45%,var(--fond2) 100%) fixed;color:var(--texte);
-  font:16px/1.6 "Chakra Petch","Noto Sans","Noto Sans Devanagari","Noto Sans SC",system-ui,sans-serif;overflow-x:hidden}
-#scene{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
-.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+body{background:var(--degrade) fixed,var(--fond);color:var(--texte);
+  font:16px/1.6 Inter,"Segoe UI",system-ui,-apple-system,"Noto Sans","Noto Sans Devanagari","Noto Sans SC",sans-serif;overflow-x:hidden}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+/* L'orbe de verre : la même que dans l'interface de JARVIS. Elle reste à l'écran, change de place et d'état à chaque section. */
+#orbe-site{position:fixed;left:50%;top:50%;width:min(420px,52vmin);z-index:0;pointer-events:none;opacity:var(--o,1);
+  transform:translate(-50%,-50%) translate(var(--x,0vw),var(--y,0vh)) scale(var(--s,1));
+  transition:transform 1.3s cubic-bezier(.2,.7,.2,1),opacity 1s ease}
+.orbe-zone{position:relative}
+.halo{position:absolute;inset:-36%;pointer-events:none;opacity:.8;
+  background:radial-gradient(closest-side at 54% 58%,var(--halo) 0%,transparent 100%),radial-gradient(closest-side at 40% 62%,var(--halo2) 0%,transparent 100%);
+  transition:opacity .5s ease,transform .5s ease}
+:root[data-etat="ecoute"] .halo,:root[data-etat="responding"] .halo{opacity:1;transform:scale(1.1)}
+:root[data-etat="thinking"] .halo{opacity:.95;transform:scale(1.04)}
+.orbe{position:relative;z-index:1;width:100%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle at 80% 86%,var(--halo) 0%,transparent 46%),radial-gradient(circle at 16% 84%,var(--halo2) 0%,transparent 40%),var(--orbe);
+  box-shadow:var(--orbe-ombre);border:1px solid var(--orbe-bord);animation:respire 6s ease-in-out infinite}
+.reflet{position:absolute;left:21%;top:14%;width:27%;height:12%;border-radius:50%;background:var(--reflet)}
+.reflet.petit{left:auto;top:auto;right:18%;bottom:16%;width:9%;height:4%;opacity:.6}
+:root[data-etat="thinking"] .orbe{animation:reflechit 1.4s ease-in-out infinite}
+:root[data-etat="responding"] .orbe{animation:parle .8s ease-in-out infinite}
+:root[data-etat="ecoute"] .orbe{animation:parle 1.2s ease-in-out infinite}
+.onde{display:flex;align-items:center;justify-content:center;gap:4px;height:32px;margin-top:14px}
+.onde i{width:3px;height:3px;border-radius:2px;background:var(--accent);opacity:.4;transition:opacity .3s}
+:root[data-etat="ecoute"] .onde i,:root[data-etat="responding"] .onde i{opacity:.95;animation:onde 1s ease-in-out infinite;animation-delay:calc(var(--i)*-.09s)}
+:root[data-etat="thinking"] .onde i{opacity:.7;animation:onde 1.8s ease-in-out infinite;animation-delay:calc(var(--i)*-.14s)}
+@keyframes respire{50%{transform:scale(1.035)}}
+@keyframes reflechit{0%,100%{transform:scale(1) rotate(0deg)}50%{transform:scale(.97) rotate(8deg)}}
+@keyframes parle{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes onde{50%{transform:scaleY(var(--haut,6))}}
 
 /* barre du haut */
 header{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
   padding:18px clamp(16px,4vw,48px);pointer-events:none}
 header > *{pointer-events:auto}
-.marque{font:600 13px/1 "JetBrains Mono",monospace;letter-spacing:.35em;color:var(--accent)}
+.marque{font:600 13px/1 Inter,"Segoe UI",system-ui,sans-serif;letter-spacing:.35em;color:var(--accent)}
 .outils{display:flex;gap:10px;align-items:center}
-select,.btn-mini{background:var(--verre);color:var(--texte);border:1px solid var(--ligne);border-radius:999px;
-  padding:7px 14px;font:500 12px "JetBrains Mono",monospace;letter-spacing:.08em;backdrop-filter:blur(8px);cursor:pointer;text-decoration:none}
+select,.btn-mini{background:var(--carte);color:var(--texte);border:1px solid var(--bord);border-radius:999px;
+  padding:8px 15px;font:500 13px/1.2 Inter,"Segoe UI",system-ui,sans-serif;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);cursor:pointer;text-decoration:none}
 select:focus-visible,.btn:focus-visible,.btn-mini:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 
 /* sections */
@@ -39,55 +80,53 @@ main{position:relative;z-index:2}
 section{min-height:100vh;display:flex;align-items:center;padding:96px clamp(16px,6vw,96px)}
 section.droite{justify-content:flex-end}
 section.centre{justify-content:center;text-align:center}
-section.heros{align-items:flex-end;padding-bottom:110px}
-.heros .bloc{max-width:760px}
-.bloc{text-shadow:0 2px 24px rgba(0,0,0,.85)}
-.bloc{max-width:520px;opacity:0;transform:translateY(40px);transition:opacity 1s ease,transform 1s cubic-bezier(.2,.7,.2,1)}
+section.heros{align-items:flex-end;padding-bottom:80px}
+.bloc{max-width:520px;background:var(--carte);border:1px solid var(--bord);box-shadow:var(--ombre);border-radius:28px;padding:34px 36px;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:0;transform:translateY(40px);
+  transition:opacity 1s ease,transform 1s cubic-bezier(.2,.7,.2,1)}
 .vu .bloc{opacity:1;transform:none}
-.kicker{font:600 12px/1 "JetBrains Mono",monospace;letter-spacing:.3em;color:var(--accent);text-transform:uppercase;margin-bottom:18px;
+.heros .bloc{max-width:760px;background:none;border:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;padding:0}
+.kicker{font:600 12px/1 Inter,"Segoe UI",system-ui,sans-serif;letter-spacing:.22em;color:var(--accent);text-transform:uppercase;margin-bottom:18px;
   display:flex;align-items:center;gap:12px}
 .kicker::before{content:"";width:28px;height:1px;background:var(--accent)}
 .centre .kicker{justify-content:center}
-h1{font-size:clamp(46px,8.5vw,118px);line-height:.95;letter-spacing:.05em;font-weight:700;white-space:nowrap;
-  background:linear-gradient(180deg,#fff 0%,var(--accent2) 55%,var(--accent) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
-  text-shadow:0 0 60px rgba(61,245,208,.25)}
-h2{font-size:clamp(34px,5.4vw,64px);line-height:1.02;font-weight:700;margin-bottom:20px;letter-spacing:-.01em}
-p.corps{color:#bfe8e0;font-size:clamp(16px,1.6vw,19px)}
-.slogan{font-size:clamp(17px,2vw,22px);color:#cdf3ec;margin:22px auto 34px;max-width:620px}
+h1{font-size:clamp(46px,8.5vw,118px);line-height:.95;letter-spacing:.06em;font-weight:300;white-space:nowrap;color:var(--texte)}
+h2{font-size:clamp(32px,5vw,58px);line-height:1.05;font-weight:600;margin-bottom:20px;letter-spacing:-.02em}
+p.corps{color:var(--doux);font-size:clamp(16px,1.6vw,19px)}
+.slogan{font-size:clamp(17px,2vw,22px);color:var(--doux);margin:22px auto 34px;max-width:620px;font-weight:300}
 .actions{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
-.btn{display:inline-flex;align-items:center;gap:10px;padding:15px 26px;border-radius:999px;font:600 15px "Chakra Petch",sans-serif;
-  letter-spacing:.04em;text-decoration:none;transition:transform .2s,box-shadow .2s,background .2s}
-.btn.plein{background:var(--accent);color:#012420;box-shadow:0 0 40px rgba(61,245,208,.35)}
-.btn.plein:hover{transform:translateY(-2px);box-shadow:0 0 60px rgba(61,245,208,.55)}
-.btn.vide{border:1px solid var(--ligne);color:var(--texte);background:var(--verre);backdrop-filter:blur(8px)}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:15px 26px;border-radius:999px;font:600 15px Inter,"Segoe UI",system-ui,sans-serif;
+  text-decoration:none;transition:transform .2s,box-shadow .2s,background .2s}
+.btn.plein{background:var(--accent);color:var(--sur-accent);box-shadow:0 12px 32px rgba(31,111,196,.3)}
+.btn.plein:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(31,111,196,.42)}
+.btn.vide{border:1px solid var(--bord);color:var(--texte);background:var(--carte);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .btn.vide:hover{border-color:var(--accent)}
-.note{margin-top:18px;font:12px "JetBrains Mono",monospace;color:var(--doux);letter-spacing:.06em}
-.chiffre{font:700 clamp(70px,12vw,140px)/1 "Chakra Petch";color:var(--accent);text-shadow:0 0 40px rgba(61,245,208,.4)}
+.note{margin-top:18px;font-size:13px;color:var(--doux)}
+.chiffre{font:300 clamp(70px,12vw,140px)/1 Inter,"Segoe UI",system-ui,sans-serif;color:var(--accent)}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
-.chips span{border:1px solid var(--ligne);border-radius:999px;padding:6px 12px;font:12px "JetBrains Mono",monospace;color:var(--accent2);background:var(--verre)}
-.defile{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);font:11px "JetBrains Mono",monospace;letter-spacing:.3em;color:var(--doux);
+.chips span{border:1px solid var(--bord);border-radius:999px;padding:6px 13px;font-size:13px;color:var(--texte);background:var(--pastille)}
+.defile{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);font-size:11px;letter-spacing:.3em;color:var(--doux);
   animation:flotte 2.4s ease-in-out infinite}
 @keyframes flotte{50%{transform:translate(-50%,8px)}}
-.photos{display:grid;grid-template-columns:1fr;gap:16px;margin-top:28px}
-.photos img{width:100%;border-radius:14px;border:1px solid var(--ligne);box-shadow:0 30px 80px rgba(0,0,0,.6)}
 .section-photos{flex-direction:column;justify-content:center}
 .section-photos .bloc{max-width:1100px;text-align:center}
 .section-photos .kicker{justify-content:center}
 .grille-photos{display:grid;grid-template-columns:3fr 1fr;gap:18px;margin-top:34px;align-items:end}
-.grille-photos img{width:100%;border-radius:14px;border:1px solid var(--ligne);box-shadow:0 30px 90px rgba(0,0,0,.65);display:block}
-footer{position:relative;z-index:2;padding:60px clamp(16px,6vw,96px) 40px;border-top:1px solid var(--ligne);
-  font:12px/1.8 "JetBrains Mono",monospace;color:var(--doux);background:linear-gradient(transparent,rgba(0,0,0,.6))}
-footer a{color:var(--accent2)}
-.barre-prog{position:fixed;left:0;top:0;height:2px;background:var(--accent);z-index:6;box-shadow:0 0 12px var(--accent);width:0}
+.grille-photos picture{display:block}
+.grille-photos img{width:100%;height:auto;border-radius:20px;border:1px solid var(--bord);box-shadow:var(--photo-ombre);display:block}
+footer{position:relative;z-index:2;padding:60px clamp(16px,6vw,96px) 40px;border-top:1px solid var(--bord);
+  font-size:13px;line-height:1.8;color:var(--doux)}
+footer a{color:var(--accent)}
+.barre-prog{position:fixed;left:0;top:0;height:2px;background:var(--accent);z-index:6;width:0}
 @media (max-width:760px){
   section{padding:90px 16px}
   section.droite{justify-content:flex-start}
-  .bloc{background:linear-gradient(180deg,rgba(2,19,17,.0),rgba(2,19,17,.75) 30%);padding:18px 0;border-radius:18px}
+  .bloc{padding:22px 20px;border-radius:22px}
   .grille-photos{grid-template-columns:1fr}
-  .grille-photos img.tel{max-width:240px;margin:0 auto}
+  .grille-photos picture:last-child img{max-width:240px;margin:0 auto}
   .marque{letter-spacing:.2em}
 }
-@media (prefers-reduced-motion:reduce){ .bloc{transition:none} .defile{animation:none} }
+@media (prefers-reduced-motion:reduce){ .bloc,#orbe-site,.halo{transition:none} .defile,.orbe,.onde i{animation:none!important} }
 [dir=rtl] .kicker::before{display:none}
 /* l'espacement des lettres casse les ligatures de l'hindi et alourdit le chinois */
 :lang(hi) .kicker,:lang(hi) .defile,:lang(zh-CN) .kicker,:lang(zh-CN) .defile{letter-spacing:.04em}
@@ -95,7 +134,13 @@ footer a{color:var(--accent2)}
 </head>
 <body>
 <div class="barre-prog" id="prog"></div>
-<canvas id="scene" aria-hidden="true"></canvas>
+<div id="orbe-site" aria-hidden="true">
+  <div class="orbe-zone">
+    <span class="halo"></span>
+    <div class="orbe"><span class="reflet"></span><span class="reflet petit"></span></div>
+  </div>
+  <div class="onde" id="onde"></div>
+</div>
 
 <header>
   <div class="marque">J·A·R·V·I·S</div>
@@ -161,10 +206,10 @@ footer a{color:var(--accent2)}
     <div class="bloc">
       <div class="kicker" data-i18n="s5_k">05 — Interface</div>
       <h2 data-i18n="s5_t">An interface you actually live in.</h2>
-      <p class="corps" data-i18n="s5_p">A 3D orb that reacts to its voice, the chat, the machine's vitals, and a tabbed data center — down to an Agents tab that maps every AI tool on your computer. New in 1.5: the Glass Orb, a calm everyday view — light by day, dark at night — with a mic button to talk without saying “Jarvis”. On your desktop and on your phone.</p>
+      <p class="corps" data-i18n="s5_p">The Glass Orb: your everyday view of JARVIS. The orb in the middle, what you said above it, its answer below — light by day, dark at night. Glass cards appear when you talk about them: weather, music, your devices, your homework. A mic button lets you talk without saying “Jarvis”. On your desktop and on your phone — and the full dashboard, with its Agents tab that maps every AI tool on your computer, is one click away.</p>
       <div class="grille-photos">
-        <img src="images/hud-agents.jpg" alt="" loading="lazy" width="2000" height="1250">
-        <img class="tel" src="images/hud-mobile.jpg" alt="" loading="lazy" width="780" height="1688">
+        <picture><source media="(prefers-color-scheme: light)" srcset="images/hud-desktop-clair.jpg"><img src="images/hud-desktop.jpg" alt="The Glass Orb on a computer, with its weather, music and devices cards" loading="lazy" width="2000" height="1250"></picture>
+        <picture><source media="(prefers-color-scheme: light)" srcset="images/hud-mobile-clair.jpg"><img src="images/hud-mobile.jpg" alt="The Glass Orb on a phone" loading="lazy" width="780" height="1688"></picture>
       </div>
     </div>
   </section>
@@ -212,7 +257,7 @@ const TEXTES = {
     s4_k:"04 — Coder", s4_t:"Il travaille avec vos agents de code.",
     s4_p:"Il confie les tâches à l'agent de votre choix, dans un projet que vous avez déclaré. Sans agent, le sien lit, cherche et modifie le projet — enfermé dans son dossier.",
     s5_k:"05 — Interface", s5_t:"Une interface où l'on vit vraiment.",
-    s5_p:"Une orbe 3D qui réagit à sa voix, le chat, l'état de la machine et un data center à onglets — jusqu'à un onglet Agents qui recense chaque outil d'IA de votre ordinateur. Nouveau dans la 1.5 : l'Orbe de verre, une vue calme pour tous les jours — claire le jour, sombre la nuit — avec un bouton micro pour parler sans dire « Jarvis ». Sur le bureau comme sur le téléphone.",
+    s5_p:"L'Orbe de verre : la vue de tous les jours. L'orbe au milieu, ce que vous avez dit au-dessus, sa réponse en dessous — claire le jour, sombre la nuit. Des cartes de verre apparaissent quand on en parle : météo, musique, vos appareils, vos devoirs. Un bouton micro permet de parler sans dire « Jarvis ». Sur le bureau comme sur le téléphone — et le tableau de bord complet, avec son onglet Agents qui recense chaque outil d'IA de votre ordinateur, est à un clic.",
     s6_k:"06 — Vie privée", s6_t:"Votre machine. Vos données.",
     s6_p:"Les conversations, les réglages et le courrier restent en local. Les actions irréversibles montrent exactement ce qui va partir et attendent votre oui. Chaque option facultative est livrée éteinte.",
     s7_k:"Installer", s7_t:"Donnez une voix à votre ordinateur.",
@@ -233,7 +278,7 @@ const TEXTES = {
     s4_k:"04 — Programar", s4_t:"Trabaja con tus agentes de código.",
     s4_p:"Encarga las tareas al agente que elijas, en un proyecto que hayas declarado. Sin ninguno, su propio agente lee, busca y modifica el proyecto — encerrado en su carpeta.",
     s5_k:"05 — Interfaz", s5_t:"Una interfaz en la que se vive de verdad.",
-    s5_p:"Una esfera 3D que reacciona a su voz, el chat, las constantes del equipo y un data center con pestañas — hasta una pestaña Agents que recoge cada herramienta de IA de tu ordenador. Novedad de la 1.5: la Esfera de cristal, una vista tranquila para el día a día — clara de día, oscura de noche — con un botón de micrófono para hablar sin decir «Jarvis». En el escritorio y en el teléfono.",
+    s5_p:"La Esfera de cristal: la vista de todos los días. La esfera en el centro, lo que dijiste encima, su respuesta debajo — clara de día, oscura de noche. Aparecen tarjetas de cristal cuando hablas de ellas: el tiempo, la música, tus dispositivos, tus deberes. Un botón de micrófono permite hablar sin decir «Jarvis». En el escritorio y en el teléfono — y el panel completo, con su pestaña Agents que recoge cada herramienta de IA de tu ordenador, está a un clic.",
     s6_k:"06 — Privacidad", s6_t:"Tu equipo. Tus datos.",
     s6_p:"Las conversaciones, los ajustes y el correo se quedan en local. Las acciones irreversibles muestran exactamente lo que va a salir y esperan tu sí. Cada opción viene apagada.",
     s7_k:"Instalar", s7_t:"Dale voz a tu ordenador.",
@@ -254,7 +299,7 @@ const TEXTES = {
     s4_k:"04 — 写代码", s4_t:"它与你的编程代理协作。",
     s4_p:"它把任务交给你选择的代理，在你声明过的项目中执行。没有代理时，它自己的代理会读取、搜索和修改项目——并被限制在项目文件夹内。",
     s5_k:"05 — 界面", s5_t:"一个真正能住进去的界面。",
-    s5_p:"一个随声音变化的 3D 球体、聊天、本机状态，以及带标签页的数据中心——还有一个 Agents 标签页，列出你电脑上的每一个 AI 工具。1.5 新增：玻璃球界面，适合日常使用的简洁视图——白天浅色，夜晚深色——还有麦克风按钮，不用说“Jarvis”就能直接说话。电脑和手机都能用。",
+    s5_p:"玻璃球：每天都用的界面。球体居中，你说的话在上方，它的回答在下方——白天浅色，夜晚深色。聊到相关话题时会出现玻璃卡片：天气、音乐、你的设备、你的作业。麦克风按钮让你不用说“Jarvis”就能直接说话。电脑和手机都能用——完整的仪表板（含列出你电脑上每个 AI 工具的 Agents 标签页）只需点一下。",
     s6_k:"06 — 隐私", s6_t:"你的电脑，你的数据。",
     s6_p:"对话、设置和邮件都保存在本地。不可撤销的操作会准确显示将要发出的内容，并等待你的同意。每个可选功能默认都是关闭的。",
     s7_k:"安装", s7_t:"让你的电脑开口说话。",
@@ -275,7 +320,7 @@ const TEXTES = {
     s4_k:"04 — कोड", s4_t:"यह आपके कोडिंग एजेंटों के साथ काम करता है।",
     s4_p:"यह काम आपकी पसंद के एजेंट को सौंपता है, उस प्रोजेक्ट में जिसे आपने घोषित किया है। किसी एजेंट के बिना, इसका अपना एजेंट प्रोजेक्ट को पढ़ता, खोजता और बदलता है — उसके फ़ोल्डर के अंदर ही।",
     s5_k:"05 — इंटरफ़ेस", s5_t:"एक इंटरफ़ेस जिसमें आप सच में रहते हैं।",
-    s5_p:"आवाज़ पर प्रतिक्रिया देने वाला 3D गोला, चैट, मशीन की स्थिति और टैब वाला डेटा सेंटर — जिसमें Agents टैब आपके कंप्यूटर के हर AI टूल को दिखाता है। 1.5 में नया: काँच का गोला, रोज़ के इस्तेमाल के लिए एक शांत दृश्य — दिन में हल्का, रात में गहरा — और एक माइक बटन, ताकि “Jarvis” कहे बिना बोल सकें। डेस्कटॉप पर भी, फ़ोन पर भी।",
+    s5_p:"काँच का गोला: रोज़ के इस्तेमाल का दृश्य। बीच में गोला, ऊपर आपकी कही बात, नीचे उसका जवाब — दिन में हल्का, रात में गहरा। बात करते ही काँच के कार्ड दिखते हैं: मौसम, संगीत, आपके डिवाइस, आपका होमवर्क। माइक बटन से “Jarvis” कहे बिना बोल सकते हैं। डेस्कटॉप और फ़ोन दोनों पर — और Agents टैब वाला पूरा डैशबोर्ड, जो आपके कंप्यूटर के हर AI टूल को दिखाता है, बस एक क्लिक दूर है।",
     s6_k:"06 — निजता", s6_t:"आपकी मशीन। आपका डेटा।",
     s6_p:"बातचीत, सेटिंग्स और ईमेल लोकल रहते हैं। अपरिवर्तनीय काम ठीक-ठीक दिखाते हैं कि क्या जाने वाला है और आपकी हाँ का इंतज़ार करते हैं। हर वैकल्पिक सुविधा बंद करके दी जाती है।",
     s7_k:"इंस्टॉल", s7_t:"अपने कंप्यूटर को आवाज़ दें।",
@@ -296,7 +341,7 @@ const TEXTES = {
     s4_k:"04 — Código", s4_t:"Ele trabalha com seus agentes de código.",
     s4_p:"Ele entrega as tarefas ao agente que você escolher, em um projeto que você declarou. Sem nenhum, o próprio agente lê, busca e altera o projeto — preso dentro da pasta.",
     s5_k:"05 — Interface", s5_t:"Uma interface feita para usar de verdade.",
-    s5_p:"Uma esfera 3D que reage à voz, o chat, os sinais vitais da máquina e um data center com abas — até uma aba Agents que mapeia cada ferramenta de IA do seu computador. Novidade da 1.5: a Esfera de vidro, uma visão tranquila para o dia a dia — clara de dia, escura à noite — com um botão de microfone para falar sem dizer “Jarvis”. No computador e no celular.",
+    s5_p:"A Esfera de vidro: a visão do dia a dia. A esfera no meio, o que você disse acima, a resposta abaixo — clara de dia, escura à noite. Cartões de vidro aparecem quando você fala deles: o tempo, a música, seus dispositivos, suas lições de casa. Um botão de microfone permite falar sem dizer “Jarvis”. No computador e no celular — e o painel completo, com a aba Agents que mapeia cada ferramenta de IA do seu computador, está a um clique.",
     s6_k:"06 — Privacidade", s6_t:"Sua máquina. Seus dados.",
     s6_p:"Conversas, configurações e e-mail ficam no seu computador. Ações irreversíveis mostram exatamente o que vai sair e esperam o seu sim. Cada recurso opcional vem desligado.",
     s7_k:"Instalar", s7_t:"Dê uma voz ao seu computador.",
@@ -336,244 +381,41 @@ const obs = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && e
 document.querySelectorAll("section").forEach(s => obs.observe(s));
 </script>
 
-<script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
-</script>
-<script type="module">
-import * as THREE from "three";
-import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-
-const canvas = document.getElementById("scene");
-const petit = matchMedia("(max-width: 760px)").matches;
-const calme = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const TEAL = new THREE.Color("#3df5d0");
-
-let renderer;
-try { renderer = new THREE.WebGLRenderer({ canvas, antialias: !petit, alpha: true, powerPreference: "high-performance" }); }
-catch (e) { canvas.remove(); throw e; }                       // sans WebGL : la page reste lisible, sans scène
-renderer.setPixelRatio(Math.min(devicePixelRatio, petit ? 1.5 : 2));
-renderer.setSize(innerWidth, innerHeight);
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-
-const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x021311, 0.045);
-const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
-
-// ── L'orbe : cœur lumineux (fresnel), coque en fil de fer qui ondule, anneaux, halo ──────────────
-const orbe = new THREE.Group();
-scene.add(orbe);
-const coeur = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), new THREE.ShaderMaterial({
-  uniforms: { uTemps: { value: 0 }, uForce: { value: 1 }, uCouleur: { value: TEAL } },
-  vertexShader: `varying vec3 vN; varying vec3 vV;
-    void main(){ vN = normalize(normalMatrix * normal); vec4 p = modelViewMatrix * vec4(position,1.);
-      vV = normalize(-p.xyz); gl_Position = projectionMatrix * p; }`,
-  fragmentShader: `uniform float uTemps; uniform float uForce; uniform vec3 uCouleur; varying vec3 vN; varying vec3 vV;
-    void main(){ float f = pow(1. - max(dot(vN, vV), 0.), 2.2);
-      float c = .12 + .75 * f + .05 * sin(uTemps * 2.);
-      vec3 col = mix(vec3(.75,1.,.96), uCouleur, f) * c * uForce;
-      gl_FragColor = vec4(col, .22 + .6 * f); }`,
-  transparent: true, depthWrite: false
-}));
-orbe.add(coeur);
-
-const icoGeo = new THREE.IcosahedronGeometry(1.18, 3);
-const icoBase = icoGeo.attributes.position.array.slice();
-const coque = new THREE.LineSegments(new THREE.WireframeGeometry(icoGeo),
-  new THREE.LineBasicMaterial({ color: 0xbffcf0, transparent: true, opacity: .55 }));
-orbe.add(coque);
-function onduler(t, amp){                                     // déforme la coque comme une voix
-  const pos = icoGeo.attributes.position.array;
-  for (let i = 0; i < pos.length; i += 3) {
-    const x = icoBase[i], y = icoBase[i + 1], z = icoBase[i + 2];
-    const n = 1 + amp * (Math.sin(x * 3.1 + t * 2.3) * Math.cos(y * 2.7 + t * 1.7) + .5 * Math.sin(z * 4.3 + t * 3.1));
-    pos[i] = x * n; pos[i + 1] = y * n; pos[i + 2] = z * n;
+<script>
+// L'orbe de verre suit la lecture : une place et un état par section (c'est l'orbe de l'interface de JARVIS).
+(() => {
+  const orbe = document.getElementById("orbe-site");
+  const ETATS = ["idle", "thinking", "responding", "idle", "thinking", "ecoute", "idle", "responding"];
+  // x et y en vw / vh depuis le centre, échelle, opacité. Texte à gauche => orbe à droite, et inversement.
+  const BUREAU = [[0, -28, .8, 1], [25, 0, .9, 1], [-25, 0, .9, 1], [25, 0, .9, 1], [-25, 0, .9, 1], [36, -34, .32, 0], [-25, 0, .9, 1], [0, -28, .75, 1]];
+  const TEL = [[0, -20, .9, 1], [0, -36, .5, 1], [0, -36, .5, 1], [0, -36, .5, 1], [0, -36, .5, 1], [0, -36, .4, .6], [0, -36, .5, 1], [0, -22, .8, 1]];
+  let courant = 0;
+  function placer(i){
+    courant = i;
+    const [x, y, s, o] = (innerWidth >= 900 ? BUREAU : TEL)[i];
+    orbe.style.setProperty("--x", x + "vw");
+    orbe.style.setProperty("--y", y + "vh");
+    orbe.style.setProperty("--s", s);
+    orbe.style.setProperty("--o", o);
+    document.documentElement.dataset.etat = ETATS[i];
   }
-  icoGeo.attributes.position.needsUpdate = true;
-  coque.geometry.dispose(); coque.geometry = new THREE.WireframeGeometry(icoGeo);
-}
-
-function anneau(r, epais, op){
-  const m = new THREE.Mesh(new THREE.TorusGeometry(r, epais, 8, 200),
-    new THREE.MeshBasicMaterial({ color: TEAL, transparent: true, opacity: op }));
-  orbe.add(m); return m;
-}
-const anneaux = [anneau(1.42, .012, .9), anneau(1.62, .006, .5), anneau(1.95, .004, .35)];
-anneaux[1].rotation.x = 1.2; anneaux[2].rotation.y = .9;
-
-// graduations autour de l'orbe (comme le HUD)
-const graduations = (() => {
-  const n = 120, pos = new Float32Array(n * 6);
-  for (let i = 0; i < n; i++) {
-    const a = i / n * Math.PI * 2, r1 = 2.15, r2 = i % 10 === 0 ? 2.32 : 2.22;
-    pos.set([Math.cos(a) * r1, Math.sin(a) * r1, 0, Math.cos(a) * r2, Math.sin(a) * r2, 0], i * 6);
+  const suivre = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && placer(+e.target.dataset.etape)), { threshold: .35 });
+  document.querySelectorAll("section[data-etape]").forEach(s => suivre.observe(s));
+  addEventListener("resize", () => placer(courant));
+  placer(0);
+  // Les 31 points de l'onde, plus hauts au milieu.
+  const onde = document.getElementById("onde");
+  for (let i = 0; i < 31; i++) {
+    const p = document.createElement("i");
+    p.style.setProperty("--i", i);
+    p.style.setProperty("--haut", (2 + 8 * Math.exp(-(((i - 15) / 8) ** 2))).toFixed(1));
+    onde.append(p);
   }
-  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: TEAL, transparent: true, opacity: .45 }));
-  orbe.add(l); return l;
+  const prog = document.getElementById("prog");
+  addEventListener("scroll", () => {
+    prog.style.width = (100 * scrollY / Math.max(1, document.documentElement.scrollHeight - innerHeight)) + "%";
+  }, { passive: true });
 })();
-
-const halo = (() => {
-  const c = document.createElement("canvas"); c.width = c.height = 256;
-  const x = c.getContext("2d"), g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
-  g.addColorStop(0, "rgba(160,255,235,.28)"); g.addColorStop(.35, "rgba(61,245,208,.08)"); g.addColorStop(1, "rgba(61,245,208,0)");
-  x.fillStyle = g; x.fillRect(0, 0, 256, 256);
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false,
-    blending: THREE.AdditiveBlending }));
-  s.scale.set(6, 6, 1); orbe.add(s); return s;
-})();
-
-// ── Poussière : particules qui convergent vers l'orbe à l'étape « Répondre » ──────────────────
-const NB = petit ? 1400 : 3600;
-const loin = new Float32Array(NB * 3), pres = new Float32Array(NB * 3), cur = new Float32Array(NB * 3);
-for (let i = 0; i < NB; i++) {
-  const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u);
-  const r = 3 + Math.random() * 10, r2 = 1.25 + Math.random() * .35;
-  loin.set([s * Math.cos(a) * r, u * r * .6, s * Math.sin(a) * r * .55 - 2.5], i * 3);
-  pres.set([s * Math.cos(a) * r2, u * r2, s * Math.sin(a) * r2], i * 3);
-}
-cur.set(loin);
-const poussiereGeo = new THREE.BufferGeometry(); poussiereGeo.setAttribute("position", new THREE.BufferAttribute(cur, 3));
-const rond = (() => { const c = document.createElement("canvas"); c.width = c.height = 64;
-  const x = c.getContext("2d"), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
-  g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(.4, "rgba(255,255,255,.5)"); g.addColorStop(1, "rgba(255,255,255,0)");
-  x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
-const poussiere = new THREE.Points(poussiereGeo, new THREE.PointsMaterial({ color: 0x9ffbe8, size: petit ? .07 : .05, map: rond,
-  transparent: true, opacity: .55, depthWrite: false, blending: THREE.AdditiveBlending }));
-scene.add(poussiere);
-
-// ── Océan numérique : grille de points qui ondule sous l'orbe ─────────────────────────────────
-const ocean = (() => {
-  const g = new THREE.PlaneGeometry(80, 80, petit ? 90 : 160, petit ? 90 : 160); g.rotateX(-Math.PI / 2);
-  const m = new THREE.ShaderMaterial({
-    uniforms: { uTemps: { value: 0 }, uCouleur: { value: TEAL } },
-    vertexShader: `uniform float uTemps; varying float vH; varying float vD;
-      void main(){ vec3 p = position;
-        float h = sin(p.x * .25 + uTemps * .6) * .45 + cos(p.z * .3 + uTemps * .45) * .35 + sin((p.x + p.z) * .12 + uTemps) * .5;
-        p.y += h; vH = h; vec4 mv = modelViewMatrix * vec4(p, 1.); vD = -mv.z;
-        gl_PointSize = 2.2 * (18. / vD); gl_Position = projectionMatrix * mv; }`,
-    fragmentShader: `uniform vec3 uCouleur; varying float vH; varying float vD;
-      void main(){ float a = smoothstep(60., 6., vD) * (.35 + .4 * (vH + 1.));
-        gl_FragColor = vec4(uCouleur * (.6 + .5 * vH), a * .45); }`,
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
-  });
-  const o = new THREE.Points(g, m); o.position.y = -4.2; scene.add(o); return o;
-})();
-
-// ── Maison : une grille de petites lumières qui s'allument (étape « Agir ») ──────────────────
-const maison = new THREE.Group(); scene.add(maison);
-const lampes = [];
-for (let x = -4; x <= 4; x++) for (let z = -4; z <= 4; z++) {
-  const b = new THREE.Mesh(new THREE.BoxGeometry(.2, .2, .2),
-    new THREE.MeshBasicMaterial({ color: TEAL, transparent: true, opacity: 0, depthWrite: false }));
-  b.position.set(x * .5, -2.2, z * .5); b.userData.d = Math.hypot(x, z); maison.add(b); lampes.push(b);
-}
-
-// ── Agents : cinq satellites en orbite (étape « Coder ») ─────────────────────────────────────
-const agents = [];
-for (let i = 0; i < 5; i++) {
-  const s = new THREE.Mesh(new THREE.SphereGeometry(.09, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }));
-  s.userData = { r: 2.6 + i * .28, v: .5 + i * .12, p: i * 1.3, inc: (i - 2) * .35 };
-  scene.add(s); agents.push(s);
-}
-
-// ── Rendu avec halo lumineux (bloom) ─────────────────────────────────────────────────────────
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-const FORCE_BLOOM = petit ? .45 : .6;
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), FORCE_BLOOM, .5, .22);
-composer.addPass(bloom);
-composer.addPass(new OutputPass());
-
-// ── Étapes : position de caméra et état de la scène pour chaque section ───────────────────────
-// [camX, camY, camZ, regardX, regardY, orbeX, échelle, convergence, maison, sombre, agents]
-const ETAPES = [
-  [0, -.6, 8,    0, -1.1,  0,    .9,   0,  0, 0, 0],   // héros : orbe au-dessus du titre
-  [0, .4, 7.2,   .9, 0,    2.0,  .95,  1,  0, 0, 0],   // répondre (texte à gauche) : la poussière converge
-  [0, 2.3, 8.8,  -.7, -.8, -2.0, .75,  .2, 1, 0, 0],   // agir (texte à droite) : la maison s'allume
-  [0, .1, 10,    .5, 0,    2.3,  .5,   0,  0, 1, 0],   // honnêteté (texte à gauche) : tout s'éteint
-  [0, 1.0, 8.2,  -.7, 0,   -2.0, .8,   0,  0, 0, 1],   // coder (texte à droite) : satellites
-  [0, .6, 11,    0, 1.6,   0,    .45,  0,  0, 0, 0],   // interface : l'orbe s'efface derrière les photos
-  [0, .9, 7.6,   -.7, 0,   -1.9, .95,  .5, 0, 0, 0],   // vie privée (texte à droite)
-  [0, -.6, 7.5,  0, -1.1,  0,    .95,  .3, 0, 0, 0],   // installer : comme le héros
-];
-const sections = [...document.querySelectorAll("section[data-etape]")];
-let cible = 0, lisse = 0;
-function avancement(){
-  const milieu = innerHeight / 2;
-  for (let i = 0; i < sections.length; i++) {
-    const r = sections[i].getBoundingClientRect();
-    if (r.top <= milieu && r.bottom > milieu) return i + Math.min(1, Math.max(0, (milieu - r.top) / r.height - .5) * 2) * (i < sections.length - 1 ? 1 : 0);
-  }
-  return scrollY < 10 ? 0 : sections.length - 1;
-}
-addEventListener("scroll", () => {
-  cible = avancement();
-  const h = document.documentElement.scrollHeight - innerHeight;
-  document.getElementById("prog").style.width = (h > 0 ? scrollY / h * 100 : 0) + "%";
-}, { passive: true });
-cible = avancement();
-
-const lerp = (a, b, t) => a + (b - a) * t;
-const doux = t => t * t * (3 - 2 * t);
-function etat(v){
-  const i = Math.min(ETAPES.length - 1, Math.floor(v)), j = Math.min(ETAPES.length - 1, i + 1), f = doux(v - i);
-  return ETAPES[i].map((a, k) => lerp(a, ETAPES[j][k], f));
-}
-
-const regard = new THREE.Vector3();
-const horloge = new THREE.Clock();
-let derniereOnde = 0;
-function image(){
-  const t = horloge.getElapsedTime();
-  lisse = lerp(lisse, cible, calme ? 1 : .06);
-  const [cx, cy, cz, rx, ry, oxBrut, ech, conv, mais, sombre, ag] = etat(lisse);
-  const ox = petit ? oxBrut * .3 : oxBrut;                 // téléphone : l'orbe reste dans l'écran
-  const souris = calme ? 0 : 1;
-  camera.position.set(cx + pointeur.x * .35 * souris, cy + pointeur.y * .25 * souris, cz);
-  regard.set(rx, ry, 0); camera.lookAt(regard);
-
-  orbe.position.x = ox;
-  orbe.scale.setScalar(ech * (1 + .025 * Math.sin(t * 1.6)));
-  orbe.rotation.y = t * .12; coque.rotation.x = t * .07;
-  anneaux[0].rotation.z = t * .3; anneaux[1].rotation.z = -t * .22; anneaux[2].rotation.x = t * .15;
-  graduations.rotation.z = -t * .05;
-  const lum = 1 - .82 * sombre;
-  coeur.material.uniforms.uTemps.value = t; coeur.material.uniforms.uForce.value = lum;
-  coque.material.opacity = .55 * lum + .1; halo.material.opacity = .8 * lum;
-  bloom.strength = FORCE_BLOOM * (1 - .6 * sombre);
-  if (!calme && t - derniereOnde > 1 / 30) { onduler(t, .045 + .05 * conv); derniereOnde = t; }
-
-  for (let i = 0; i < NB * 3; i++) cur[i] = lerp(cur[i], lerp(loin[i], pres[i] + (i % 3 === 0 ? ox : 0), conv), .05);
-  poussiereGeo.attributes.position.needsUpdate = true;
-  poussiere.rotation.y = t * .02; poussiere.material.opacity = .55 * lum;
-
-  ocean.material.uniforms.uTemps.value = t;
-  maison.position.x = ox;
-  for (const b of lampes) {
-    const on = mais > 0 && (Math.sin(t * 2 - b.userData.d * .9) > .2 - mais * .9);
-    b.material.opacity = lerp(b.material.opacity, on ? .85 * mais : .06 * mais, .1);
-    b.visible = b.material.opacity > .01;
-  }
-  agents.forEach(s => {
-    const a = t * s.userData.v + s.userData.p, r = s.userData.r;
-    s.position.set(ox + Math.cos(a) * r, Math.sin(a) * r * Math.sin(s.userData.inc), Math.sin(a) * r * Math.cos(s.userData.inc));
-    s.material.opacity = ag; s.visible = ag > .01;
-  });
-
-  composer.render();
-  requestAnimationFrame(image);
-}
-const pointeur = { x: 0, y: 0 };
-addEventListener("pointermove", e => { pointeur.x = e.clientX / innerWidth * 2 - 1; pointeur.y = -(e.clientY / innerHeight * 2 - 1); }, { passive: true });
-addEventListener("resize", () => {
-  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
-});
-image();
 </script>
 </body>
 </html>
