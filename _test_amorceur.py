@@ -132,6 +132,30 @@ def verifier():
     print("  OK  reprise paquet par paquet, %d paquets juges indispensables"
           % len(am.INDISPENSABLES))
 
+    # ── Fenetre : couleurs et orbe de l'Orbe de verre (1.6) ─────────────
+    # tkinter n'a pas d'alpha : chaque rgba() du CSS est melange au fond. Un
+    # melange faux donnerait un texte illisible sur une machine qu'on ne voit pas.
+    import fenetre
+    assert fenetre.melange("#000000", "#ffffff", 0.5) == "#808080"
+    assert fenetre.melange("#0b0d12", "#ffffff", 0) == "#0b0d12"
+    for nom, t in fenetre.THEMES.items():
+        for couleur in ("texte", "accent", "doux"):
+            assert t[couleur] != t["fond"], "%s : %s sur fond identique" % (nom, couleur)
+    assert fenetre.FOND in {t["fond"] for t in fenetre.THEMES.values()}
+
+    class FauxCanvas:
+        def __init__(self):
+            self.ovales = []
+
+        def create_oval(self, *xy, **_):
+            self.ovales.append(xy)
+    c = FauxCanvas()
+    fenetre.orbe(c, 100, 100, 20)
+    for x0, y0, x1, y1 in c.ovales:   # disques du degrade, puis le reflet
+        assert 80 - 1e-6 <= x0 <= x1 <= 120 + 1e-6 and 80 - 1e-6 <= y0 <= y1 <= 120 + 1e-6, \
+            "un disque de l'orbe deborde : %r" % ((x0, y0, x1, y1),)
+    print("  OK  fenetre : couleurs de l'Orbe de verre, orbe dessinee sans deborder")
+
     # ── Le depot vise est bien celui publie ─────────────────────────────
     assert "/" in am.DEPOT and am.DEPOT.count("/") == 1, \
         "DEPOT mal forme : %r" % am.DEPOT

@@ -44,6 +44,17 @@ verifier("avant_appel : rien avant un faux appel", a.avant_appel(REEL_SIMPLE) ==
 verifier("avant_appel : phrase normale entière", a.avant_appel(normal) == normal)
 verifier("la note de reprise interdit de regarder l'écran", "voir_ecran" in a.NOTE_REPRISE and "jamais" in a.NOTE_REPRISE)
 
+# Réponses JSON {"message": ...} sans action (13-14/11/2026 : schematron-v2-turbo via auto/best-chat) : ni dites, ni gardées.
+JSON_MESSAGE = '{\n  "message": "Je ne peux pas répondre à cette question car il ne concerne pas ma fonctionnalité de chat avec l\'IA."\n}'
+verifier("JSON {message} sans action : repéré, même dans une clôture ```json",
+         a.json_message_seul(JSON_MESSAGE) and a.json_message_seul("```json\n" + JSON_MESSAGE + "\n```"))
+verifier("JSON {message} tronqué : repéré", a.json_message_seul('{   "message": "No relevant response could be extracted'))
+verifier("JSON avec une action : pas touché (main2 le traite)",
+         not a.json_message_seul('{"action": "ha_lumiere", "message": "ok"}') and not a.json_message_seul(action))
+verifier("phrase normale, vide ou absente : pas un JSON message",
+         not a.json_message_seul(normal) and not a.json_message_seul("") and not a.json_message_seul(None))
+verifier("la note de reprise JSON demande du texte simple", "sans JSON" in a.NOTE_REPRISE_JSON)
+
 # Mémoire de conversation : au rechargement, un ancien faux appel d'outil ne sert plus d'exemple au modèle.
 import json
 import os
@@ -55,9 +66,10 @@ with tempfile.TemporaryDirectory() as dossier:
     mm.HISTORIQUE_CONV_FILE = os.path.join(dossier, "conversations.json")
     with open(mm.HISTORIQUE_CONV_FILE, "w", encoding="utf-8") as f:
         json.dump([{"date": "07/11/2026", "heure": "21:32", "user": "regarde l'écran", "model": REEL_DOUBLE},
+                   {"date": "13/11/2026", "heure": "20:00", "user": "pourquoi l'heure", "model": JSON_MESSAGE},
                    {"date": "07/11/2026", "heure": "21:40", "user": "salut", "model": "Bonjour."}], f)
     historique = mm._charger_historique_recent()
-verifier("historique rechargé : l'ancien faux appel est écarté, la vraie réponse reste",
+verifier("historique rechargé : faux appel et JSON {message} écartés, la vraie réponse reste",
          len(historique) == 2 and historique[1].parts[0].text == "Bonjour.")
 
 print("\nFaux appels d'outil : " + ("conforme." if not ECHECS else f"{len(ECHECS)} échec(s)."))

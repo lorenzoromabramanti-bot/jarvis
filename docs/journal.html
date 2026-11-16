@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>J.A.R.V.I.S — git log</title>
+<link rel="icon" type="image/svg+xml" href="images/logo-jarvis-icone.svg">
 <meta name="description" content="git log — écrit par la machine. Le vrai journal git de JARVIS : cinq commits, texte non retouché, puis les versions publiées depuis.">
 <meta property="og:title" content="J.A.R.V.I.S — git log">
 <meta property="og:description" content="Le vrai journal git de JARVIS : cinq commits, texte non retouché, puis les versions publiées depuis.">
@@ -545,7 +546,7 @@ a.ghlink:hover .arrow{transform:translateX(4px)}
   <div class="partie">
     <div class="kicker">partie 2 · les versions</div>
     <h2>Ce qui a été publié depuis</h2>
-    <p>De la 1.2.0 à la 1.5.1 : des résumés de version écrits après coup, pas des commits.</p>
+    <p>De la 1.2.0 à la 1.6.0 : des résumés de version écrits après coup, pas des commits.</p>
   </div>
 
   <!-- VERSION 1.2.0 -->
@@ -688,6 +689,36 @@ a.ghlink:hover .arrow{transform:translateX(4px)}
     </div>
   </article>
 
+  <!-- VERSION 1.6.0 -->
+  <article class="commit" id="version-1-6-0">
+    <div class="commit-meta">
+      <span class="idx tnum">version 1.6.0</span>
+      <button class="hashbtn" data-hash="v1.6.0">v1.6.0</button>
+      <span class="date tnum">2026-11-16</span>
+      <span class="author">résumé de version, pas un commit</span>
+    </div>
+    <h2 class="commit-title">1.6.0 : choisir son cerveau à l'installation, une barre rapide complète</h2>
+    <div class="commit-body">
+      <p>L'assistant d'installation gagne une étape <b>Cerveaux</b> : il regarde les clés d'API déjà enregistrées, les modèles d'Ollama et la passerelle OmniRoute, teste une clé, en ajoute une (Gemini, Groq, Claude, OpenAI, Mistral ou Grok) et enregistre le cerveau préféré de JARVIS. Une clé n'arrive jamais jusqu'à la page et n'est envoyée qu'à son fournisseur, dans un en-tête. Les abonnements Claude et Gemini ne sont pas proposés : ils ne sont pas faits pour être branchés dans un autre logiciel. L'assistant et l'amorceur prennent le style verre de l'Orbe, et l'assistant ne se fige plus : sa fenêtre était confiée à la page, ce que les versions récentes de pywebview ne supportent pas.</p>
+      <p>La <b>barre rapide</b> (Ctrl+Alt+J) est refaite : puces de suggestion, historique aux flèches, réponses mises en forme avec un bouton Copier, et un bouton micro qui fait écouter JARVIS sans « Jarvis ». Elle ne s'ouvre plus en panneau vide : sa page est rechargée si elle ne répond pas, ou après deux minutes fermée. « Mode sombre » et « ouvre tes réglages » marchent à la voix.</p>
+      <p>Trois défauts de réponse sont corrigés. Un modèle d'extraction JSON répondait <code>{"message": …}</code> et JARVIS restait muet : cette réponse est ignorée, jamais dite ni gardée. Les réponses toutes faites ne valent plus que pour un message court et nu (« dis coucou à ma mère » reçoit un vrai bonjour). Et « à quelle heure se pose Starship ? » n'est plus répondu par l'heure qu'il est.</p>
+      <p>JARVIS a aussi un logo : en tête du README, sur le site, dans l'onglet de l'Orbe, sur l'icône de l'application du téléphone et comme icône Windows.</p>
+    </div>
+    <div class="box diffstat texte">
+      <div class="box-head">ce que la version change</div>
+      <ul>
+        <li><span class="file">assistant : étape Cerveaux (clés d'API, Ollama, OmniRoute, cerveau préféré)</span><span class="cnt"><span class="a">nouveau</span></span></li>
+        <li><span class="file">assistant : la fenêtre ne se fige plus avec pywebview récent</span><span class="cnt"><span class="a">corrigé</span></span></li>
+        <li><span class="file">assistant et amorceur : style verre, clair le jour, sombre la nuit</span><span class="cnt"><span class="a">nouveau</span></span></li>
+        <li><span class="file">barre rapide : puces, historique, Markdown, Copier, micro</span><span class="cnt"><span class="a">nouveau</span></span></li>
+        <li><span class="file">barre rapide : s'ouvrait parfois en panneau vide</span><span class="cnt"><span class="a">corrigé</span></span></li>
+        <li><span class="file">thème et réglages du HUD à la voix</span><span class="cnt"><span class="a">nouveau</span></span></li>
+        <li><span class="file">réponse JSON « message » : JARVIS restait muet</span><span class="cnt"><span class="a">corrigé</span></span></li>
+        <li><span class="file">réponses toutes faites : seulement pour un message court et nu</span><span class="cnt"><span class="a">corrigé</span></span></li>
+      </ul>
+    </div>
+  </article>
+
 </div>
 </main>
 
@@ -710,7 +741,7 @@ a.ghlink:hover .arrow{transform:translateX(4px)}
       <div class="pied-cote">
         <div class="note">
           <p>Cette page est une lecture du journal. Aucun texte de commit n'a été retouché, sauf les noms d'appareils de la maison, remplacés par des noms génériques.</p>
-          <p>Les versions 1.2.0 à 1.5.1 ne sont pas des commits : ce sont des résumés de version, écrits après coup.</p>
+          <p>Les versions 1.2.0 à 1.6.0 ne sont pas des commits : ce sont des résumés de version, écrits après coup.</p>
           <p class="tnum">5 commits · 12–13 août 2026 · 2049 lignes changées · auteur : JARVIS &lt;jarvis@local&gt;</p>
         </div>
         <a class="ghlink" href="https://github.com/lorenzoromabramanti-bot/jarvis" target="_blank" rel="noopener noreferrer">
@@ -722,7 +753,7 @@ a.ghlink:hover .arrow{transform:translateX(4px)}
 
     <div class="pied-bas tnum">
       <span>git log — écrit par la machine</span>
-      <span>v1.5.1 · fin du journal</span>
+      <span>v1.6.0 · fin du journal</span>
     </div>
   </div>
 </footer>
@@ -797,6 +828,7 @@ a.ghlink:hover .arrow{transform:translateX(4px)}
     "v1.4.1 — 0xc0000005 : le micro ne plante plus JARVIS",
     "v1.5.0 — l'Orbe de verre",
     "v1.5.1 — les faux appels d'outil ne sont plus jamais dits",
+    "v1.6.0 — choisir son cerveau à l'installation, barre rapide complète",
     "NE JAMAIS DEVINER"
   ];
   var ligne = ITEMS.map(function (t) { return t + "  ·  "; }).join("");

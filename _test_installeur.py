@@ -18,6 +18,7 @@ TROIS CHOSES QUI COUTENT CHER SI ELLES RATENT
 import io
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -28,6 +29,20 @@ import installeur
 
 def verifier():
     api = installeur.Api()
+
+    # ── Rien de public n'est un objet (pywebview le parcourrait sans fin) ─
+    # pywebview liste TOUS les attributs publics de l'API, objets compris, en profondeur. La fenetre y est un
+    # objet .NET dont chaque propriete en renvoie un neuf : le parcours ne finissait jamais et la page de
+    # l'assistant restait sans API, a jamais (constate le 16/11/2026, pywebview 6.2.1). « _fenetre » est ignore.
+    import inspect
+    for nom in dir(api):
+        if nom.startswith("_"):
+            continue
+        valeur = getattr(api, nom)
+        assert callable(valeur) or isinstance(valeur, (str, int, float, bool, type(None))), \
+            "Api.%s est un objet public : pywebview le parcourrait en profondeur" % nom
+    assert "api.fenetre" not in inspect.getsource(installeur.lancer), "lancer() range la fenetre dans un attribut public"
+    print("  OK  aucun attribut public de l'API n'est un objet (la fenetre est en « _fenetre »)")
 
     # ── Aucune valeur de cle ne sort ────────────────────────────────────
     # Sur une machine sans .env (clone neuf), des cles factices dans un .env
@@ -119,15 +134,103 @@ def verifier():
     assert api.verifier_cle("HA_URL", "https://ha.local:8123")["ok"]
     print("  OK  une adresse est acceptee pour un reglage d'adresse")
 
+    # ── Cerveaux : presence seulement, liste fermee, pas d'abonnement ───
+    # Reseau simule : le test ne depend pas d'Internet et n'envoie aucune
+    # cle nulle part. « bonne » = le fournisseur accepte, « horsligne » =
+    # personne ne repond, le reste = refus (401).
+    appels = []
+    tests_fournisseurs = {c["test"] for c in installeur.CERVEAUX}
+
+    def faux_http(url, entetes=None, delai=8):
+        appels.append((url, " ".join((entetes or {}).values())))
+        if url == installeur.OLLAMA:
+            return 200, b'{"models": [{"name": "gemma4:26b"}]}'
+        if url in tests_fournisseurs:
+            cle = appels[-1][1]
+            return (0 if "horsligne" in cle else 200 if "bonne" in cle else 401), b""
+        return 0, b""
+
+    variables = [c["variable"] for c in installeur.CERVEAUX]
+    env_avant = {v: os.environ.pop(v) for v in variables if v in os.environ}
+    vrai_http, installeur._http = installeur._http, faux_http
+    racine_avant, installeur.RACINE = installeur.RACINE, tempfile.mkdtemp(prefix="jarvis_cerveaux_")
+    try:
+        c = api.cerveaux()
+        assert not any(k["presente"] for k in c["cles"]), "cle annoncee presente dans un .env vide"
+        assert c["ollama"] == {"actif": True, "modeles": ["gemma4:26b"]}, c["ollama"]
+        assert "claude_cli" not in {k["id"] for k in c["cles"]}, "l'abonnement Claude est propose"
+
+        # Un modele de fichier de reglages (« votre_cle ») n'est pas une cle.
+        os.environ["GROQ_API_KEY"] = "votre_cle"
+        try:
+            assert not next(k for k in api.cerveaux()["cles"] if k["id"] == "groq")["presente"], \
+                "une valeur de 9 caracteres compte comme une cle"
+        finally:
+            del os.environ["GROQ_API_KEY"]
+
+        # Vingt ajouts en meme temps (la page appelle Python depuis plusieurs fils) : aucun ne se perd.
+        import threading
+        fils = [threading.Thread(target=installeur._ecrire_env, args=({"CLE_ESSAI_%d" % i: "valeur_%d" % i},))
+                for i in range(20)]
+        for f in fils:
+            f.start()
+        for f in fils:
+            f.join()
+        ecrit = installeur._lire_env()
+        perdus = [i for i in range(20) if ecrit.get("CLE_ESSAI_%d" % i) != "valeur_%d" % i]
+        assert not perdus, "ajouts perdus par des ecritures simultanees : %s" % perdus
+
+        for nom in ("PATH", "JARVIS_ACCESS_TOKEN", "HA_TOKEN"):
+            assert not api.ajouter_cle(nom, "valeur_assez_longue_0123")["ok"], \
+                "%s accepte comme cle de cerveau" % nom
+        r = api.ajouter_cle("GROQ_API_KEY", "mauvaise_cle_0123456789")
+        assert not r["ok"] and "GROQ_API_KEY" not in installeur._lire_env(), \
+            "une cle refusee par le fournisseur a ete enregistree"
+        r = api.ajouter_cle("GROQ_API_KEY", "bonne_cle_0123456789")
+        assert r["ok"] and installeur._lire_env()["GROQ_API_KEY"] == "bonne_cle_0123456789"
+        assert all("bonne_cle" not in url for url, _ in appels), "la cle est partie dans l'adresse"
+        brut = json.dumps([r, api.cerveaux(), api.tester_cle("GROQ_API_KEY")], ensure_ascii=False)
+        assert "bonne_cle" not in brut, "la valeur de la cle revient vers la page"
+        assert '"presente": true' in brut, "la cle ajoutee n'est pas detectee"
+        r = api.ajouter_cle("MISTRAL_API_KEY", "horsligne_cle_0123456789")
+        assert r["ok"] and "sans" in r["message"], "hors ligne, la cle doit etre gardee : %s" % r
+        print("  OK  cerveaux : presence seule, cle testee en en-tete, refus du fournisseur respecte")
+
+        # preferred_brain : seul champ touche, abonnement refuse, fichier
+        # illisible jamais ecrase (main2 y range aussi l'age, la musique...).
+        cfg = installeur._fichier_config()
+        io.open(cfg, "w", encoding="utf-8").write('{"user_age": 13, "musique_lien": "x"}')
+        assert api.choisir_cerveau("groq")["ok"]
+        assert json.load(io.open(cfg, encoding="utf-8")) == {
+            "user_age": 13, "musique_lien": "x", "preferred_brain": "groq"}, "reglages perdus"
+        assert not api.choisir_cerveau("claude_cli")["ok"], "abonnement Claude accepte"
+        io.open(cfg, "w", encoding="utf-8").write('{"user_age": 13,')
+        assert not api.choisir_cerveau("gemini")["ok"], "fichier illisible ecrase"
+        assert io.open(cfg, encoding="utf-8").read() == '{"user_age": 13,'
+        print("  OK  preferred_brain ecrit seul, claude_cli refuse, fichier illisible intact")
+    finally:
+        shutil.rmtree(installeur.RACINE, ignore_errors=True)
+        installeur.RACINE = racine_avant
+        installeur._http = vrai_http
+        os.environ.update(env_avant)
+
     # ── La page existe et ne charge rien d'externe ──────────────────────
     # Elle doit s'ouvrir sur une machine ou rien n'est installe.
     assert os.path.exists(installeur.PAGE), "page.html introuvable"
+    # Le style vit dans style.css, a cote : local, il ne demande pas Internet.
+    style = os.path.join(os.path.dirname(installeur.PAGE), "style.css")
+    assert os.path.exists(style), "style.css introuvable a cote de page.html"
     page = io.open(installeur.PAGE, encoding="utf-8").read()
-    for interdit in ("http://", "https://cdn", "<script src", "<link rel=\"stylesheet\""):
+    feuilles = re.findall(r'<link rel="stylesheet" href="([^"]+)"', page)
+    assert feuilles == ["style.css"], "feuille de style inattendue : %s" % feuilles
+    page += io.open(style, encoding="utf-8").read()
+    for interdit in ("http://", "https://cdn", "<script src", "@import", "url(http"):
         assert interdit not in page, \
             "la page charge une ressource externe (%s) : elle doit tenir seule" % interdit
-    assert "--hue: 186" in page, "la page ne reprend pas la teinte du HUD"
-    print("  OK  page autonome, sans ressource externe, teinte du HUD")
+    # Le HUD est devenu l'Orbe de verre (1.5) : l'installeur reprend ses couleurs.
+    assert "#7FB8F5" in page and "#1F6FC4" in page, \
+        "la page ne reprend pas les couleurs de l'Orbe de verre"
+    print("  OK  page autonome, sans ressource externe, couleurs de l'Orbe de verre")
 
     # ── Le jeton du WebSocket est genere, jamais renvoye ────────────────
     # Sans jeton, le WebSocket se limite a la machine : l'assistant doit le

@@ -40,6 +40,22 @@ NOTE_REPRISE = (
 )
 
 
+# Réponse qui n'est qu'un objet JSON « message » (sans « action »). 13-14/11/2026 : « auto/best-chat » d'OmniRoute tombait
+# parfois sur schematron-v2-turbo, un modèle d'extraction JSON, qui répondait {"message": "Je ne peux pas répondre…"}.
+# main2.py retire tout bloc {...} du texte dit (ce sont ses actions) : JARVIS restait muet (« il réfléchit mais ne répond pas »).
+_MESSAGE_SEUL = re.compile(r"^\s*(?:```(?:json)?\s*)?\{\s*\"message\"\s*:", re.I)
+
+NOTE_REPRISE_JSON = (
+    "\n\n[Note système : ta réponse précédente était un objet JSON sans action, donc ignorée. "
+    "Réponds maintenant en une ou deux phrases de texte simple, sans JSON.]"
+)
+
+
+def json_message_seul(texte):
+    """Vrai si la réponse est un objet JSON {"message": ...} sans « action » : inutilisable, ni dite, ni gardée en mémoire."""
+    return isinstance(texte, str) and bool(_MESSAGE_SEUL.match(texte)) and '"action"' not in texte
+
+
 def extraire(texte):
     """(texte sans le faux appel, noms des outils appelés). Le texte avant et après le faux appel est gardé.
 

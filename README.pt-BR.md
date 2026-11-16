@@ -1,5 +1,10 @@
 <div align="center">
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-jarvis-sombre.svg">
+  <img src="docs/images/logo-jarvis-clair.svg" alt="J.A.R.V.I.S" width="320">
+</picture>
+
 # J.A.R.V.I.S
 
 [English](README.md) · [Français](README.fr.md) · [Español](README.es.md) · [中文](README.zh-CN.md) · [हिन्दी](README.hi.md) · **Português**

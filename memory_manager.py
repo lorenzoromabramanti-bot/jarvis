@@ -59,8 +59,9 @@ MAX_ECHANGES_CHARGE  = 30    # échanges rechargés au démarrage (contexte IA)
 def _sauvegarder_echange_conv_sync(user_text: str, model_text: str):
     """Effectue la sauvegarde réelle sur le disque."""
     model_text = appels_outils.sans_appels(model_text)
-    if not model_text.strip():
-        return          # que du faux appel d'outil : rien à garder
+    if not model_text.strip() or appels_outils.json_message_seul(model_text):
+        return          # que du faux appel d'outil, ou un JSON {"message"} sans action : rien à garder
+    user_text = user_text.split("\n\n[Note système :")[0]    # la note collée au message pour le modèle n'est pas ce que l'utilisateur a dit
     # Attendre quelques secondes pour s'assurer que Jarvis a commencé à parler
     # Cela permet à la notification [OBSIDIAN] d'apparaître à la fin, comme souhaité par l'utilisateur
     time.sleep(3)
@@ -128,8 +129,8 @@ def _charger_historique_recent():
         hist = []
         for e in recents:
             modele = appels_outils.sans_appels(e["model"])   # les anciens faux appels d'outil ne servent plus d'exemple
-            if not modele.strip():
-                continue
+            if not modele.strip() or appels_outils.json_message_seul(modele):
+                continue                                     # ni les réponses JSON {"message"} (13-14/11/2026)
             date_str = f"[{e.get('date','?')} {e.get('heure','?')}] "
             hist.append(types.Content(role="user",  parts=[types.Part(text=date_str + e["user"])]))
             hist.append(types.Content(role="model", parts=[types.Part(text=modele)]))

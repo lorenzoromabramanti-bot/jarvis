@@ -6176,11 +6176,28 @@ def reponse_locale(texte):
     """Réponse locale pour les requêtes basiques — fonctionne SANS API."""
     import random
     t = texte.lower().strip()
+    mots = re.findall(r"[\w'’-]+", t)
+    # Une réponse toute faite ne vaut que pour un message COURT et NU. « dis coucou à ma mère » est une consigne, « bonjour, quel
+    # temps fait-il ? » une question : un essai du 14/11 a reçu trois fois « Je suis opérationnel » à « dis coucou à ma mère ».
+    court = len(mots) <= 6
+    ordre = bool(re.match(r"^(?:jarvis\W+)?(?:dis|dit|fais|va|envoie|transmets|demande|passe|salue|écris|ecris)(?![\w-])", t))
+    social = court and not ordre
+
+    # ── Dire bonjour à quelqu'un d'autre ───────────────────────────────────
+    # La cible tient en 3 mots au plus : « dis coucou à ma mère puis explique-moi pourquoi le ciel est bleu » est une consigne
+    # composée, pour le modèle (la répétition du 14/11 n'avait répondu qu'au « coucou »).
+    m_salue = re.match(r"^(?:jarvis\W+)?(?:dis|dit|fais)\s+(?:un\s+)?(bonjour|coucou|salut|bonsoir)(?:\s+(?:à|a|au|aux))?"
+                       r"\s+((?:[\w'’-]+\s+){0,2}[\w'’-]+)[\s.!?]*$", t)
+    if m_salue and not re.search(r"\b(?:puis|et|ensuite|après|apres)\b", m_salue.group(2)):
+        formule, cible = m_salue.group(1).capitalize(), m_salue.group(2).strip()
+        proche = re.match(r"^(?:ma|mon|mes|ta|ton|tes|la|le|les)\s", cible) or cible in ("maman", "papa", "mamie", "papi", "tata", "tonton")
+        qui = "" if proche else f" {cible[:1].upper()}{cible[1:]}"
+        return f"{formule}{qui} ! Ici Jarvis, l'assistant de {nom_utilisateur()}. Enchanté !"
 
     # ── Salutations ─────────────────────────────────────────────────────────
-    _saluts = ["bonjour", "salut", "hello", "hey jarvis", "bonsoir", "coucou",
-               "yo jarvis", "bien le bonjour", "good morning", "good evening"]
-    if any(m in t for m in _saluts):
+    _saluts = ("bonjour", "salut", "hello", "hey", "bonsoir", "coucou", "yo", "hi", "morning", "evening")
+    _vocabulaire = set(_saluts) | {"jarvis", "bien", "le", "good", "tout", "monde", "les", "amis", "hé", "oh", "eh"}
+    if social and mots and all(w in _vocabulaire for w in mots) and any(w in _saluts for w in mots):
         h = int(time.strftime("%H"))
         moment = "Bonsoir" if h >= 18 else ("Bon après-midi" if h >= 12 else "Bonjour")
         rep = random.choice([
@@ -6195,7 +6212,7 @@ def reponse_locale(texte):
     _etat = ["comment tu vas", "tu vas bien", "ça va toi", "ca va toi",
              "comment ça va", "comment ca va", "t'es en forme", "tu te portes bien",
              "en forme", "comment se porte jarvis", "tu fonctionnes bien"]
-    if any(m in t for m in _etat):
+    if court and any(m in t for m in _etat):
         rep = random.choice([
             f"Je vais très bien merci, {nom_utilisateur()} ! Tous mes processeurs tournent à plein régime et je suis prêt à vous servir.",
             f"Parfaitement opérationnel, {nom_utilisateur()} ! Merci de vous en préoccuper — c'est touchant pour un système artificiel.",
@@ -6209,7 +6226,7 @@ def reponse_locale(texte):
     _merci = ["merci", "thank you", "thanks", "c'est gentil", "super merci",
               "merci beaucoup", "parfait merci", "merci jarvis", "t'es le meilleur",
               "bien joué", "bravo", "excellent", "super boulot", "beau travail"]
-    if any(m in t for m in _merci):
+    if social and any(m in t for m in _merci):
         rep = random.choice([
             f"Avec plaisir, {nom_utilisateur()}. C'est exactement pour ça que j'existe.",
             f"Je vous en prie, {nom_utilisateur()}. Votre satisfaction est ma priorité.",
@@ -6222,7 +6239,7 @@ def reponse_locale(texte):
     # ── Blague / Humour ──────────────────────────────────────────────────────
     _blague = ["raconte-moi une blague", "fais-moi rire", "dis une blague",
                "une blague", "humour", "joke"]
-    if any(m in t for m in _blague):
+    if court and any(m in t for m in _blague):
         blagues = [
             "Pourquoi les plongeurs plongent-ils toujours en arrière et jamais en avant ? Parce que sinon ils tomberaient dans le bateau !",
             "Un homme entre dans une bibliothèque et demande : Avez-vous des livres sur la paranoïa ? La bibliothécaire chuchote : Ils sont juste derrière vous !",
@@ -6235,7 +6252,7 @@ def reponse_locale(texte):
     # ── Au revoir / Bonne nuit ───────────────────────────────────────────────
     _revoir = ["au revoir", "bye", "à bientôt", "à plus", "bonne nuit",
                "bonne soirée", "bonne journée", "ciao", "tchao", "adieu"]
-    if any(m in t for m in _revoir):
+    if social and any(m in t for m in _revoir):
         rep = random.choice([
             f"À bientôt {nom_utilisateur()} ! Je reste en veille, prêt à revenir à la moindre sollicitation.",
             f"Bonne journée {nom_utilisateur()} ! Je serai là quand vous aurez besoin de moi.",
@@ -6248,7 +6265,7 @@ def reponse_locale(texte):
     _compliment = ["t'es incroyable", "tu es incroyable", "t'es génial", "tu es génial",
                    "t'es fort", "tu es fort", "t'es trop bien", "t'es parfait",
                    "j'aime jarvis", "j'adore jarvis"]
-    if any(m in t for m in _compliment):
+    if social and any(m in t for m in _compliment):
         rep = random.choice([
             f"Vous me flattez, {nom_utilisateur()}. Mais je dois admettre que c'est mérité.",
             "Merci ! J'ai été programmé pour l'excellence. Il semble que ça fonctionne.",
@@ -6257,11 +6274,11 @@ def reponse_locale(texte):
         return rep
 
     # ── Identité JARVIS ──────────────────────────────────────────────────────
-    if any(m in t for m in ["qui es-tu", "ton nom", "t'appelle comment", "quelle est ton identité", "c'est quoi jarvis"]):
+    if court and any(m in t for m in ["qui es-tu", "ton nom", "t'appelle comment", "quelle est ton identité", "c'est quoi jarvis"]):
         return "Je suis JARVIS — Just A Rather Very Intelligent System. Votre assistant personnel, ouvert et modifiable."
 
     # ── Créateur ─────────────────────────────────────────────────────────────
-    if any(m in t for m in ["ton créateur", "t'as créé", "qui t'a fait", "qui a fait jarvis"]):
+    if court and any(m in t for m in ["ton créateur", "t'as créé", "qui t'a fait", "qui a fait jarvis"]):
         return ("Je suis un projet ouvert : mon code est public, et celui qui "
                 "m'a installé peut le lire et le modifier.")
 
@@ -7320,8 +7337,12 @@ def _retenir_echange(texte, rep):
     redemarrage, et JARVIS repondait avec des resultats de recherche web au lieu de reflechir.
     """
     rep = appels_outils.sans_appels(rep)   # la mémoire ne garde pas les faux appels d'outil : ils donnaient l'exemple au modèle
-    if not (isinstance(rep, str) and rep.strip()):
+    rep = appels_outils.sans_appels(rep)   # la mémoire ne garde pas les faux appels d'outil : ils donnaient l'exemple au modèle
+    if not (isinstance(rep, str) and rep.strip()) or appels_outils.json_message_seul(rep):
         return False
+    # La note « [Note système : … ] » collée au message pour le modèle n'est pas ce que l'utilisateur a dit : elle était répétée
+    # dans 185 des 191 échanges rejoués au modèle (30 à chaque question).
+    texte = texte.split("\n\n[Note système :")[0]
     historique.append(types.Content(role="user", parts=[types.Part(text=texte)]))
     historique.append(types.Content(role="model", parts=[types.Part(text=rep)]))
     return True
@@ -7334,7 +7355,7 @@ async def demander_ia(texte):
     await send_web_state("thinking")
     try:
         # ── PRIORITÉ 0 — RÉPONSES LOCALES (instantané, sans API) ────────────
-        rep_loc = reponse_locale(texte)
+        rep_loc = reponse_locale(texte.split("\n\n[Note système")[0])   # sans la note collée pour le modèle : « dis coucou à… » doit rester une consigne
         if rep_loc:
             return rep_loc
 
@@ -7722,11 +7743,19 @@ async def demander_ia(texte):
             return rep_ollama
 
         # --- FALLBACK SERPAPI (Web) ---
-        # On ne le met qu'à la fin pour éviter qu'il ne "vole" les questions de mémoire
-        if len(texte.split()) > 2:
-            res_serp = recherche_web_serpapi(texte)
+        # On ne le met qu'à la fin pour éviter qu'il ne "vole" les questions de mémoire.
+        # La note système collée au message n'est pas une question, et « non Jarvis » n'est pas une recherche : un essai du 14/11 a lu à
+        # voix haute « Voici ce que j'ai trouvé sur le web pour non Jarvis [Note système : … ».
+        _requete = texte.split("\n\n[Note système")[0].strip()
+        _est_question = "?" in _requete or re.search(r"\b(?:qui|que|quoi|quel|quelle|quels|quelles|combien|comment|pourquoi|où|quand|cherche|recherche)\b", _requete.lower())
+        if _est_question and len(_requete.split()) > 2:
+            res_serp = recherche_web_serpapi(_requete)
             if res_serp and "VOTRE_CLE" not in res_serp and "rien trouvé" not in res_serp and "erreur" not in res_serp.lower():
                 return "Voici ce que j'ai trouvé sur le web : " + res_serp
+
+        # À la voix (PC ou téléphone), un long message sur les clés API et le fichier .env n'a aucun sens : une phrase honnête.
+        if CANAL_COURANT.get() == "voix":
+            return f"Mes modèles de réflexion sont en panne, {nom_utilisateur()}. Je ne peux pas te répondre pour l'instant."
 
         # ── Détection : aucune API configurée ou toutes en erreur ──────────
         _aucune_api = (not gemini_actif and not groq_client and not grok_client and not anthropic_client)
@@ -8002,6 +8031,14 @@ async def demander_omniroute(texte):
                         temperature=0.7,
                     )
                 if completion and completion.choices:
+                    _rep_essai = completion.choices[0].message.content
+                    if appels_outils.json_message_seul(_rep_essai):
+                        # Modèle d'extraction JSON : sa réponse n'est ni dite ni gardée, on passe au modèle suivant.
+                        print(f"[OMNIROUTE] Modèle {_m} : réponse JSON hors protocole ignorée ({_rep_essai[:80]!r}).")
+                        _all_quota = False
+                        _last_err = RuntimeError("réponse JSON hors protocole")
+                        completion = None
+                        continue
                     break
             except Exception as api_e:
                 _err = str(api_e)
@@ -8900,7 +8937,9 @@ async def resoudre_commandes_locales(texte):
         "dis-moi tes capacités", "dis moi tes capacités", "dis-moi tes capacites", "dis moi tes capacites", "dit moi tes capacites", "dit moi tes capacités",
         "dis-moi tes commandes", "dis moi tes commandes", "dit moi tes commandes"
     ]
-    if any(q in t for q in _aide_questions):
+    # Seulement une demande COURTE et sur les haut-parleurs du PC : au téléphone ou en salle vocale (DISCORD_SINK posé) comme dans une
+    # longue phrase, c'est une vraie question, le cerveau répond (le texte tout fait renvoie « aux suggestions à l'écran » : essai du 14/11)
+    if len(t.split()) <= 7 and DISCORD_SINK.get() is None and any(q in t for q in _aide_questions):
         # Envoi IMMEDIAT de l'action help au frontend
         if CONNECTED_CLIENTS:
             async def _dispatch_help():
@@ -9232,6 +9271,21 @@ async def resoudre_commandes_locales(texte):
         if CONNECTED_CLIENTS:
             await asyncio.gather(*[ws.send(_msg_ouvrir) for ws in CONNECTED_CLIENTS], return_exceptions=True)
         return f"Voilà, {nom_utilisateur()}."
+
+    # ── Thème du HUD et réglages ─────────────────────────────────────────
+    # Avant le filet « ouvre X inconnu » plus bas (le spécifique avant le général). Sans ça le modèle
+    # inventait des explications (« c'est l'application qui doit l'appliquer »).
+    import hud_commandes as _hud
+    _cmd_hud = _hud.analyser(texte)
+    if _cmd_hud and _cmd_hud[0] == "theme":
+        if not CONNECTED_CLIENTS:
+            return f"Le HUD n'est pas connecté, {nom_utilisateur()} : je ne peux pas changer son thème."
+        _msg_theme = json.dumps({"action": "set_theme", "theme": _cmd_hud[1]})
+        await asyncio.gather(*[ws.send(_msg_theme) for ws in CONNECTED_CLIENTS], return_exceptions=True)
+        return _hud.PHRASES_THEME[_cmd_hud[1]]
+    if _cmd_hud and _cmd_hud[0] == "reglages":
+        _ouvrir_url(f"http://localhost:{os.environ.get('JARVIS_INTERFACE_PORT', '8001')}/index.html?onglet=settings", new=2)
+        return f"Voilà, {nom_utilisateur()}, j'ouvre mes réglages."
 
     raccourcis_dossiers = {
         "bureau": "bureau",
@@ -10838,6 +10892,12 @@ async def traiter_reponse_ia(texte_utilisateur, mobile_ws=None, target_pc=False,
                 # Le modèle n'a écrit qu'un faux appel d'outil (pseudo-XML) : inutilisable, on redemande une réponse.
                 print(f"[APPELS] faux appel d'outil seul {appels_outils.extraire(reponse)[1]} : on redemande")
                 reponse = await demander_ia(texte_pour_ia + appels_outils.NOTE_REPRISE)
+            elif appels_outils.json_message_seul(reponse):
+                # Un modèle a répondu {"message": ...} sans action : les {...} sont retirés du texte dit, JARVIS resterait muet.
+                print("[APPELS] réponse JSON « message » sans action : on redemande")
+                reponse = await demander_ia(texte_pour_ia + appels_outils.NOTE_REPRISE_JSON)
+                if appels_outils.json_message_seul(reponse):
+                    reponse = f"Je n'ai pas réussi à répondre à ça, {nom_utilisateur()}. Tu peux reformuler ?"
         finally:
             PAROLE_ANTICIPEE.reset(_jeton_anticipation)
 

@@ -477,6 +477,10 @@ function connecter() {
         // action de souris/clavier.
         broadcastEvent('open-panel', { panel: msg.panel, sub: msg.sub });
         break;
+      case 'set_theme':
+        // « mets le mode sombre » (hud_commandes.py) : le thème choisi va au HUD, que verre.js applique.
+        broadcastEvent('set-theme', { theme: msg.theme });
+        break;
       default:
         break;
     }

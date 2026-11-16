@@ -15,4 +15,7 @@ function initDataCenterTabs() {
 
 export function initTabs() {
   initDataCenterTabs();
+  // « ouvre tes réglages » (JARVIS) ouvre index.html?onglet=settings : on tombe directement sur cet onglet.
+  const onglet = new URLSearchParams(location.search).get('onglet');
+  if (onglet) document.querySelector(`.tab-btn-r[data-rtab="${CSS.escape(onglet)}"]`)?.click();
 }

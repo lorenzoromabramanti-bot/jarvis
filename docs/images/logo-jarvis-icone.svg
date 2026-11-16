@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><defs>
+  <radialGradient id="iorbe" cx=".34" cy=".28" r=".977">
+    <stop offset="0" stop-color="#D9EAFD"/><stop offset=".28" stop-color="#6A9FD8"/>
+    <stop offset=".62" stop-color="#2A4A7C"/><stop offset="1" stop-color="#0F1A2E"/>
+  </radialGradient>
+  <radialGradient id="iteal" cx=".8" cy=".86" r=".56">
+    <stop offset="0" stop-color="#2DD4BF" stop-opacity=".62"/><stop offset="1" stop-color="#2DD4BF" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="iviolet" cx=".16" cy=".84" r=".5">
+    <stop offset="0" stop-color="#8B5CF6" stop-opacity=".55"/><stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="ireflet" cx=".5" cy=".5" r=".5">
+    <stop offset="0" stop-color="#fff" stop-opacity=".78"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="ibord" gradientUnits="userSpaceOnUse" x1="52" y1="52" x2="150" y2="150">
+    <stop offset=".35" stop-color="#C8FFF7" stop-opacity="0"/><stop offset="1" stop-color="#C8FFF7" stop-opacity=".7"/>
+  </linearGradient>
+  <linearGradient id="ianneau" gradientUnits="userSpaceOnUse" x1="30" y1="170" x2="170" y2="30">
+    <stop offset="0" stop-color="#2DD4BF"/><stop offset=".55" stop-color="#7FB8F5"/><stop offset="1" stop-color="#8B5CF6"/>
+  </linearGradient>
+  <clipPath id="irond"><circle cx="100" cy="100" r="64"/></clipPath><linearGradient id="ifond" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#151D36"/><stop offset="1" stop-color="#080B14"/></linearGradient><radialGradient id="ilt" cx=".72" cy=".8" r=".5"><stop offset="0" stop-color="#2DD4BF" stop-opacity=".3"/><stop offset="1" stop-color="#2DD4BF" stop-opacity="0"/></radialGradient><radialGradient id="ilv" cx=".26" cy=".76" r=".5"><stop offset="0" stop-color="#8B5CF6" stop-opacity=".28"/><stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/></radialGradient></defs><rect width="1024" height="1024" fill="url(#ifond)"/><rect width="1024" height="1024" fill="url(#ilt)"/><rect width="1024" height="1024" fill="url(#ilv)"/><g transform="translate(512 512) scale(3.3) translate(-100 -100)">
+  <g clip-path="url(#irond)">
+    <circle cx="100" cy="100" r="64" fill="url(#iorbe)"/>
+    <rect x="36" y="36" width="128" height="128" fill="url(#iteal)"/>
+    <rect x="36" y="36" width="128" height="128" fill="url(#iviolet)"/>
+    <ellipse cx="78" cy="70" rx="31" ry="17" fill="url(#ireflet)" transform="rotate(-28 78 70)"/>
+  </g>
+  <circle cx="100" cy="100" r="60.6" fill="none" stroke="url(#ibord)" stroke-width="2.2"/>
+  <circle cx="100" cy="100" r="63.5" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1"/>
+  <path d="M182.0 81.8A84 84 0 1 1 103.7 16.1" fill="none" stroke="url(#ianneau)" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="154" cy="35.6" r="5.5" fill="#fff"/></g></svg>

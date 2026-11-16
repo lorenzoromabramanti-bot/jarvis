@@ -123,6 +123,10 @@ function connecter() {
       if (/scolaire|quotidien|pronote/i.test(`${d.panel || ''} ${d.sub || ''}`)) montrerPronote();
       return;
     }
+    if (d.type === 'set-theme') {               // « mets le mode sombre » dit à la voix ou au clavier
+      if (THEMES.includes(d.theme)) { choixTheme = d.theme; ecrire('verre-theme', choixTheme); appliquerTheme(); }
+      return;
+    }
     if (d.type === 'jarvis-event') {
       if (d.evenement?.type === 'ha_state_changed' && d.evenement.state) majEntite(d.evenement.state);
       return;

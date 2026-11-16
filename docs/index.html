@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>J.A.R.V.I.S</title>
+<link rel="icon" type="image/svg+xml" href="images/logo-jarvis-icone.svg">
 <meta name="description" content="JARVIS — a desktop voice assistant that answers, acts on your computer, and stays quiet when it doesn't know.">
 <meta property="og:title" content="J.A.R.V.I.S">
 <meta property="og:description" content="A desktop voice assistant that answers, acts, and stays quiet when it doesn't know.">
@@ -69,7 +70,9 @@ body{background:var(--degrade) fixed,var(--fond);color:var(--texte);
 header{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
   padding:18px clamp(16px,4vw,48px);pointer-events:none}
 header > *{pointer-events:auto}
-.marque{font:600 13px/1 Inter,"Segoe UI",system-ui,sans-serif;letter-spacing:.35em;color:var(--accent)}
+.marque{font:600 13px/1 Inter,"Segoe UI",system-ui,sans-serif;letter-spacing:.35em;color:var(--accent);display:flex;align-items:center;gap:12px}
+.marque img{display:block;border-radius:8px}
+@media (max-width:350px){.marque img{display:none}}   /* sous 350 px, le mot seul : l'icône ferait chevaucher le bouton GitHub */
 .outils{display:flex;gap:10px;align-items:center}
 select,.btn-mini{background:var(--carte);color:var(--texte);border:1px solid var(--bord);border-radius:999px;
   padding:8px 15px;font:500 13px/1.2 Inter,"Segoe UI",system-ui,sans-serif;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);cursor:pointer;text-decoration:none}
@@ -143,7 +146,7 @@ footer a{color:var(--accent)}
 </div>
 
 <header>
-  <div class="marque">J·A·R·V·I·S</div>
+  <div class="marque"><img src="images/logo-jarvis-icone.svg" alt="" width="28" height="28">J·A·R·V·I·S</div>
   <div class="outils">
     <a class="btn-mini" href="https://github.com/lorenzoromabramanti-bot/jarvis" data-i18n="github">GitHub</a>
     <select id="langue" aria-label="Language">

@@ -32,7 +32,9 @@ def resoudre_infos_systeme_localement(texte):
                 "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
 
     # --- HEURE ---
-    if contient(t, ["quelle heure", "il est quelle heure", "l'heure qu'il est",
+    # « à quelle heure se pose Starship ? » demande l'heure d'un événement, pas celle qu'il est : au modèle (essai du 14/11)
+    if not re.search(r"\b(?:à|a|vers|pour|avant|après|apres)\s+quelle\s+heure\b", t) and contient(t, [
+                             "quelle heure", "il est quelle heure", "l'heure qu'il est",
                              "quelle est l'heure", "tu as l'heure", "donne-moi l'heure",
                              "il est combien", "c'est quoi l'heure", "heure il est"]):
         h, m = maintenant.hour, maintenant.minute

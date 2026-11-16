@@ -1,0 +1,149 @@
+/* Assistant de configuration : le style. Couleurs et verre de l'Orbe de verre
+   (src/verre/verre.css du HUD). Fichier local, a cote de page.html : la page
+   doit s'ouvrir sur une machine ou rien n'est installe, sans Internet. */
+
+:root[data-theme="clair"] {
+  --fond: #EEF2F7; --texte: #0E1726; --doux: #4A5A70; --carte: rgba(255, 255, 255, 0.8);
+  --bord: #FFFFFF; --trait: rgba(14, 23, 38, 0.12); --ombre: 0 18px 44px rgba(14, 23, 38, 0.08);
+  --accent: #1F6FC4; --sur-accent: #FFFFFF; --pastille: #EAF2FB; --champ: #FFFFFF;
+  --ok: #15803D; --alerte: #B45309; --refus: #DC2626;
+  --halo: rgba(45, 212, 191, 0.24); --halo2: rgba(139, 92, 246, 0.14); --reflet: rgba(255, 255, 255, 0.9);
+  --orbe: radial-gradient(circle at 34% 28%, #FFFFFF 0%, #E4EFFB 30%, #BCD5F0 66%, #8FB4E0 100%);
+}
+:root[data-theme="sombre"] {
+  --fond: #0B0D12; --texte: #E8EDF5; --doux: #9AA7BA; --carte: rgba(255, 255, 255, 0.07);
+  --bord: rgba(255, 255, 255, 0.14); --trait: rgba(255, 255, 255, 0.14); --ombre: none;
+  --accent: #7FB8F5; --sur-accent: #0B0D12; --pastille: rgba(127, 184, 245, 0.16); --champ: rgba(0, 0, 0, 0.25);
+  --ok: #4ADE80; --alerte: #FFB454; --refus: #FF6B6B;
+  --halo: rgba(45, 212, 191, 0.36); --halo2: rgba(139, 92, 246, 0.28); --reflet: rgba(255, 255, 255, 0.55);
+  --orbe: radial-gradient(circle at 34% 28%, #C9E0FA 0%, #5E8DC4 28%, #233E66 66%, #101B2E 100%);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: radial-gradient(60% 55% at 100% 0%, var(--halo) 0%, transparent 70%),
+              radial-gradient(50% 55% at 0% 100%, var(--halo2) 0%, transparent 70%), var(--fond);
+  color: var(--texte); font-family: Inter, "Segoe UI", system-ui, sans-serif; font-size: 14.5px; line-height: 1.55;
+  display: flex; flex-direction: column; overflow: hidden; -webkit-user-select: none; user-select: none;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent); text-decoration: none; cursor: pointer; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* L'orbe : le logo de JARVIS, en petit dans l'en-tête, en grand à l'accueil */
+.orbe {
+  position: relative; border-radius: 50%; flex: 0 0 auto; animation: respire 6s ease-in-out infinite;
+  background: radial-gradient(circle at 80% 86%, var(--halo) 0%, transparent 46%),
+              radial-gradient(circle at 16% 84%, var(--halo2) 0%, transparent 40%), var(--orbe);
+  box-shadow: inset 0 -6px 14px rgba(0, 0, 0, 0.2), 0 10px 30px var(--halo);
+}
+.orbe::after {
+  content: ""; position: absolute; left: 21%; top: 14%; width: 30%; height: 14%;
+  border-radius: 50%; background: var(--reflet); transform: rotate(-24deg);
+}
+.orbe.petite { width: 22px; height: 22px; }
+.orbe.grande { width: 120px; height: 120px; margin-bottom: 26px; }
+
+/* ── En-tête et progression ─────────────────────────────────────── */
+header { flex: 0 0 auto; padding: 22px 40px 0; }
+.marque { display: flex; align-items: center; gap: 12px; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 18px; }
+.marque span { color: var(--doux); font-weight: 400; font-size: 12.5px; letter-spacing: 0; }
+.etapes { display: flex; gap: 6px; }
+.etape { flex: 1; padding-top: 7px; border-top: 3px solid var(--trait); color: var(--doux); font-size: 12px; transition: color 0.25s, border-color 0.25s; }
+.etape.faite { border-color: var(--pastille); color: var(--texte); }
+.etape.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+/* ── Contenu ────────────────────────────────────────────────────── */
+main { flex: 1; overflow-y: auto; padding: 30px 40px; }
+main::-webkit-scrollbar { width: 8px; }
+main::-webkit-scrollbar-thumb { background: var(--trait); border-radius: 4px; }
+h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 6px; }
+h2 { font-size: 12px; font-weight: 600; color: var(--doux); text-transform: uppercase; letter-spacing: 0.07em; margin: 26px 0 10px; }
+.chapeau { color: var(--doux); margin-bottom: 22px; max-width: 660px; }
+.accueil { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 14px; }
+.accueil .resume { text-align: left; }
+
+.cartes { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+@media (max-width: 860px) { .cartes { grid-template-columns: 1fr; } }
+.carte, .resume {
+  background: var(--carte); border: 1px solid var(--bord); box-shadow: var(--ombre); border-radius: 20px; padding: 16px 18px;
+}
+.carte { position: relative; transition: border-color 0.18s, background-color 0.18s, transform 0.12s; }
+.carte.cliquable { cursor: pointer; }
+.carte.cliquable:hover { border-color: var(--accent); transform: translateY(-1px); }
+.carte.choisie { border-color: var(--accent); background: var(--pastille); }
+.carte.bloquee { opacity: 0.5; cursor: not-allowed; }
+.carte.bloquee:hover { transform: none; border-color: var(--bord); }
+.titre { font-weight: 600; margin-bottom: 3px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+.texte { color: var(--doux); font-size: 13px; }
+.manque { color: var(--alerte); font-size: 12px; margin-top: 7px; }
+.coche { width: 18px; height: 18px; flex: 0 0 18px; border-radius: 6px; border: 1.5px solid var(--doux); position: relative; }
+.carte.choisie .coche { background: var(--accent); border-color: var(--accent); }
+.carte.choisie .coche::after {
+  content: ""; position: absolute; left: 5px; top: 1px; width: 4px; height: 9px;
+  border: solid var(--sur-accent); border-width: 0 2px 2px 0; transform: rotate(42deg);
+}
+.carte.figee .coche { background: var(--doux); border-color: var(--doux); }
+.grand { padding: 22px 24px; }
+.grand .titre { font-size: 17px; }
+.badge { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 10px; background: var(--pastille); color: var(--accent); }
+.badge.ok { color: var(--ok); }
+
+/* ── Champs ─────────────────────────────────────────────────────── */
+.champ { margin-bottom: 18px; max-width: 640px; }
+.champ label { display: block; font-weight: 600; margin-bottom: 2px; }
+.role { color: var(--doux); font-size: 13px; margin-bottom: 8px; }
+input[type="text"] {
+  width: 100%; padding: 10px 14px; border-radius: 14px; background: var(--champ); border: 1px solid var(--trait);
+  font-family: Consolas, ui-monospace, monospace; font-size: 13.5px; outline: none;
+  -webkit-user-select: text; user-select: text;
+}
+input[type="text"]:focus { border-color: var(--accent); }
+input.faux, input.exact { border-color: var(--refus); }
+.aide { font-size: 12px; margin-top: 6px; color: var(--doux); }
+.erreur, .message.non { color: var(--refus); }
+.erreur, .message { font-size: 12px; margin-top: 6px; }
+.message.ok, .deja { color: var(--ok); }
+.rangee { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.rangee input { flex: 1; min-width: 0; }
+
+/* Cerveau préféré : des pilules, une seule allumée */
+.pilules { display: flex; flex-wrap: wrap; gap: 8px; }
+.pilule { padding: 8px 16px; border-radius: 20px; background: var(--carte); border: 1px solid var(--bord); font-size: 13.5px; }
+.pilule:hover { border-color: var(--accent); }
+.pilule[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--sur-accent); font-weight: 600; }
+
+/* ── Garde-fous ─────────────────────────────────────────────────── */
+.garde { margin-bottom: 12px; }
+.cadenas { color: var(--accent); font-size: 12px; font-weight: 400; }
+.retire { color: var(--refus); font-size: 12px; font-weight: 400; }
+.avert { margin-top: 12px; padding: 13px 15px; border-radius: 14px; background: rgba(255, 180, 84, 0.08); border: 1px solid rgba(255, 180, 84, 0.3); }
+.avert .quoi { color: var(--alerte); font-size: 13px; margin-bottom: 10px; }
+.phrase { font-family: Consolas, monospace; color: var(--alerte); font-size: 12.5px; margin: 7px 0; -webkit-user-select: text; user-select: text; }
+.lien-retirer { color: var(--doux); font-size: 12.5px; margin-top: 9px; background: none; border: 0; }
+.lien-retirer:hover { color: var(--alerte); }
+
+/* ── Pied ───────────────────────────────────────────────────────── */
+footer { flex: 0 0 auto; padding: 16px 40px 20px; display: flex; align-items: center; gap: 12px; }
+.compte { flex: 1; color: var(--doux); font-size: 13px; }
+.compte.alerte { color: var(--alerte); }
+.compte.refus { color: var(--refus); }
+.bouton { padding: 10px 24px; border-radius: 22px; border: 1px solid transparent; font-weight: 600; transition: border-color 0.16s, opacity 0.16s, filter 0.16s; }
+.bouton.petit { padding: 8px 16px; font-size: 13px; flex: 0 0 auto; }
+.principal { background: var(--accent); color: var(--sur-accent); }
+.principal:hover { filter: brightness(1.08); }
+.bouton:disabled { opacity: 0.35; cursor: not-allowed; }
+.discret { background: var(--carte); border-color: var(--bord); color: var(--texte); }
+.discret:hover { border-color: var(--accent); }
+
+.resume { max-width: 660px; padding: 18px 22px; }
+.resume .ligne { display: flex; gap: 12px; padding: 5px 0; font-size: 13.5px; }
+.resume .ligne b { color: var(--accent); min-width: 26px; }
+.resume .ligne b.alerte { color: var(--alerte); }
+.resume .ligne b.refus { color: var(--refus); }
+
+@keyframes respire { 50% { transform: scale(1.035); } }
+@media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }

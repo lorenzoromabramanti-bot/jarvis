@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 779 200"><defs>
+  <radialGradient id="lorbe" cx=".34" cy=".28" r=".977">
+    <stop offset="0" stop-color="#D9EAFD"/><stop offset=".28" stop-color="#6A9FD8"/>
+    <stop offset=".62" stop-color="#2A4A7C"/><stop offset="1" stop-color="#0F1A2E"/>
+  </radialGradient>
+  <radialGradient id="lteal" cx=".8" cy=".86" r=".56">
+    <stop offset="0" stop-color="#2DD4BF" stop-opacity=".62"/><stop offset="1" stop-color="#2DD4BF" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="lviolet" cx=".16" cy=".84" r=".5">
+    <stop offset="0" stop-color="#8B5CF6" stop-opacity=".55"/><stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="lreflet" cx=".5" cy=".5" r=".5">
+    <stop offset="0" stop-color="#fff" stop-opacity=".78"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="lbord" gradientUnits="userSpaceOnUse" x1="52" y1="52" x2="150" y2="150">
+    <stop offset=".35" stop-color="#C8FFF7" stop-opacity="0"/><stop offset="1" stop-color="#C8FFF7" stop-opacity=".7"/>
+  </linearGradient>
+  <linearGradient id="lanneau" gradientUnits="userSpaceOnUse" x1="30" y1="170" x2="170" y2="30">
+    <stop offset="0" stop-color="#2DD4BF"/><stop offset=".55" stop-color="#7FB8F5"/><stop offset="1" stop-color="#8B5CF6"/>
+  </linearGradient>
+  <clipPath id="lrond"><circle cx="100" cy="100" r="64"/></clipPath></defs><g>
+  <g clip-path="url(#lrond)">
+    <circle cx="100" cy="100" r="64" fill="url(#lorbe)"/>
+    <rect x="36" y="36" width="128" height="128" fill="url(#lteal)"/>
+    <rect x="36" y="36" width="128" height="128" fill="url(#lviolet)"/>
+    <ellipse cx="78" cy="70" rx="31" ry="17" fill="url(#lreflet)" transform="rotate(-28 78 70)"/>
+  </g>
+  <circle cx="100" cy="100" r="60.6" fill="none" stroke="url(#lbord)" stroke-width="2.2"/>
+  <circle cx="100" cy="100" r="63.5" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1"/>
+  <path d="M182.0 81.8A84 84 0 1 1 103.7 16.1" fill="none" stroke="url(#lanneau)" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="154" cy="35.6" r="5.5" fill="#fff"/></g><g transform="translate(236 40.0) scale(1.2)"><g fill="none" stroke="#0E1726" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><path transform="translate(0.0 0)" d="M54,0V73A27,27 0 0 1 0,73"/><path transform="translate(80.0 0)" d="M0,100L33,0L66,100M10.6,68H55.4"/><path transform="translate(170.0 0)" d="M0,100V0H34A27,27 0 0 1 34,54H0M30,54L60,100"/><path transform="translate(261.0 0)" d="M0,0L33,100L66,0"/><path transform="translate(351.0 0)" d="M0,0V100"/><path transform="translate(382.0 0)" d="M47.15,8.93A25,25 0 1 0 28,50A25,25 0 1 1 8.85,91.07"/></g></g></svg>

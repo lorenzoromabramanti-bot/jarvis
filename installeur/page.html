@@ -1,174 +1,28 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="sombre">
 <head>
 <meta charset="UTF-8">
 <title>Configuration de J.A.R.V.I.S</title>
 <!--
   Assistant de configuration.
 
-  Même famille visuelle que le HUD : la teinte vient du même système (--hue à
-  186), pour que l'installeur soit la première page de JARVIS et non un objet
-  étranger posé devant.
+  Même famille visuelle que le HUD : les couleurs et le verre de l'Orbe de
+  verre (src/verre/verre.css du HUD), mêmes thèmes — clair le jour, sombre le
+  soir — pour que l'installeur soit la première page de JARVIS et non un
+  objet étranger posé devant.
 
-  Pas de bibliothèque, pas de fichier externe. Cette page doit s'ouvrir sur
-  une machine où rien n'est encore installé.
+  Pas de bibliothèque, rien venu d'Internet : le style est dans style.css, à
+  côté. Cette page doit s'ouvrir sur une machine où rien n'est encore installé.
+
+  Tout texte venu de Python ou du clavier passe par esc() avant d'entrer dans
+  le HTML : un guillemet tapé dans un champ cassait la page.
 -->
-<style>
-  :root {
-    --hue: 186;
-    --accent:      hsl(var(--hue), 100%, 63%);
-    --accent-doux: hsl(var(--hue), 100%, 63%, 0.12);
-    --accent-bord: hsl(var(--hue), 100%, 63%, 0.32);
-    --fond:        #080b10;
-    --fond-carte:  #0e131b;
-    --fond-haut:   #0b1017;
-    --texte:       #d6e6e8;
-    --sourdine:    #6b858a;
-    --alerte:      #ffb454;
-    --refus:       #ff6b6b;
-    --ok:          #4ade80;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
-  body {
-    background: var(--fond); color: var(--texte);
-    font-family: "Segoe UI", -apple-system, system-ui, sans-serif;
-    font-size: 14.5px; line-height: 1.6;
-    display: flex; flex-direction: column;
-    -webkit-user-select: none; user-select: none;
-    overflow: hidden;
-  }
-
-  /* ── Progression ───────────────────────────────────────────────── */
-  header {
-    flex: 0 0 auto; padding: 26px 40px 0;
-    background: var(--fond-haut);
-    border-bottom: 1px solid rgba(255,255,255,.05);
-  }
-  .marque {
-    font-family: Consolas, ui-monospace, monospace;
-    font-size: 12px; letter-spacing: 4px; color: var(--accent);
-    margin-bottom: 20px;
-  }
-  .marque span { color: var(--sourdine); letter-spacing: 1px; margin-left: 10px; }
-  .etapes { display: flex; gap: 4px; padding-bottom: 0; }
-  .etape {
-    flex: 1; padding-bottom: 12px; font-size: 11.5px; letter-spacing: .6px;
-    color: var(--sourdine); border-bottom: 2px solid rgba(255,255,255,.07);
-    transition: color .25s, border-color .25s;
-  }
-  .etape.faite { color: var(--texte); border-color: var(--accent-bord); }
-  .etape.active { color: var(--accent); border-color: var(--accent); }
-
-  /* ── Contenu ───────────────────────────────────────────────────── */
-  main { flex: 1; overflow-y: auto; padding: 34px 40px; }
-  main::-webkit-scrollbar { width: 8px; }
-  main::-webkit-scrollbar-thumb { background: rgba(255,255,255,.09); border-radius: 4px; }
-
-  h1 { font-size: 25px; font-weight: 600; letter-spacing: -.2px; margin-bottom: 8px; }
-  .chapeau { color: var(--sourdine); margin-bottom: 26px; max-width: 640px; }
-
-  .cartes { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
-  @media (max-width: 860px) { .cartes { grid-template-columns: 1fr; } }
-
-  .carte {
-    background: var(--fond-carte); border: 1px solid rgba(255,255,255,.07);
-    border-radius: 11px; padding: 15px 17px; cursor: pointer;
-    transition: border-color .18s, background .18s, transform .12s;
-    position: relative;
-  }
-  .carte:hover { border-color: var(--accent-bord); transform: translateY(-1px); }
-  .carte.choisie { border-color: var(--accent); background: var(--accent-doux); }
-  .carte.bloquee { opacity: .5; cursor: not-allowed; }
-  .carte.bloquee:hover { transform: none; border-color: rgba(255,255,255,.07); }
-  .carte .titre { font-weight: 600; margin-bottom: 3px; display: flex;
-                  align-items: center; gap: 9px; }
-  .carte .texte { color: var(--sourdine); font-size: 13px; }
-  .carte .manque { color: var(--alerte); font-size: 12px; margin-top: 7px; }
-  .coche {
-    width: 17px; height: 17px; border-radius: 5px; flex: 0 0 17px;
-    border: 1.5px solid rgba(255,255,255,.22); position: relative;
-  }
-  .carte.choisie .coche { background: var(--accent); border-color: var(--accent); }
-  .carte.choisie .coche::after {
-    content: ""; position: absolute; left: 5px; top: 1px;
-    width: 4px; height: 9px; border: solid #06131a;
-    border-width: 0 2px 2px 0; transform: rotate(42deg);
-  }
-  .carte.figee .coche { background: var(--sourdine); border-color: var(--sourdine); }
-
-  .grand { padding: 22px 24px; }
-  .grand .titre { font-size: 17px; }
-
-  /* ── Champs ────────────────────────────────────────────────────── */
-  .champ { margin-bottom: 20px; max-width: 620px; }
-  .champ label { display: block; font-weight: 600; margin-bottom: 3px; }
-  .champ .role { color: var(--sourdine); font-size: 13px; margin-bottom: 8px; }
-  .champ input {
-    width: 100%; padding: 11px 13px; border-radius: 9px;
-    background: #060a0e; border: 1px solid rgba(255,255,255,.11);
-    color: var(--texte); font-family: Consolas, ui-monospace, monospace;
-    font-size: 13.5px; outline: none;
-    -webkit-user-select: text; user-select: text;
-  }
-  .champ input:focus { border-color: var(--accent); }
-  .champ input.faux { border-color: var(--refus); }
-  .champ .aide { font-size: 12px; margin-top: 6px; color: var(--sourdine); }
-  .champ .aide a { color: var(--accent); text-decoration: none; cursor: pointer; }
-  .champ .aide a:hover { text-decoration: underline; }
-  .champ .erreur { color: var(--refus); font-size: 12px; margin-top: 6px; }
-  .deja { color: var(--ok); font-size: 12px; }
-
-  /* ── Garde-fous ────────────────────────────────────────────────── */
-  .garde { background: var(--fond-carte); border: 1px solid rgba(255,255,255,.07);
-           border-radius: 11px; padding: 16px 18px; margin-bottom: 11px; }
-  .garde .titre { font-weight: 600; display: flex; align-items: center;
-                  gap: 9px; margin-bottom: 4px; }
-  .garde .texte { color: var(--sourdine); font-size: 13px; }
-  .cadenas { color: var(--accent); font-size: 12px; }
-  .avert { margin-top: 13px; padding: 13px 15px; border-radius: 9px;
-           background: rgba(255,180,84,.07); border: 1px solid rgba(255,180,84,.25); }
-  .avert .quoi { color: var(--alerte); font-size: 13px; margin-bottom: 10px; }
-  .avert input { width: 100%; padding: 9px 12px; border-radius: 7px;
-                 background: #060a0e; border: 1px solid rgba(255,255,255,.13);
-                 color: var(--texte); font-family: Consolas, monospace;
-                 font-size: 12.5px; outline: none;
-                 -webkit-user-select: text; user-select: text; }
-  .avert .phrase { font-family: Consolas, monospace; color: var(--alerte);
-                   font-size: 12.5px; margin: 7px 0; }
-  .lien-retirer { color: var(--sourdine); font-size: 12.5px; cursor: pointer;
-                  margin-top: 9px; display: inline-block; }
-  .lien-retirer:hover { color: var(--alerte); }
-
-  /* ── Pied ──────────────────────────────────────────────────────── */
-  footer {
-    flex: 0 0 auto; padding: 17px 40px; background: var(--fond-haut);
-    border-top: 1px solid rgba(255,255,255,.05);
-    display: flex; align-items: center; gap: 12px;
-  }
-  .compte { flex: 1; color: var(--sourdine); font-size: 13px; }
-  button {
-    padding: 10px 22px; border-radius: 9px; border: 1px solid transparent;
-    font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
-    transition: background .16s, border-color .16s, opacity .16s;
-  }
-  .principal { background: var(--accent); color: #05161b; }
-  .principal:hover { background: hsl(var(--hue), 100%, 70%); }
-  .principal:disabled { opacity: .32; cursor: not-allowed; }
-  .discret { background: none; color: var(--sourdine);
-             border-color: rgba(255,255,255,.12); }
-  .discret:hover { color: var(--texte); border-color: rgba(255,255,255,.24); }
-
-  .resume { background: var(--fond-carte); border-radius: 11px; padding: 20px 22px;
-            border: 1px solid rgba(255,255,255,.07); max-width: 640px; }
-  .resume .ligne { display: flex; gap: 12px; padding: 6px 0; font-size: 13.5px; }
-  .resume .ligne b { color: var(--accent); font-weight: 600; min-width: 26px; }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
-  <div class="marque">J·A·R·V·I·S<span id="version"></span></div>
+  <div class="marque"><div class="orbe petite"></div>JARVIS<span id="version"></span></div>
   <div class="etapes" id="etapes"></div>
 </header>
 
@@ -176,144 +30,208 @@
 
 <footer>
   <div class="compte" id="compte"></div>
-  <button class="discret" id="retour">Retour</button>
-  <button class="principal" id="suivant">Continuer</button>
+  <button class="bouton discret" id="retour">Retour</button>
+  <button class="bouton principal" id="suivant">Continuer</button>
 </footer>
 
 <script>
-const ETAPES = ["Bienvenue", "Mode", "Capacités", "Réglages", "Protections", "Terminé"];
+const ETAPES = ["Bienvenue", "Mode", "Cerveaux", "Capacités", "Réglages", "Protections", "Terminé"];
 let etape = 0;
 let mode = "simple";
 let donnees = null;
+let cerv = null;             // ce que Python a trouvé : clés présentes, Ollama, OmniRoute
 let choisies = new Set();
 let saisies = {};
+let brouillons = {};         // clés de cerveau tapées mais pas encore ajoutées
+let messages = {};           // dernier message affiché sous chaque clé
 let gardesARetirer = new Set();
 let rapport = null;
 
 const $ = (id) => document.getElementById(id);
 const api = () => window.pywebview && window.pywebview.api;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// La phrase des garde-fous se compare des deux côtés de la même façon.
+const normal = (s) => String(s ?? "").trim().toLowerCase().normalize("NFD").replace(/\p{Mn}/gu, "");
+
+// Thème de l'Orbe de verre : clair le jour, sombre le soir, même règle que le HUD.
+const heure = new Date().getHours();
+document.documentElement.dataset.theme = heure >= 7 && heure < 20 ? "clair" : "sombre";
+
+// Un appel à Python qui ne casse jamais la page : en cas d'erreur, null et
+// un message en bas de la fenêtre, au lieu d'un bouton grisé pour toujours.
+async function appeler(nom, ...args) {
+  try {
+    return await api()[nom](...args);
+  } catch (e) {
+    const c = $("compte");
+    c.className = "compte refus";
+    c.textContent = "JARVIS n'a pas pu répondre (" + nom + ") : " + ((e && e.message) || e);
+    return null;
+  }
+}
 
 function dessinerEtapes() {
   $("etapes").innerHTML = ETAPES.map((nom, i) =>
-    `<div class="etape ${i === etape ? "active" : i < etape ? "faite" : ""}">${i + 1}. ${nom}</div>`
-  ).join("");
+    `<div class="etape ${i === etape ? "active" : i < etape ? "faite" : ""}">${i + 1}. ${nom}</div>`).join("");
 }
 
 // ── Les écrans ───────────────────────────────────────────────────────
 function ecranBienvenue() {
-  return `
+  return `<div class="accueil">
+    <div class="orbe grande"></div>
     <h1>Configurons JARVIS</h1>
-    <p class="chapeau">Quelques questions pour savoir ce que vous voulez qu'il
-      fasse, et ce dont il a besoin pour le faire. Rien n'est définitif : tout
-      se change ensuite dans les réglages.</p>
+    <p class="chapeau">Quelques questions pour savoir ce que vous voulez qu'il fasse, et ce dont il a
+      besoin pour le faire. Rien n'est définitif : tout se change ensuite dans les réglages.</p>
     <div class="resume">
-      <div class="ligne"><b>1</b><span>Vous choisissez ce que JARVIS peut faire.</span></div>
-      <div class="ligne"><b>2</b><span>Il ne vous demande que ce qui sert à ces choix-là.</span></div>
+      <div class="ligne"><b>1</b><span>Vous lui donnez un cerveau : une clé d'API, ou Ollama sur cette machine.</span></div>
+      <div class="ligne"><b>2</b><span>Vous choisissez ce qu'il peut faire ; il ne demande que ce qui sert à ces choix.</span></div>
       <div class="ligne"><b>3</b><span>Les protections restent actives par défaut.</span></div>
-    </div>`;
+    </div></div>`;
 }
 
 function ecranMode() {
   const carte = (cle, titre, texte) => `
-    <div class="carte grand ${mode === cle ? "choisie" : ""}" data-mode="${cle}">
+    <div class="carte cliquable grand ${mode === cle ? "choisie" : ""}" data-mode="${cle}">
       <div class="titre"><div class="coche"></div>${titre}</div>
       <div class="texte">${texte}</div>
     </div>`;
   return `
     <h1>Comment voulez-vous l'installer ?</h1>
-    <p class="chapeau">Ce choix se change plus tard. Il décide surtout du
-      nombre de questions posées.</p>
+    <p class="chapeau">Ce choix se change plus tard. Il décide surtout du nombre de questions posées.</p>
     <div class="cartes">
-      ${carte("simple", "Simple",
-        "L'essentiel, en langage clair. Les protections sont actives et ne " +
+      ${carte("simple", "Simple", "L'essentiel, en langage clair. Les protections sont actives et ne " +
         "peuvent pas être retirées depuis l'interface.")}
-      ${carte("avance", "Avancé",
-        "Toutes les capacités, les clés saisies à la main, et la possibilité " +
+      ${carte("avance", "Avancé", "Toutes les capacités, les clés saisies à la main, et la possibilité " +
         "de retirer une protection après un avertissement.")}
     </div>`;
 }
 
+const aucunCerveau = () => cerv && !cerv.cles.some((k) => k.presente) && !cerv.ollama.actif && !cerv.omniroute;
+const message = (cle) => `<div class="message ${messages[cle] ? messages[cle].cls : ""}" data-message="${esc(cle)}">${
+  esc(messages[cle] ? messages[cle].texte : "")}</div>`;
+
+function ecranCerveaux() {
+  const titre = `<h1>Son cerveau</h1>
+    <p class="chapeau">JARVIS réfléchit avec un modèle d'IA. Il lui en faut au moins un : une clé d'API,
+      ou Ollama sur cette machine. Les abonnements (Claude, Gemini…) ne peuvent pas servir ici : leurs
+      conditions l'interdisent. Une clé ajoutée est essayée auprès du fournisseur, puis rangée dans le
+      fichier .env de cette machine ; elle n'est jamais réaffichée.</p>`;
+  if (!cerv) return titre + `<p class="aide">Je regarde ce qui est déjà installé…</p>`;
+  if (cerv.echec) return titre + `<p class="aide">Détection impossible : les clés se renseignent à l'écran Réglages.</p>`;
+  const o = cerv.ollama;
+  const local = `
+    <div class="carte">
+      <div class="titre">Ollama <span class="badge ${o.actif ? "ok" : ""}">${o.actif ? "détecté" : "absent"}</span></div>
+      <div class="texte">${o.actif
+        ? "Modèles sur cette machine : " + (esc(o.modeles.join(", ")) || "aucun pour l'instant") + "."
+        : `Des modèles gratuits qui tournent sur ce PC, sans clé. <a data-url="https://ollama.com/download">Installer Ollama</a>`}</div>
+    </div>
+    ${cerv.omniroute ? `<div class="carte">
+      <div class="titre">OmniRoute <span class="badge ok">détecté</span></div>
+      <div class="texte">Routeur local : il choisit le modèle à chaque question.</div></div>` : ""}`;
+  const cles = cerv.cles.map((k) => `
+    <div class="carte">
+      <div class="titre">${esc(k.nom)}${k.gratuit ? ' <span class="badge">gratuit</span>' : ""}${
+        k.presente ? ' <span class="badge ok">✓ clé présente</span>' : ""}</div>
+      <div class="rangee">
+        <input type="text" data-cerveau="${esc(k.variable)}" spellcheck="false" value="${esc(brouillons[k.variable] || "")}"
+               placeholder="${k.presente ? "collez une nouvelle clé" : "collez la clé ici"}">
+        <button class="bouton discret petit" data-ajouter="${esc(k.variable)}">${k.presente ? "Remplacer" : "Ajouter"}</button>
+      </div>
+      ${message(k.variable)}
+      <div class="aide">${k.presente ? `<a data-tester="${esc(k.variable)}">Tester la clé</a> · ` : ""}<a data-url="${esc(k.lien)}">Obtenir une clé</a></div>
+    </div>`).join("");
+  const dispo = [["auto", "Automatique"], ...cerv.cles.filter((k) => k.presente).map((k) => [k.id, k.nom]),
+                 ...(cerv.omniroute ? [["omniroute", "OmniRoute"]] : [])];
+  const connu = dispo.some(([id]) => id === cerv.actuel);
+  return titre + `
+    <h2>Sur cette machine</h2><div class="cartes">${local}</div>
+    <h2>Clés d'API</h2><div class="cartes">${cles}</div>
+    <h2>Cerveau préféré</h2>
+    <div class="pilules">${dispo.map(([id, nom]) =>
+      `<button class="pilule" data-prefere="${esc(id)}" aria-pressed="${id === cerv.actuel}">${esc(nom)}</button>`).join("")}</div>
+    ${connu ? "" : `<p class="aide">Réglage actuel gardé : ${esc(cerv.actuel)}. Il ne change que si vous en choisissez un.</p>`}
+    ${message("prefere")}`;
+}
+
 function ecranCapacites() {
-  const liste = donnees.capacites.map(c => {
+  const liste = donnees.capacites.map((c) => {
     const oblig = c.obligatoire;
-    const actif = oblig || choisies.has(c.cle);
-    const classes = ["carte", actif ? "choisie" : "", oblig ? "figee" : "",
-                     c.bloquee && !oblig ? "bloquee" : ""].join(" ");
+    // Le catalogue public sépare « un réglage à remplir » (la carte reste cochable, le réglage se donne à
+    // l'écran suivant) de « absent de ce système » (grisée) : c.bloquee. Sans ce champ, tout manque grise.
+    const bloquee = c.bloquee ?? !c.disponible;
+    const classes = ["carte cliquable", oblig || choisies.has(c.cle) ? "choisie" : "", oblig ? "figee" : "",
+                     bloquee && !oblig ? "bloquee" : ""].join(" ");
     return `
-      <div class="${classes}" data-cap="${c.cle}" ${oblig ? 'data-fige="1"' : ""}>
-        <div class="titre"><div class="coche"></div>${c.titre}</div>
-        <div class="texte">${c.description}</div>
-        ${!c.disponible ? `<div class="manque">Indisponible : ${c.manques[0]}</div>` : ""}
-        ${c.comptes ? `<div class="manque">${c.comptes}</div>` : ""}
+      <div class="${classes}" data-cap="${esc(c.cle)}" ${oblig ? 'data-fige="1"' : ""}>
+        <div class="titre"><div class="coche"></div>${esc(c.titre)}</div>
+        <div class="texte">${esc(c.description)}</div>
+        ${!c.disponible ? `<div class="manque">Indisponible : ${
+          esc((c.manques || []).join(", ") || "il manque quelque chose sur cette machine")}</div>` : ""}
+        ${c.comptes ? `<div class="manque">${esc(c.comptes)}</div>` : ""}
       </div>`;
   }).join("");
   return `
     <h1>Que voulez-vous qu'il sache faire ?</h1>
-    <p class="chapeau">Cochez ce qui vous intéresse. Ce qui est décoché ne sera
-      pas seulement caché : JARVIS refusera de le faire.</p>
+    <p class="chapeau">Cochez ce qui vous intéresse. Ce qui est décoché ne sera pas seulement caché :
+      JARVIS refusera de le faire.</p>
     <div class="cartes">${liste}</div>`;
 }
 
 function reglagesNecessaires() {
   const requis = new Set();
-  donnees.capacites.forEach(c => {
-    if (choisies.has(c.cle) || c.obligatoire) (c.reglages || []).forEach(r => requis.add(r));
+  donnees.capacites.forEach((c) => {
+    if (choisies.has(c.cle) || c.obligatoire) (c.reglages || []).forEach((r) => requis.add(r));
   });
-  return donnees.reglages.filter(r => r.variables.some(v => requis.has(v)));
+  // Les clés de cerveau se règlent à l'écran Cerveaux : ne pas les redemander ici.
+  const cerveaux = new Set((cerv && cerv.cles || []).map((k) => k.variable));
+  return donnees.reglages.filter((r) =>
+    r.variables.some((v) => requis.has(v)) && !r.variables.every((v) => cerveaux.has(v)));
 }
 
 function ecranReglages() {
   const necessaires = reglagesNecessaires();
   if (!necessaires.length) {
-    return `<h1>Rien à renseigner</h1>
-      <p class="chapeau">Ce que vous avez choisi ne demande aucune clé.</p>`;
+    return `<h1>Rien à renseigner</h1><p class="chapeau">Ce que vous avez choisi ne demande aucune autre clé.</p>`;
   }
-  const champs = necessaires.map(r => r.variables.map(v => {
-    const jeton = v === "JARVIS_ACCESS_TOKEN";
+  const champs = necessaires.map((r) => r.variables.map((v) => {
+    const source = r.source || "";
+    const lien = /^https:\/\//.test(source) ? `<a data-url="${esc(source)}">obtenir une clé</a>` : esc(source);
     return `
       <div class="champ">
-        <label>${v}</label>
-        <div class="role">${r.role}</div>
-        ${jeton && !donnees.a_deja_un_jeton
-          ? `<div class="aide">Laissez vide : une clé aléatoire sera engendrée.
-             En inventer une donne souvent « jarvis123 ».</div>`
-          : `<input data-cle="${v}" type="text" spellcheck="false"
-               placeholder="${r.renseigne ? "déjà renseigné — laissez vide pour ne pas changer" : "collez la valeur ici"}"
-               value="${saisies[v] || ""}">
-             <div class="aide">${r.renseigne ? '<span class="deja">✓ déjà renseigné</span> · ' : ""}
-               ${r.source.startsWith("http")
-                 ? `<a data-url="${r.source}">obtenir une clé</a>`
-                 : r.source}</div>
-             <div class="erreur" data-erreur="${v}"></div>`}
+        <label>${esc(v)}</label>
+        <div class="role">${esc(r.role)}</div>
+        ${v === "JARVIS_ACCESS_TOKEN" && !donnees.a_deja_un_jeton
+          ? `<div class="aide">Laissez vide : une clé aléatoire sera engendrée. En inventer une donne souvent « jarvis123 ».</div>`
+          : `<input data-cle="${esc(v)}" type="text" spellcheck="false" value="${esc(saisies[v] || "")}"
+               placeholder="${r.renseigne ? "déjà renseigné — laissez vide pour ne pas changer" : "collez la valeur ici"}">
+             <div class="aide">${r.renseigne ? '<span class="deja">✓ déjà renseigné</span> · ' : ""}${lien}</div>
+             <div class="erreur" data-erreur="${esc(v)}"></div>`}
       </div>`;
   }).join("")).join("");
   return `
     <h1>Ce dont il a besoin</h1>
-    <p class="chapeau">Uniquement ce qui sert à vos choix. Un champ laissé vide
-      garde la valeur déjà en place.</p>
+    <p class="chapeau">Uniquement ce qui sert à vos choix. Un champ laissé vide garde la valeur déjà en place.</p>
     ${champs}`;
 }
 
 function ecranGardes() {
-  const liste = donnees.gardes.map(g => {
-    const retire = gardesARetirer.has(g.cle);
-    return `
-      <div class="garde">
-        <div class="titre">${g.titre}
-          ${!g.desactivable ? '<span class="cadenas">— verrouillé en mode simple</span>' : ""}
-          ${retire ? '<span style="color:var(--refus);font-size:12px">— sera retiré</span>' : ""}
-        </div>
-        <div class="texte">${g.description}</div>
-        ${g.desactivable ? `
-          <div class="lien-retirer" data-ouvrir="${g.cle}">Retirer cette protection…</div>
-          <div class="avert" data-avert="${g.cle}" style="display:none">
-            <div class="quoi"><b>Ce que vous perdez :</b> ${g.consequence}</div>
-            <div>Pour confirmer, recopiez exactement :</div>
-            <div class="phrase">${g.phrase}</div>
-            <input data-phrase="${g.cle}" spellcheck="false" placeholder="recopiez la phrase ci-dessus">
-          </div>` : ""}
-      </div>`;
-  }).join("");
+  const liste = donnees.gardes.map((g) => `
+    <div class="carte garde">
+      <div class="titre">${esc(g.titre)}
+        ${!g.desactivable ? '<span class="cadenas">— verrouillé en mode simple</span>' : ""}
+        ${gardesARetirer.has(g.cle) ? '<span class="retire">— sera retiré</span>' : ""}</div>
+      <div class="texte">${esc(g.description)}</div>
+      ${g.desactivable ? `
+        <button class="lien-retirer" data-ouvrir="${esc(g.cle)}">Retirer cette protection…</button>
+        <div class="avert" data-avert="${esc(g.cle)}" hidden>
+          <div class="quoi"><b>Ce que vous perdez :</b> ${esc(g.consequence)}</div>
+          <div>Pour confirmer, recopiez exactement :</div>
+          <div class="phrase">${esc(g.phrase)}</div>
+          <input type="text" data-phrase="${esc(g.cle)}" spellcheck="false" placeholder="recopiez la phrase ci-dessus">
+        </div>` : ""}
+    </div>`).join("");
   return `
     <h1>Protections</h1>
     <p class="chapeau">Actives par défaut. ${mode === "simple"
@@ -324,35 +242,30 @@ function ecranGardes() {
 
 function ecranFin() {
   if (!rapport) return `<h1>Enregistrement…</h1>`;
-  const l = [];
-  l.push(`<div class="ligne"><b>${rapport.capacites.length}</b><span>capacité(s) activée(s)</span></div>`);
-  if (rapport.reglages_ecrits)
-    l.push(`<div class="ligne"><b>${rapport.reglages_ecrits}</b><span>réglage(s) enregistré(s)</span></div>`);
-  if (rapport.jeton_genere)
-    l.push(`<div class="ligne"><b>✓</b><span>clé d'accès engendrée automatiquement</span></div>`);
-  if (rapport.gardes_retires.length)
-    l.push(`<div class="ligne"><b style="color:var(--refus)">!</b><span>${rapport.gardes_retires.length} protection(s) retirée(s)</span></div>`);
-  (rapport.capacites_refusees || []).forEach(r =>
-    l.push(`<div class="ligne"><b style="color:var(--alerte)">·</b><span>${r}</span></div>`));
-  const degradees = (donnees.degradees || []).map(d =>
-    `<div class="ligne"><b style="color:var(--alerte)">·</b><span>${d.nom} : ${d.manque.join(", ")}</span></div>`).join("");
+  const ligne = (b, texte, cls) => `<div class="ligne"><b class="${cls || ""}">${esc(b)}</b><span>${esc(texte)}</span></div>`;
+  const l = [ligne((rapport.capacites || []).length, "capacité(s) activée(s)")];
+  if (rapport.reglages_ecrits) l.push(ligne(rapport.reglages_ecrits, "réglage(s) enregistré(s)"));
+  if (rapport.jeton_genere) l.push(ligne("✓", "clé d'accès engendrée automatiquement"));
+  if ((rapport.gardes_retires || []).length)
+    l.push(ligne("!", rapport.gardes_retires.length + " protection(s) retirée(s)", "refus"));
+  (rapport.gardes_refuses || []).concat(rapport.capacites_refusees || []).forEach((r) => l.push(ligne("·", r, "alerte")));
+  const degradees = (donnees.degradees || []).map((d) =>
+    ligne("·", d.nom + " : " + [].concat(d.manque || []).join(", "), "alerte")).join("");
   return `
     <h1>C'est prêt</h1>
-    <p class="chapeau">JARVIS est configuré. Vous pouvez tout modifier plus
-      tard depuis l'onglet Réglages.</p>
+    <p class="chapeau">JARVIS est configuré. Vous pouvez tout modifier plus tard depuis l'onglet Réglages.</p>
     <div class="resume">${l.join("")}</div>
-    ${degradees ? `<p class="chapeau" style="margin-top:22px">Fonctions
-      indisponibles sur cette machine :</p><div class="resume">${degradees}</div>` : ""}`;
+    ${degradees ? `<h2>Indisponible sur cette machine</h2><div class="resume">${degradees}</div>` : ""}`;
 }
 
 // ── Navigation ───────────────────────────────────────────────────────
-const ECRANS = [ecranBienvenue, ecranMode, ecranCapacites, ecranReglages,
-                ecranGardes, ecranFin];
+const ECRANS = [ecranBienvenue, ecranMode, ecranCerveaux, ecranCapacites, ecranReglages, ecranGardes, ecranFin];
 
-function dessiner() {
+function dessiner(memeEcran) {
+  const defilement = $("contenu").scrollTop;
   dessinerEtapes();
   $("contenu").innerHTML = ECRANS[etape]();
-  $("contenu").scrollTop = 0;
+  $("contenu").scrollTop = memeEcran ? defilement : 0;
   $("retour").style.visibility = etape === 0 ? "hidden" : "visible";
   $("suivant").textContent = etape === ECRANS.length - 1 ? "Lancer JARVIS"
                             : etape === ECRANS.length - 2 ? "Enregistrer" : "Continuer";
@@ -361,22 +274,70 @@ function dessiner() {
 }
 
 function majCompte() {
-  if (etape === 2) {
-    const n = donnees.capacites.filter(c => choisies.has(c.cle) || c.obligatoire).length;
-    $("compte").textContent = `${n} capacité(s) sur ${donnees.capacites.length}`;
-  } else if (etape === 3) {
+  const c = $("compte");
+  const ecran = ECRANS[etape];
+  c.className = "compte";
+  c.textContent = "";
+  if (ecran === ecranCerveaux && cerv && !cerv.echec) {
+    if (aucunCerveau()) {
+      c.className = "compte alerte";
+      c.textContent = "Aucun cerveau : JARVIS ne répondra qu'avec ses outils locaux.";
+    } else {
+      const n = cerv.cles.filter((k) => k.presente).length;
+      c.textContent = [n ? n + " clé(s) d'API" : "", cerv.ollama.actif ? "Ollama" : "",
+                       cerv.omniroute ? "OmniRoute" : ""].filter(Boolean).join(" · ");
+    }
+  } else if (ecran === ecranCapacites) {
+    const n = donnees.capacites.filter((x) => choisies.has(x.cle) || x.obligatoire).length;
+    c.textContent = `${n} capacité(s) sur ${donnees.capacites.length}`;
+  } else if (ecran === ecranReglages) {
     const n = reglagesNecessaires().length;
-    $("compte").textContent = n ? `${n} réglage(s) concerné(s)` : "";
-  } else {
-    $("compte").textContent = "";
+    c.textContent = n ? `${n} réglage(s) concerné(s)` : "";
   }
 }
 
-function brancher() {
-  document.querySelectorAll("[data-mode]").forEach(el =>
-    el.onclick = () => { mode = el.dataset.mode; recharger(); });
+function montrer(cle, cls, texte) {
+  messages[cle] = { cls, texte };
+  const el = document.querySelector(`[data-message="${CSS.escape(cle)}"]`);
+  if (el) { el.className = "message " + cls; el.textContent = texte; }
+}
 
-  document.querySelectorAll("[data-cap]").forEach(el => {
+async function ajouterCle(variable) {
+  const valeur = (brouillons[variable] || "").trim();
+  if (!valeur) return montrer(variable, "non", "Collez d'abord une clé.");
+  const bouton = document.querySelector(`[data-ajouter="${CSS.escape(variable)}"]`);
+  if (bouton) bouton.disabled = true;
+  montrer(variable, "", "Essai auprès du fournisseur…");
+  const r = await appeler("ajouter_cle", variable, valeur);
+  if (bouton) bouton.disabled = false;
+  if (!r) return montrer(variable, "non", "Échec de l'enregistrement.");
+  montrer(variable, r.ok ? "ok" : "non", r.message);
+  const k = cerv.cles.find((x) => x.variable === variable);
+  if (r.ok && k) {
+    delete brouillons[variable];
+    k.presente = true;
+    dessiner(true);   // la clé apparaît dans « Cerveau préféré »
+  }
+}
+
+async function testerCle(variable) {
+  montrer(variable, "", "Essai auprès du fournisseur…");
+  const r = await appeler("tester_cle", variable, "");
+  if (r) montrer(variable, r.ok ? "ok" : "non", r.message);
+}
+
+async function choisirCerveau(id) {
+  const r = await appeler("choisir_cerveau", id);
+  if (!r) return;
+  if (r.ok) cerv.actuel = id;
+  messages.prefere = r.ok ? { cls: "ok", texte: "Cerveau préféré enregistré." } : { cls: "non", texte: r.message };
+  dessiner(true);
+}
+
+function brancher() {
+  const tous = (sel, f) => document.querySelectorAll(sel).forEach(f);
+  tous("[data-mode]", (el) => { el.onclick = () => { mode = el.dataset.mode; recharger(); }; });
+  tous("[data-cap]", (el) => {
     if (el.dataset.fige || el.classList.contains("bloquee")) return;
     el.onclick = () => {
       const c = el.dataset.cap;
@@ -385,70 +346,100 @@ function brancher() {
       majCompte();
     };
   });
-
-  document.querySelectorAll("[data-cle]").forEach(el => {
-    el.oninput = async () => {
+  // Contrôle de forme : attendre une pause dans la frappe, et n'afficher que la
+  // réponse à la DERNIÈRE saisie — les réponses de Python arrivent dans le désordre.
+  tous("[data-cle]", (el) => {
+    let minuterie, numero = 0;
+    el.oninput = () => {
       saisies[el.dataset.cle] = el.value;
-      const bloc = document.querySelector(`[data-erreur="${el.dataset.cle}"]`);
-      const r = await api().verifier_cle(el.dataset.cle, el.value);
-      el.classList.toggle("faux", !r.ok);
-      if (bloc) bloc.textContent = r.ok ? "" : r.message;
+      clearTimeout(minuterie);
+      minuterie = setTimeout(async () => {
+        const n = ++numero;
+        const r = await appeler("verifier_cle", el.dataset.cle, el.value);
+        if (!r || n !== numero) return;
+        el.classList.toggle("faux", !r.ok);
+        const bloc = document.querySelector(`[data-erreur="${CSS.escape(el.dataset.cle)}"]`);
+        if (bloc) bloc.textContent = r.ok ? "" : r.message;
+      }, 250);
     };
   });
-
-  document.querySelectorAll("[data-url]").forEach(el =>
-    el.onclick = () => api().ouvrir(el.dataset.url));
-
-  document.querySelectorAll("[data-ouvrir]").forEach(el =>
+  tous("[data-cerveau]", (el) => {
+    el.oninput = () => { brouillons[el.dataset.cerveau] = el.value; };
+    el.onkeydown = (e) => { if (e.key === "Enter") ajouterCle(el.dataset.cerveau); };
+  });
+  tous("[data-ajouter]", (el) => { el.onclick = () => ajouterCle(el.dataset.ajouter); });
+  tous("[data-tester]", (el) => { el.onclick = () => testerCle(el.dataset.tester); });
+  tous("[data-prefere]", (el) => { el.onclick = () => choisirCerveau(el.dataset.prefere); });
+  tous("[data-url]", (el) => { el.onclick = () => appeler("ouvrir", el.dataset.url); });
+  tous("[data-ouvrir]", (el) => {
     el.onclick = () => {
-      const b = document.querySelector(`[data-avert="${el.dataset.ouvrir}"]`);
-      if (b) b.style.display = b.style.display === "none" ? "block" : "none";
-    });
-
-  document.querySelectorAll("[data-phrase]").forEach(el =>
+      const b = document.querySelector(`[data-avert="${CSS.escape(el.dataset.ouvrir)}"]`);
+      if (b) b.hidden = !b.hidden;
+    };
+  });
+  tous("[data-phrase]", (el) => {
     el.oninput = () => {
       const cle = el.dataset.phrase;
-      const g = donnees.gardes.find(x => x.cle === cle);
-      const exact = el.value.trim().toLowerCase()
-        .normalize("NFD").replace(/[̀-ͯ]/g, "") === g.phrase;
+      const g = donnees.gardes.find((x) => x.cle === cle);
+      const exact = !!g && normal(el.value) === normal(g.phrase);
       exact ? gardesARetirer.add(cle) : gardesARetirer.delete(cle);
-      el.style.borderColor = exact ? "var(--refus)" : "rgba(255,255,255,.13)";
-    });
+      el.classList.toggle("exact", exact);
+    };
+  });
 }
 
 async function recharger() {
-  donnees = await api().donnees(mode);
+  const d = await appeler("donnees", mode);
+  if (!d) return;
+  donnees = d;
+  // En mode simple rien ne se retire : ne pas garder un choix fait en avancé.
+  if (mode === "simple") gardesARetirer.clear();
   // Une capacité réservée au mode avancé disparaît si on revient en simple :
   // la garder cochée en douce serait exactement le contournement à éviter.
-  const connues = new Set(donnees.capacites.map(c => c.cle));
-  [...choisies].forEach(c => { if (!connues.has(c)) choisies.delete(c); });
-  if (!choisies.size) donnees.capacites.forEach(c => { if (c.defaut) choisies.add(c.cle); });
-  dessiner();
+  const connues = new Set(donnees.capacites.map((c) => c.cle));
+  [...choisies].forEach((c) => { if (!connues.has(c)) choisies.delete(c); });
+  if (!choisies.size) donnees.capacites.forEach((c) => { if (c.defaut) choisies.add(c.cle); });
+  dessiner(true);
 }
 
 $("retour").onclick = () => { if (etape > 0) { etape--; dessiner(); } };
 
 $("suivant").onclick = async () => {
-  if (etape === ECRANS.length - 1) { await api().terminer(); return; }
+  if (etape === ECRANS.length - 1) { await appeler("terminer"); return; }
   if (etape === ECRANS.length - 2) {
     $("suivant").disabled = true;
-    rapport = await api().enregistrer(mode, [...choisies], saisies, [...gardesARetirer]);
-    $("suivant").disabled = false;
+    try {
+      rapport = await appeler("enregistrer", mode, [...choisies], saisies, [...gardesARetirer]);
+    } finally {
+      $("suivant").disabled = false;
+    }
+    if (!rapport) return;   // l'erreur est affichée en bas : on reste ici pour réessayer
   }
   etape++;
   dessiner();
 };
 
-// Démarrage : attendre que le pont Python soit prêt.
-(function attendre() {
-  if (!api()) return setTimeout(attendre, 60);
-  api().donnees(mode).then(d => {
-    donnees = d;
-    $("version").textContent = "v" + d.version + " · " + d.systeme;
-    d.capacites.forEach(c => { if (c.defaut) choisies.add(c.cle); });
-    dessiner();
-  });
-})();
+async function demarrer() {
+  const d = await appeler("donnees", mode);
+  if (!d) {
+    $("contenu").innerHTML = `<h1>Configuration impossible</h1><p class="chapeau">L'assistant n'a pas pu
+      lire l'état de JARVIS. Fermez cette fenêtre et relancez l'installation ; la raison est écrite en bas.</p>`;
+    $("suivant").disabled = true;
+    return;
+  }
+  donnees = d;
+  $("version").textContent = "v" + d.version + " · " + d.systeme;
+  d.capacites.forEach((c) => { if (c.defaut) choisies.add(c.cle); });
+  dessiner();
+  // Les sondes locales (Ollama, OmniRoute) prennent jusqu'à 3 s : en fond.
+  cerv = (await appeler("cerveaux")) || { echec: true, cles: [], ollama: { actif: false, modeles: [] } };
+  if (ECRANS[etape] === ecranCerveaux || ECRANS[etape] === ecranReglages) dessiner(true);
+}
+
+// pywebview pose window.pywebview avant d'y brancher les fonctions de l'API :
+// attendre son signal, sinon donnees() n'existe pas encore et la page reste vide.
+if (api() && api().donnees) demarrer();
+else window.addEventListener("pywebviewready", demarrer, { once: true });
 </script>
 </body>
 </html>

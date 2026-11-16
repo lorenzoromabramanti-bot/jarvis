@@ -1,211 +1,419 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="sombre">
 <head>
 <meta charset="UTF-8">
 <title>JARVIS</title>
 <!--
-  Barre rapide — invoquee par un raccourci global depuis n'importe quelle
-  application. Volontairement une page a part, pas un panneau du HUD :
+  Barre rapide — invoquee par un raccourci global (Ctrl+Alt+J) depuis n'importe
+  quelle application. Volontairement une page a part, pas un panneau du HUD :
+  elle doit s'ouvrir instantanement (pas de Three.js, pas d'onglets) et
+  disparaitre aussi vite.
 
-  - elle doit s'ouvrir instantanement, donc sans Three.js, sans orbe, sans
-    les 13 onglets a construire ;
-  - le HUD tient dans une fenetre qu'on cherche ; celle-ci doit apparaitre
-    sous les doigts et disparaitre.
+  Elle ne parle pas au WebSocket : meme chemin que le HUD, POST /api/chat puis
+  SSE sur /api/events. Un seul interlocuteur cote serveur, donc les niveaux
+  d'autorisation s'appliquent ici aussi sans etre reecrits. Le micro passe
+  par /api/jarvis/ecoute_directe, comme le bouton de l'Orbe sur le PC.
 
-  Elle ne parle pas au WebSocket : meme chemin que le HUD, POST /api/chat
-  puis SSE sur /api/events. Un seul interlocuteur cote serveur, donc les
-  niveaux d'autorisation s'appliquent ici aussi sans etre reecrits.
+  Style : l'Orbe de verre (src/verre/verre.css), memes themes clair et sombre.
+  Le theme choisi dans le HUD est lu a chaque ouverture (meme origine, meme
+  localStorage). Les coins arrondis et l'ombre viennent de Windows (option
+  shadow de pywebview) : la page remplit la fenetre, sans border-radius, sinon
+  la couleur de fond de la fenetre apparaitrait dans les coins.
 -->
 <style>
-  :root {
-    --fond:   #080b10;
-    --cyan:   #35e7e0;
-    --texte:  #cfe9ea;
-    --sourdine: #5d7b7e;
+  :root[data-theme="clair"] {
+    --fond: #EEF2F7; --texte: #0E1726; --doux: #4A5A70; --carte: rgba(255, 255, 255, 0.8);
+    --bord: rgba(14, 23, 38, 0.1); --accent: #1F6FC4; --pastille: #E3ECF8; --code: rgba(14, 23, 38, 0.06);
+    --reflet: rgba(255, 255, 255, 0.9); --halo: rgba(45, 212, 191, 0.16); --halo2: rgba(139, 92, 246, 0.1);
+    --orbe: radial-gradient(circle at 34% 28%, #FFFFFF 0%, #E4EFFB 30%, #BCD5F0 66%, #8FB4E0 100%);
+  }
+  :root[data-theme="sombre"] {
+    --fond: #0B0D12; --texte: #E8EDF5; --doux: #9AA7BA; --carte: rgba(255, 255, 255, 0.07);
+    --bord: rgba(255, 255, 255, 0.14); --accent: #7FB8F5; --pastille: rgba(127, 184, 245, 0.16); --code: rgba(255, 255, 255, 0.08);
+    --reflet: rgba(255, 255, 255, 0.55); --halo: rgba(45, 212, 191, 0.2); --halo2: rgba(139, 92, 246, 0.16);
+    --orbe: radial-gradient(circle at 34% 28%, #C9E0FA 0%, #5E8DC4 28%, #233E66 66%, #101B2E 100%);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body {
-    height: 100%; background: transparent; overflow: hidden;
-    font-family: "Consolas", "SF Mono", ui-monospace, monospace;
+  html, body { height: 100%; overflow: hidden; background: var(--fond); }
+  body {
+    color: var(--texte); font-family: Inter, "Segoe UI", system-ui, sans-serif;
     -webkit-user-select: none; user-select: none;
   }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  [hidden] { display: none !important; }
+
+  /* Le verre : pywebview ne sait pas flouter le bureau derriere la fenetre.
+     L'effet vient des halos teal et violet de l'orbe et d'un reflet en haut. */
   #cadre {
     height: 100%; display: flex; flex-direction: column;
-    background: rgba(8, 11, 16, 0.97);
-    border: 1px solid rgba(53, 231, 224, 0.35);
-    border-radius: 14px;
-    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.65),
-                inset 0 1px 0 rgba(53, 231, 224, 0.12);
-    overflow: hidden;
+    background:
+      radial-gradient(110% 150% at 100% 0%, var(--halo) 0%, transparent 42%),
+      radial-gradient(80% 170% at 0% 100%, var(--halo2) 0%, transparent 46%),
+      var(--fond);
+    box-shadow: inset 0 1px 0 var(--bord);
   }
-  #ligne { display: flex; align-items: center; gap: 12px; padding: 0 18px; height: 62px; flex: 0 0 62px; }
-  #pastille {
-    width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px;
-    background: var(--cyan); box-shadow: 0 0 10px var(--cyan);
-    transition: background .2s, box-shadow .2s;
+  #ligne { display: flex; align-items: center; gap: 14px; padding: 0 16px 0 18px; height: 60px; flex: 0 0 60px; }
+
+  /* L'orbe en miniature : le logo de JARVIS, et son etat (respire, reflechit, erreur). */
+  #orbe {
+    position: relative; width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%;
+    background: var(--orbe); box-shadow: 0 0 14px var(--halo), inset 0 -3px 6px rgba(0, 0, 0, 0.25);
+    animation: respire 6s ease-in-out infinite;
   }
-  #pastille.occupe { animation: pulse 1s ease-in-out infinite; }
-  #pastille.erreur { background: #ff6b6b; box-shadow: 0 0 10px #ff6b6b; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+  #orbe::after {
+    content: ""; position: absolute; left: 20%; top: 14%; width: 36%; height: 20%;
+    border-radius: 50%; background: var(--reflet); transform: rotate(-28deg);
+  }
+  #orbe.occupe { animation: reflechit 1.4s ease-in-out infinite; }
+  #orbe.ecoute { animation: respire 1.2s ease-in-out infinite; box-shadow: 0 0 16px var(--accent); }
+  #orbe.erreur { filter: grayscale(0.8); box-shadow: 0 0 0 2px #E5484D; }
 
   #champ {
-    flex: 1; background: none; border: 0; outline: 0;
-    color: var(--texte); font: inherit; font-size: 16px; letter-spacing: .3px;
+    flex: 1; min-width: 0; background: none; border: 0; outline: 0; font-size: 17px;
     -webkit-user-select: text; user-select: text;
   }
-  #champ::placeholder { color: var(--sourdine); }
-  #indice { color: var(--sourdine); font-size: 10px; letter-spacing: 1px; white-space: nowrap; }
+  #champ::placeholder { color: var(--doux); }
+  .touche {
+    flex: 0 0 auto; padding: 3px 8px; border: 1px solid var(--bord); border-radius: 7px;
+    background: transparent; color: var(--doux); font-size: 11px; white-space: nowrap;
+  }
+  button.touche:hover, button.touche:focus-visible { color: var(--texte); border-color: var(--accent); outline: none; }
+  #micro {
+    width: 32px; height: 32px; flex: 0 0 32px; border-radius: 50%; border: 1px solid var(--bord);
+    background: transparent; color: var(--accent); display: flex; align-items: center; justify-content: center;
+  }
+  #micro:hover, #micro:focus-visible { border-color: var(--accent); outline: none; }
+  #micro.actif { background: var(--accent); border-color: var(--accent); color: var(--fond); animation: pulse 1.2s ease-in-out infinite; }
 
-  /* flex:0 1 auto et non flex:1 — etire, la zone remplirait le cadre et
+  /* Les puces : ce qu'on demande le plus, a un clic. Visibles tant qu'aucune
+     reponse n'est affichee : taper ne change pas la hauteur de la barre. */
+  #puces { display: flex; gap: 8px; padding: 0 16px 14px 18px; height: 44px; flex: 0 0 44px; overflow: hidden; }
+  .puce {
+    height: 30px; padding: 0 13px; border-radius: 15px; white-space: nowrap;
+    background: var(--carte); border: 1px solid var(--bord); font-size: 13px;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+  .puce:hover, .puce:focus-visible { background: var(--pastille); border-color: var(--accent); outline: none; }
+
+  /* flex:0 1 auto et non flex:1 — etiree, la zone remplirait le cadre et
      scrollHeight mesurerait l'etirement au lieu du texte, ce qui rendrait
      l'ajustement de hauteur circulaire. */
   #reponse {
-    display: none; flex: 0 1 auto; overflow-y: auto; max-height: 440px;
-    padding: 0 18px 18px; color: var(--texte);
-    font-size: 14px; line-height: 1.62; white-space: pre-wrap;
-    -webkit-user-select: text; user-select: text;
-    border-top: 1px solid rgba(53, 231, 224, 0.14);
-    padding-top: 14px;
+    flex: 0 1 auto; overflow-y: auto; max-height: 460px;
+    padding: 14px 18px 18px; border-top: 1px solid var(--bord);
+    font-size: 14.5px; line-height: 1.6; -webkit-user-select: text; user-select: text;
   }
-  #reponse.visible { display: block; }
+  #reponse > * + * { margin-top: 8px; }
+  #reponse ul, #reponse ol { padding-left: 22px; }
+  #reponse li + li { margin-top: 3px; }
+  #reponse strong { font-weight: 600; }
+  #reponse code, #reponse pre { font-family: Consolas, ui-monospace, monospace; background: var(--code); border-radius: 6px; }
+  #reponse code { font-size: 0.92em; padding: 1px 5px; }
+  #reponse pre { font-size: 13px; padding: 10px 12px; white-space: pre-wrap; }
+  #reponse .attente { color: var(--doux); font-style: italic; }
   #reponse::-webkit-scrollbar { width: 6px; }
-  #reponse::-webkit-scrollbar-thumb { background: rgba(53,231,224,.3); border-radius: 3px; }
-  .sourdine { color: var(--sourdine); font-style: italic; }
+  #reponse::-webkit-scrollbar-thumb { background: var(--bord); border-radius: 3px; }
+
+  @keyframes respire { 50% { transform: scale(1.06); } }
+  @keyframes reflechit { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(0.9) rotate(20deg); } }
+  @keyframes pulse { 50% { opacity: 0.55; } }
+  @media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
 <div id="cadre">
   <div id="ligne">
-    <div id="pastille"></div>
-    <input id="champ" autocomplete="off" spellcheck="false"
-           placeholder="Demander a JARVIS...">
-    <div id="indice">ECHAP</div>
+    <div id="orbe" aria-hidden="true"></div>
+    <input id="champ" autocomplete="off" spellcheck="false" aria-label="Question pour JARVIS"
+           placeholder="Demander à JARVIS…">
+    <button id="micro" aria-label="Parler à JARVIS" title="Parler à JARVIS">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+    </button>
+    <button id="copier" class="touche" hidden>Copier</button>
+    <kbd class="touche">Échap</kbd>
   </div>
-  <div id="reponse"></div>
+  <div id="puces">
+    <button class="puce" data-dire="Quelle heure est-il ?">Heure</button>
+    <button class="puce" data-dire="Quel temps fait-il aujourd'hui ?">Météo</button>
+    <button class="puce" data-dire="Quel est mon emploi du temps demain ?">Emploi du temps</button>
+    <button class="puce" data-ecrire="Interroge-moi sur ">Interroge-moi sur…</button>
+    <button class="puce" data-dire="Lance un minuteur de 10 minutes">Minuteur</button>
+    <button class="puce" data-dire="Mets de la musique">Musique</button>
+  </div>
+  <div id="reponse" hidden></div>
 </div>
 
 <script>
-const champ    = document.getElementById('champ');
-const reponse  = document.getElementById('reponse');
-const pastille = document.getElementById('pastille');
+const $ = (id) => document.getElementById(id);
+const champ = $('champ'), reponse = $('reponse'), orbe = $('orbe'), puces = $('puces'), copier = $('copier');
+const boutonMicro = $('micro');
+
+// Hauteurs en px : ligne de saisie 60 + puces 44. COMPACTE doit valoir
+// HAUTEUR_COMPACTE de barre_rapide.py, sinon la barre s'ouvre a une hauteur
+// et se referme a une autre. Au-dela de 520 px, c'est au HUD de prendre le relais.
+const LIGNE = 60, COMPACTE = 104, HAUT_MAX = 520;
 
 let runAttendu = null;
+let dernierTexte = '';
 
-// Le HUD a connu ce bug : le runId etait efface entre l'envoi et la reponse,
-// et le chat restait bloque sur TIMEOUT. Un run se clot sur SA reponse.
-function afficher(texte, sourdine) {
-  reponse.className = 'visible';
-  reponse.innerHTML = '';
-  const n = document.createElement(sourdine ? 'em' : 'span');
-  if (sourdine) n.className = 'sourdine';
-  n.textContent = texte;
-  reponse.appendChild(n);
-  // Apres le calcul de mise en page : mesurer dans le meme tour donnerait
-  // la hauteur d'avant l'insertion.
-  requestAnimationFrame(() => redimensionner(true));
+// ── Theme : celui de l'Orbe de verre ───────────────────────────────────
+function appliquerTheme() {
+  let t = null;
+  try { t = localStorage.getItem('verre-theme'); } catch { /* stockage bloque */ }
+  if (t !== 'clair' && t !== 'sombre') {   // « auto » : meme regle que le HUD
+    const h = new Date().getHours();
+    t = h >= 7 && h < 20 ? 'clair' : 'sombre';
+  }
+  document.documentElement.dataset.theme = t;
 }
 
-function redimensionner(ouvert) {
-  // pywebview redimensionne la vraie fenetre : une page haute avec un fond
-  // transparent laisserait une zone morte cliquable sous la barre.
-  //
-  // La hauteur suit le CONTENU. Une valeur fixe donnait 470 px de noir pour
-  // repondre « il est 22h ». On mesure, on borne : en dessous de 120 px la
-  // reponse serait a l'etroit, au-dela de 520 px la barre mange l'ecran et
-  // c'est au HUD de prendre le relais.
-  // 66 = la ligne de saisie (62) plus la bordure. Doit correspondre a
-  // HAUTEUR_COMPACTE dans barre_rapide.py, sinon la barre s'ouvre a une
-  // hauteur et se referme a une autre.
-  let h = 66;
-  if (ouvert) {
-    const contenu = reponse.scrollHeight + 32;
-    h = Math.min(520, Math.max(120, 62 + contenu));
+// ── Historique : fleches haut et bas, comme un terminal ────────────────
+const CLE_HISTORIQUE = 'barre-historique';
+let historique = [];
+try { historique = JSON.parse(localStorage.getItem(CLE_HISTORIQUE) || '[]'); } catch { /* vide */ }
+if (!Array.isArray(historique)) historique = [];
+let position = historique.length;
+
+function memoriser(texte) {
+  if (historique[historique.length - 1] !== texte) historique.push(texte);
+  historique = historique.slice(-30);
+  position = historique.length;
+  try { localStorage.setItem(CLE_HISTORIQUE, JSON.stringify(historique)); } catch { /* tant pis */ }
+}
+
+// ── Markdown simple : gras, italique, code, listes, titres ─────────────
+// Tout le texte est echappe AVANT la mise en forme : la reponse vient d'un
+// modele, une balise qu'il ecrirait ne doit jamais devenir du HTML. Pas de
+// liens : un clic chargerait la page dans la barre elle-meme.
+const echapper = (s) => s.replace(/[&<>"']/g,
+  (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const enLigne = (s) => s
+  .replace(/`([^`]+)`/g, '<code>$1</code>')
+  .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
+
+function markdown(texte) {
+  let html = '';
+  echapper(texte).split('```').forEach((bloc, i) => {
+    if (i % 2) {   // bloc de code ; la premiere ligne est le nom du langage
+      html += '<pre>' + bloc.replace(/^[^\n]*\n/, '') + '</pre>';
+      return;
+    }
+    let liste = null;
+    for (const ligne of bloc.split('\n')) {
+      if (!ligne.trim()) continue;   // une ligne vide ne coupe pas une liste
+      const m = ligne.match(/^\s*(?:[-*•]|(\d+)[.)])\s+(.*)$/);
+      if (m) {
+        const type = m[1] ? 'ol' : 'ul';
+        if (liste !== type) { if (liste) html += '</' + liste + '>'; html += '<' + type + '>'; liste = type; }
+        html += '<li' + (m[1] ? ' value="' + m[1] + '"' : '') + '>' + enLigne(m[2]) + '</li>';
+        continue;
+      }
+      if (liste) { html += '</' + liste + '>'; liste = null; }
+      const titre = ligne.match(/^#{1,6}\s+(.*)$/);
+      html += titre ? '<p><strong>' + enLigne(titre[1]) + '</strong></p>' : '<p>' + enLigne(ligne) + '</p>';
+    }
+    if (liste) html += '</' + liste + '>';
+  });
+  return html;
+}
+
+// ── Affichage et hauteur de la fenetre ─────────────────────────────────
+function afficher(texte, attente) {
+  puces.hidden = true;
+  reponse.hidden = false;
+  if (attente) {
+    reponse.innerHTML = '<p class="attente">' + echapper(texte) + '</p>';
+  } else {
+    reponse.innerHTML = markdown(texte);
+    dernierTexte = texte;
   }
-  try { window.pywebview?.api?.redimensionner(h); } catch (e) {}
+  // Apres le calcul de mise en page : mesurer dans le meme tour donnerait
+  // la hauteur d'avant l'insertion.
+  requestAnimationFrame(redimensionner);
+}
+
+function redimensionner() {
+  // pywebview redimensionne la vraie fenetre : la hauteur suit le CONTENU.
+  // Une valeur fixe donnait 470 px de vide pour repondre « il est 22 h ».
+  const h = reponse.hidden ? COMPACTE
+    : Math.min(HAUT_MAX, Math.max(COMPACTE, LIGNE + reponse.scrollHeight + 1));
+  try { window.pywebview?.api?.redimensionner(h); } catch { /* hors pywebview */ }
+}
+
+function vider() {
+  champ.value = '';
+  reponse.hidden = true;
+  reponse.innerHTML = '';
+  puces.hidden = false;
+  copier.hidden = true;
+  orbe.className = '';
+  arreterEcoute();
+  runAttendu = null;
+  dernierTexte = '';
+  position = historique.length;
 }
 
 function fermer() {
-  champ.value = '';
-  reponse.className = '';
-  reponse.innerHTML = '';
-  runAttendu = null;
-  pastille.className = '';
-  redimensionner(false);
-  try { window.pywebview?.api?.cacher(); } catch (e) {}
+  vider();
+  redimensionner();
+  try { window.pywebview?.api?.cacher(); } catch { /* hors pywebview */ }
+}
+
+// ── Envoi ──────────────────────────────────────────────────────────────
+// Meme politique que le HUD : au-dela du niveau d'autonomie, le serveur
+// refuse (428), on demande, on rejoue. null = refuse par l'utilisateur.
+async function appeler(url, corps) {
+  const poster = (c) => fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c),
+  });
+  let r = await poster(corps);
+  if (r.status === 428) {
+    const d = await r.json().catch(() => ({}));
+    if (!confirm('AUTORISATION REQUISE\n\nNiveau ' + (d.niveau ?? '?')
+                 + '.\nCette action dépasse le niveau d\'autonomie configuré.'
+                 + '\n\nAutoriser une fois ?')) return null;
+    r = await poster({ ...corps, confirme: true });
+  }
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json().catch(() => ({}));
+}
+
+function attendre(texte) {   // une demande part : on attend SA reponse
+  arreterEcoute();
+  orbe.className = 'occupe';
+  copier.hidden = true;
+  dernierTexte = '';
+  afficher(texte, true);
 }
 
 async function envoyer() {
   const texte = champ.value.trim();
   if (!texte) return;
-  pastille.className = 'occupe';
-  afficher('...', true);
+  memoriser(texte);
+  attendre('JARVIS réfléchit…');
   try {
-    const r = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: texte }),
-    });
-    if (r.status === 428) {
-      // Meme politique que le HUD : le serveur refuse, on demande, on rejoue.
-      const d = await r.json().catch(() => ({}));
-      if (!confirm('AUTORISATION REQUISE\n\nNiveau ' + (d.niveau ?? '?')
-                   + '.\nCette action depasse le niveau d\'autonomie configure.'
-                   + '\n\nAutoriser une fois ?')) {
-        pastille.className = '';
-        afficher('Refuse.', true);
-        return;
-      }
-      const r2 = await fetch('/api/chat', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: texte, confirme: true }),
-      });
-      if (!r2.ok) throw new Error('HTTP ' + r2.status);
-      runAttendu = (await r2.json().catch(() => ({}))).runId || '*';
-      return;
-    }
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    runAttendu = (await r.json().catch(() => ({}))).runId || '*';
+    const d = await appeler('/api/chat', { message: texte });
+    if (!d) { orbe.className = ''; afficher('Refusé.', true); return; }
+    runAttendu = d.runId || '*';
   } catch (e) {
-    pastille.className = 'erreur';
-    afficher('JARVIS ne repond pas : ' + e.message, true);
+    orbe.className = 'erreur';
+    afficher('JARVIS ne répond pas : ' + e.message, true);
   }
 }
 
+// ── Micro : l'oreille de JARVIS, pas la dictee du navigateur ───────────
+// Comme le bouton de l'Orbe sur le PC : « la prochaine phrase est pour toi »
+// (ecoute_directe), sans le mot d'eveil. La reponse arrive alors avec un
+// runId que la barre ne connait pas : on prend la premiere qui vient ('*').
+let minuteurEcoute = null;
+function arreterEcoute() {
+  clearTimeout(minuteurEcoute);
+  boutonMicro.classList.remove('actif');
+}
+
+async function ecouter() {
+  attendre('Parle, je t\'écoute…');
+  orbe.className = 'ecoute';
+  boutonMicro.classList.add('actif');
+  const finir = (texte, cls) => { arreterEcoute(); runAttendu = null; orbe.className = cls || ''; afficher(texte, true); };
+  try {
+    const d = await appeler('/api/jarvis/ecoute_directe', {});
+    if (!d) return finir('Refusé.');
+    if (d.muted) return finir('Mon micro est coupé : réactive-le pour me parler.');
+    runAttendu = '*';
+    // Rien entendu en 30 s : on rend la main. « reflechit » annule ce delai.
+    minuteurEcoute = setTimeout(() => finir('Je n\'ai rien entendu.'), 30000);
+  } catch (e) {
+    finir('Je n\'arrive pas à t\'écouter : ' + e.message, 'erreur');
+  }
+}
+boutonMicro.addEventListener('click', ecouter);
+
+puces.addEventListener('click', (e) => {
+  const b = e.target.closest('.puce');
+  if (!b) return;
+  if (b.dataset.ecrire) {   // la puce commence la phrase, on la termine au clavier
+    champ.value = b.dataset.ecrire;
+    champ.focus();
+    champ.setSelectionRange(champ.value.length, champ.value.length);
+    return;
+  }
+  champ.value = b.dataset.dire;
+  envoyer();
+});
+
+copier.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(dernierTexte);
+  } catch {
+    const zone = document.createElement('textarea');
+    zone.value = dernierTexte;
+    document.body.appendChild(zone);
+    zone.select();
+    document.execCommand('copy');
+    zone.remove();
+  }
+  copier.textContent = 'Copié';
+  setTimeout(() => { copier.textContent = 'Copier'; }, 1200);
+  champ.focus();
+});
+
 champ.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyer(); }
-  if (e.key === 'Escape') { e.preventDefault(); fermer(); }
+  else if (e.key === 'ArrowUp' && position > 0) { e.preventDefault(); champ.value = historique[--position]; }
+  else if (e.key === 'ArrowDown' && position < historique.length) {
+    e.preventDefault();
+    champ.value = historique[++position] ?? '';
+  }
 });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fermer(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); fermer(); } });
 
-// ── Reponses ────────────────────────────────────────────────────────────
+// ── Reponses ───────────────────────────────────────────────────────────
 const flux = new EventSource('/api/events');
 flux.onmessage = (ev) => {
   let d; try { d = JSON.parse(ev.data); } catch { return; }
+  // A la voix : JARVIS qui reflechit prouve qu'il a entendu la phrase.
+  if (d.type === 'agent-state:thinking' && boutonMicro.classList.contains('actif')) {
+    arreterEcoute();
+    orbe.className = 'occupe';
+    afficher('JARVIS réfléchit…', true);
+    return;
+  }
   if (d.type) return;                       // heartbeat, systeme, outils...
   if (d.role && d.role !== 'assistant') return;
-  if (!d.text) return;
   // La barre n'affiche QUE les reponses a ses propres questions. Sans ce
   // garde-fou, elle reprenait tout ce que JARVIS dit — y compris les
-  // reponses vocales declenchees ailleurs — et s'agrandissait pour un texte
-  // que personne ne lui avait demande. Ces echanges-la appartiennent au HUD.
+  // reponses vocales declenchees ailleurs. Ces echanges-la sont au HUD.
   if (!runAttendu) return;
-  // '*' : on accepte la premiere reponse venue, le serveur ne renvoie pas
-  // toujours le runId a l'envoi.
+  // '*' : premiere reponse venue, le serveur ne renvoie pas toujours le runId.
+  // Le HUD a connu ce bug : un run se clot sur SA reponse, pas sur un etat.
   if (runAttendu !== '*' && d.runId !== runAttendu) return;
-  afficher(d.text, false);
-  if (d.done) { pastille.className = ''; runAttendu = null; }
+  if (d.text) afficher(d.text, false);
+  if (d.done) { arreterEcoute(); orbe.className = ''; runAttendu = null; copier.hidden = !dernierTexte; }
 };
 
-// Appele par Python a chaque ouverture : champ vide et curseur dedans.
-window.reinitialiser = () => {
-  champ.value = '';
-  reponse.className = '';
-  reponse.innerHTML = '';
-  runAttendu = null;
-  pastille.className = '';
-  champ.focus();
-};
+// Appele par Python a chaque ouverture : theme a jour, champ vide, curseur dedans.
+window.reinitialiser = () => { appliquerTheme(); vider(); champ.focus(); };
+appliquerTheme();
 champ.focus();
+
+// Auto-verification du rendu : ouvrir barre.html?test, resultat dans la console.
+if (location.search === '?test') {
+  const cas = [
+    ['**a** <b>', '<p><strong>a</strong> &lt;b&gt;</p>'],
+    ['- un\n\n- deux', '<ul><li>un</li><li>deux</li></ul>'],
+    ['2. x', '<ol><li value="2">x</li></ol>'],
+    ['`<i>`', '<p><code>&lt;i&gt;</code></p>'],
+    ['```js\nlet a = 1;\n```', '<pre>let a = 1;\n</pre>'],
+    ['5 * 3 * 2', '<p>5 * 3 * 2</p>'],
+  ];
+  const ratés = cas.filter(([entree, attendu]) => markdown(entree) !== attendu);
+  console.log(ratés.length ? 'barre : ECHEC ' + JSON.stringify(ratés) : 'barre : rendu OK (' + cas.length + ' cas)');
+}
 </script>
 </body>
 </html>
